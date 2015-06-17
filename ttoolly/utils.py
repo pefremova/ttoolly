@@ -175,7 +175,7 @@ def get_all_form_errors(response):
         pass
     try:
         for fs in response.context['inline_admin_formsets']:
-            non_form_errors = fs.formset._non_form_errors()
+            non_form_errors = fs.formset._non_form_errors
             if non_form_errors:
                 form_errors.update({'%s-__all__' % fs.formset.prefix: non_form_errors})
             errors = fs.formset._errors
@@ -195,7 +195,7 @@ def get_all_form_errors(response):
                'BaseFormSet' in [cn.__name__ for cn in response.context[key].__class__.__mro__]]
     for fs_key in fs_keys:
         formset = response.context[fs_key]
-        non_form_errors = formset._non_form_errors()
+        non_form_errors = formset._non_form_errors
         if non_form_errors:
             form_errors.update({'%s-__all__' % formset.prefix: non_form_errors})
         for form in getattr(formset, 'forms', formset):
