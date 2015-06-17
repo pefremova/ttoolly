@@ -2,7 +2,6 @@
 from datetime import datetime, date, time
 from django.conf import settings
 from django.core.cache import cache
-from django.core.files import File
 from django.core.files.base import ContentFile
 from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
 from django.template.context import Context
@@ -20,7 +19,6 @@ import string
 import struct
 import sys
 import traceback
-
 
 
 def convert_size_to_bytes(size):
@@ -73,8 +71,7 @@ def generate_random_obj(obj_model, additional_params=None, filename=None):
         elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
             objects = f.related.parent_model.objects.all()
             if objects.count() > 0:
-                obj = objects[random.randint(0, objects.count() - 1)] if \
-                                        objects.count() > 1 else objects[0]
+                obj = objects[random.randint(0, objects.count() - 1)] if objects.count() > 1 else objects[0]
             else:
                 obj = generate_random_obj(f.related.parent_model, filename=filename)
             params[f.name] = obj
@@ -124,9 +121,9 @@ def generate_sql(data):
                 values.append(value)
             else:
                 additional_sql += u"INSERT INTO %s (%s) VALUES (%s);\n" % \
-                                    ('_'.join([table_name, key]), 
-                                     ', '.join([element['model'].split('.')[1], key + '_id']),
-                                     ', '.join([pk, value]))
+                                  ('_'.join([table_name, key]),
+                                   ', '.join([element['model'].split('.')[1], key + '_id']),
+                                   ', '.join([pk, value]))
 
         columns = ', '.join(columns)
         values = ', '.join(values)
@@ -165,7 +162,7 @@ def get_all_form_errors(response):
         pass
     for form in forms:
         form_errors.update(get_errors(form))
-    
+
     try:
         for fs in response.context['form_set']:
             non_form_errors = fs._non_field_errors()
@@ -222,7 +219,8 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
             if not url.startswith('/'):
                 url = '/' + url
             fres = re.findall(r'\(.+?\)', url)
-            for fr in fres: url = url.replace(fr, '123')
+            for fr in fres:
+                url = url.replace(fr, '123')
             result.append(url)
     result.sort()
     return result
@@ -410,16 +408,16 @@ def get_randname(l=10, _type='a', length_of_chunk=10):
     else:
         text = ''
         letters_dict = {'d': string.digits,
-                'w': string.letters,
-                'r': u'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ',
-                'p': string.punctuation,
-                's': string.whitespace}
+                        'w': string.letters,
+                        'r': u'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ',
+                        'p': string.punctuation,
+                        's': string.whitespace}
         for t in _type:
             text += letters_dict.get(t, t)
 
     count_of_chunks = l / length_of_chunk
-    n = ''.join([random.choice(text) for j in xrange(length_of_chunk)]) * count_of_chunks + \
-        ''.join([random.choice(text) for j in xrange(l % length_of_chunk)])
+    n = ''.join([random.choice(text) for _ in xrange(length_of_chunk)]) * count_of_chunks + \
+        ''.join([random.choice(text) for _ in xrange(l % length_of_chunk)])
     return n
 
 
@@ -473,7 +471,7 @@ def get_random_email_value(length):
     min_length_without_name = 1 + 1 + 3  # @.\.ru
     max_length_without_name = MAX_DOMAIN_LENGTH + 1 + 3  # @ .ru
     name_length = random.randint(max(1, length - max_length_without_name),
-                          length - min_length_without_name)
+                                 length - min_length_without_name)
     domain_length = length - name_length - 1  # @ .ru
     symbols_for_generate = 'wd'
     symbols_with_escaping = ''
@@ -492,22 +490,22 @@ def get_random_email_value(length):
 
 
 def generate_random_file_with_size(*args, **kwargs):
-    raise Exception, 'deprecated, use get_random_file'
+    raise DeprecationWarning('use get_random_file')
 
 
 def get_file_with_name(filename):
-    raise Exception, 'deprecated, use get_random_file with return_opened=True'
+    raise DeprecationWarning('use get_random_file with return_opened=True')
 
 
 def generate_random_contentfile(*args, **kwargs):
-    raise Exception, 'deprecated, use get_random_contentfile'
+    raise DeprecationWarning('use get_random_contentfile')
 
 
 def get_random_contentfile(size=10, filename=None):
     if not filename:
         filename = get_randname(10, 'wd')
     return ContentFile(get_randname(size), filename)
-    
+
 
 def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filename=None):
     if path:
@@ -534,7 +532,7 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
 
 
 def generate_random_image_with_size(*args, **kwargs):
-    raise Exception, 'deprecated, use get_random_image'
+    raise DeprecationWarning('use get_random_image')
 
 
 def get_random_image(path='', size=10, width=1, height=1, rewrite=False, return_opened=True, filename=''):
@@ -543,7 +541,7 @@ def get_random_image(path='', size=10, width=1, height=1, rewrite=False, return_
     """
     size = convert_size_to_bytes(size)
     if path:
-        filename = os.path.basename(path)    
+        filename = os.path.basename(path)
         if os.path.exists(path) and not rewrite:
             if abs(os.stat(path).st_size - size) / (size or 1) > 0.01:
                 rewrite = True
@@ -567,11 +565,11 @@ def get_random_image(path='', size=10, width=1, height=1, rewrite=False, return_
 
 
 def generate_random_image_content(*args, **kwargs):
-    raise Exception, 'deprecated, use get_random_jpg_content'
-    
+    raise DeprecationWarning('use get_random_jpg_content')
+
 
 def generate_random_image_contentfile(*args, **kwargs):
-    raise Exception, 'deprecated, use get_random_image_contentfile'
+    raise DeprecationWarning('use get_random_image_contentfile')
 
 
 def get_random_image_contentfile(size=10, width=1, height=1, filename=None):
@@ -594,11 +592,11 @@ def get_random_jpg_content(size=10, width=1, height=1):
     size = size - len(content)
     if size > 0:
         content += bytearray(size)
-    return content    
+    return content
 
 
 def generate_random_bmp_image_with_size(*args, **kwargs):
-    raise Exception, 'deprecated, use get_random_bmp_content or get_random_image'
+    raise DeprecationWarning('use get_random_bmp_content or get_random_image')
 
 
 def get_random_bmp_content(size=10,):
@@ -623,7 +621,7 @@ def get_random_bmp_content(size=10,):
         else:
             padding = (4 - row_mod)
         padbytes = ''
-        for i in range(padding):
+        for _ in range(padding):
             x = struct.pack('<B', 0)
             padbytes = padbytes + x
         content += padbytes
@@ -664,8 +662,9 @@ def get_url_for_negative(url, args=()):
             l.append(url[start:m.start()])
             start = m.end()
         l.append(url[start:])
-        while len(l_args) < len(l): l_args.append(l_args[-1])
-        return ''.join([ item for tup in zip(l, l_args) for item in tup ][:-1])
+        while len(l_args) < len(l):
+            l_args.append(l_args[-1])
+        return ''.join([item for tup in zip(l, l_args) for item in tup][:-1])
     try:
         res = resolve(url)
         url = get_url(':'.join([res.namespace, res.url_name]), args=args)
@@ -702,10 +701,10 @@ def prepare_custom_file_for_tests(file_path, filename=''):
         copyfile(filename, file_path)
         return
     elif os.path.splitext(file_path)[1].lower() in ('.jpg', '.jpeg', 'png', '.bmp'):
-        get_random_image(path=full_path, return_opened=False)
+        get_random_image(path=file_path, return_opened=False)
         return
     else:
-        get_random_file(path=full_path, return_opened=False)
+        get_random_file(path=file_path, return_opened=False)
         return
 
 

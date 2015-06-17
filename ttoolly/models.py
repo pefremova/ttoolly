@@ -2,38 +2,42 @@
 from copy import copy, deepcopy
 from datetime import datetime, date, time
 from decimal import Decimal
+import inspect
+import json
+from lxml.html import document_fromstring
+import os
+from random import choice, randint, uniform
+import re
+from shutil import rmtree
+import sys
+import warnings
+
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.management import call_command
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import reverse, resolve
 from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
 from django.db.models import Model, Q
 from django.db.models.fields import FieldDoesNotExist
 from django.test import TransactionTestCase
 from django.test.testcases import connections_support_transactions
 from django.utils.unittest import SkipTest
-from lxml.html import document_fromstring
-from random import choice, randint, uniform
-from shutil import rmtree, copyfile
-from utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
-    get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
-    get_fields_list_from_response, get_all_form_errors, generate_random_obj)
-import inspect
-import os
 import psycopg2.extensions
-import re
-import sys
-import warnings
+from utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
+                   get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
+                   get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_random_jpg_content,
+                   get_all_urls)
 
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
+
 def get_dirs_for_move():
     DIRS_FOR_MOVE = getattr(settings, 'DIRS_FOR_MOVE', [])
     DIRS_FOR_MOVE.extend([el for el in [getattr(settings, 'MEDIA_ROOT', ''), getattr(settings, 'STATIC_ROOT', '')] if
-                      el and not any([el.startswith(d) for d in DIRS_FOR_MOVE])])
+                          el and not any([el.startswith(d) for d in DIRS_FOR_MOVE])])
     return set(DIRS_FOR_MOVE)
 
 
@@ -230,8 +234,7 @@ class GlobalTestMixIn(object):
                     res = self._assert_dict_equal(d1[key], d2[key],
                                                   parent_key + '[%s]' % key)
                     if res:
-                        text.append(parent_key + '[%s]:\n  ' % key + \
-                                    '\n  '.join(res.splitlines()))
+                        text.append(parent_key + '[%s]:\n  ' % key + '\n  '.join(res.splitlines()))
                 elif isinstance(d1[key], list) and isinstance(d2[key], list):
                     try:
                         self.assert_list_equal(d1[key], d2[key])
@@ -273,7 +276,7 @@ class GlobalTestMixIn(object):
             count_in_form = count_dict_form.get(field, None)
             if count_in_form and count_in_form != count_in_etalon:
                 errors.append(u"Field '%s' present at form %s time(s) (should be %s)" %
-                                    (field, count_in_form, count_in_etalon))
+                              (field, count_in_form, count_in_etalon))
 
         if errors:
             error_message = ';\n'.join(errors)
@@ -287,7 +290,7 @@ class GlobalTestMixIn(object):
             if all([isinstance(el, dict) for el in list1]) and all([isinstance(el, dict) for el in list2]):
                 errors = []
                 for i, el in enumerate(list2):
-                    erros.append(self._assert_dict_equal(list1[i], el))
+                    errors.append(self._assert_dict_equal(list1[i], el))
             elif all([isinstance(el, list) for el in list1]) and all([isinstance(el, list) for el in list2]):
                 errors = []
                 for i, el in enumerate(list2):
@@ -363,15 +366,15 @@ class GlobalTestMixIn(object):
 
         local_errors = []
         object_fields = obj._meta.get_all_field_names()
-        object_related_field_names = [name for name in object_fields if \
+        object_related_field_names = [name for name in object_fields if
                                       obj._meta.get_field_by_name(name)[0].__class__.__name__ == 'RelatedObject']
         fields_for_check = set(params.keys()).intersection(object_fields)
-        fields_for_check.update([k.split('-')[0] for k in params.keys() if k.split('-')[0] \
+        fields_for_check.update([k.split('-')[0] for k in params.keys() if k.split('-')[0]
                                  in object_related_field_names])
         fields_for_check = fields_for_check.difference(exclude)
 
         obj_related_objects = self.get_related_names(obj)
-        one_to_one_fields = [name for name in object_related_field_names if \
+        one_to_one_fields = [name for name in object_related_field_names if
                              obj._meta.get_field_by_name(name)[0].field.__class__.__name__ == 'OneToOneField']
         for field in fields_for_check:
             # TODO: refactor me
@@ -396,7 +399,7 @@ class GlobalTestMixIn(object):
                 for i, el in enumerate(value.all().order_by('pk') if value.__class__.__name__ in ('RelatedManager',
                                                                                                   'QuerySet') else [value, ]):
                     _params = dict([(k.replace('%s-%d-' % (obj_related_objects.get(field, field), i), ''),
-                                     params[k]) for k in params.keys() if \
+                                     params[k]) for k in params.keys() if
                                     k.startswith('%s-%d' % (obj_related_objects.get(field, field), i)) and k not in exclude])
                     try:
                         self.assert_object_fields(el, _params)
@@ -431,10 +434,10 @@ class GlobalTestMixIn(object):
             self.assertEqual(first[n:n + 1],
                              second[n:n + 1],
                              ('Not equal in position %d: ' % n +
-                             "'%s%s' != '%s%s'" % (first[n: n + additional],
-                             '...' if (n + additional < first_length) else '',
-                             second[n: n + additional],
-                             '...' if (n + additional < second_length) else '')) + full_error_text)
+                              "'%s%s' != '%s%s'" % (first[n: n + additional],
+                              '...' if (n + additional < first_length) else '',
+                              second[n: n + additional],
+                              '...' if (n + additional < second_length) else '')) + full_error_text)
 
     def assert_xpath_count(self, response, path, count=1, status_code=200):
         self.assertEqual(response.status_code, status_code, "Response status code %s != %s" %
@@ -477,7 +480,7 @@ class GlobalTestMixIn(object):
 
     def get_all_form_errors(self, response):
         return get_all_form_errors(response)
-    
+
     def get_error_field(self, message_type, field):
         error_field = re.sub(r'_(\d|ru)$', '', field)
         if message_type == 'max_length' and self.is_file_field(field):
@@ -501,7 +504,7 @@ class GlobalTestMixIn(object):
             if frame[3].startswith('test_'):
                 break
         previous_locals = kwargs.get('locals', frame[0].f_locals)
-        if not 'field' in previous_locals.iterkeys():
+        if 'field' not in previous_locals.iterkeys():
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
@@ -545,7 +548,7 @@ class GlobalTestMixIn(object):
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
         ERROR_MESSAGES.update(messages_from_settings)
         custom_errors = deepcopy(getattr(self, 'custom_error_messages', {}).get(field if not
-                                                                                isinstance(field, (list, tuple)) \
+                                                                                isinstance(field, (list, tuple))
                                                                                 else tuple(field), {}))
 
         if isinstance(field, (list, tuple)) and not custom_errors:
@@ -633,8 +636,8 @@ class GlobalTestMixIn(object):
         if isinstance(value, bool):
             params_value = bool(params_value)
             return value, params_value
-        if (isinstance(value, date) or isinstance(value, time))\
-              and not (isinstance(params_value, date) or isinstance(params_value, time)):
+        if (isinstance(value, date) or isinstance(value, time)) and not (isinstance(params_value, date) or
+                                                                         isinstance(params_value, time)):
             if isinstance(value, datetime):
                 value = value.strftime('%d.%m.%Y %H:%M:%S')
             elif isinstance(value, date):
@@ -694,9 +697,7 @@ class GlobalTestMixIn(object):
         else:
             if field in self.IMAGE_FIELDS:
                 filename = filename[:-4] + ".jpg"
-                _file = open(os.path.join(FILES_PATH, 'test.jpg'), 'rb')
-                text_for_file = _file.read()
-                _file.close()
+                text_for_file = get_random_jpg_content()
             else:
                 text_for_file = get_randname(1000)
         f = ContentFile(text_for_file, name=filename)
@@ -709,20 +710,19 @@ class GlobalTestMixIn(object):
         return f
 
     def get_related_names(self, model):
-        obj_related_objects = dict([(el.get_accessor_name(), el.var_name) for el in \
-                                        model._meta.get_all_related_objects()])
+        obj_related_objects = dict([(el.get_accessor_name(), el.var_name) for el in
+                                    model._meta.get_all_related_objects()])
         obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
 
     def _get_value_for_compare(self, *args, **kwargs):
-        raise Exception, 'deprecated, use get_value_for_compare'
+        raise DeprecationWarning('use get_value_for_compare')
 
     def get_value_for_compare(self, obj, field):
         if not hasattr(obj, field):
             value = None
         elif getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager'):
-            value = u', '.join([str(v) for v in \
-                                getattr(obj, field).values_list('pk', flat=True).order_by('pk')])
+            value = u', '.join([str(v) for v in getattr(obj, field).values_list('pk', flat=True).order_by('pk')])
         else:
             value = getattr(obj, field)
             if 'File' in [m.__name__ for m in getattr(obj, field).__class__.__mro__] and not value:
@@ -747,12 +747,12 @@ class GlobalTestMixIn(object):
         elif self.is_digital_field(field_name):
             if getattr(self, 'obj', None):
                 try:
-                    if 'ForeignKey' in [b.__name__ for b
-                        in  self.get_field_by_name(self.obj, field_name)[0].__class__.__mro__]:
+                    if 'ForeignKey' in [b.__name__ for b in
+                                        self.get_field_by_name(self.obj, field_name)[0].__class__.__mro__]:
                         return choice(self.obj._meta.get_field_by_name(field_name)[0].rel.to.objects.all()).pk
                 except FieldDoesNotExist:
                     pass
-            if not 'get_digital_values_range' in dir(self):
+            if 'get_digital_values_range' not in dir(self):
                 return get_randname(length, 'd')
             values_range = self.get_digital_values_range(field_name)
             if self.is_int_field(field_name):
@@ -795,8 +795,8 @@ class GlobalTestMixIn(object):
                  getattr(self, 'email_fields_add', None),
                  getattr(self, 'email_fields_edit', None)] == [None, None, None] and 'email' in field) \
                 or any([field in (getattr(self, 'email_fields', ()) or ()),
-                    field in (getattr(self, 'email_fields_add', ()) or ()),
-                    field in (getattr(self, 'email_fields_edit', ()) or ()), ])
+                        field in (getattr(self, 'email_fields_add', ()) or ()),
+                        field in (getattr(self, 'email_fields_edit', ()) or ()), ])
 
     def is_int_field(self, field):
         return any([field in (getattr(self, 'int_fields', ()) or ()),
@@ -810,8 +810,9 @@ class GlobalTestMixIn(object):
                 return False
             if isinstance(params.get(field, None), (file, ContentFile)):
                 return True
-            if isinstance(params.get(field, None), (list, tuple)) and params.get(field)\
-                and all([isinstance(el, (file, ContentFile)) for el in params.get(field)]):
+            if (isinstance(params.get(field, None), (list, tuple))
+                    and params.get(field)
+                    and all([isinstance(el, (file, ContentFile)) for el in params.get(field)])):
                 return True
             return False
         return field not in getattr(self, 'not_file', []) and \
@@ -848,7 +849,7 @@ class GlobalTestMixIn(object):
                 try:
                     existing_values = self.obj.objects.values_list(key_for_get_values, flat=True)
                 except:
-                    #FIXME: self.obj does not exists or FieldError
+                    # FIXME: self.obj does not exists or FieldError
                     pass
                 n = 0
                 if default_value != '' and default_value is not None:
@@ -956,9 +957,9 @@ class FormTestMixIn(GlobalTestMixIn):
 
         self._prepare_choice_fieds()
         if self.with_captcha is None:
-            self.with_captcha = any([(self.all_fields and 'captcha' in self.all_fields) \
-                                 or (self.all_fields_add and 'captcha' in self.all_fields_add) \
-                                 or (self.all_fields_edit and 'captcha' in self.all_fields_edit)])
+            self.with_captcha = any([(self.all_fields and 'captcha' in self.all_fields)
+                                     or (self.all_fields_add and 'captcha' in self.all_fields_add)
+                                     or (self.all_fields_edit and 'captcha' in self.all_fields_edit)])
 
         self._prepare_filter_params()
         self._prepare_date_fields()
@@ -969,7 +970,7 @@ class FormTestMixIn(GlobalTestMixIn):
         self.unique_fields_add = [el for el in self.all_unique.keys() if
                                   any([field in self.all_fields_add for field in el])]
         self.unique_fields_edit = [el for el in self.all_unique.keys() if
-                                  any([field in self.all_fields_edit for field in el])]
+                                   any([field in self.all_fields_edit for field in el])]
 
         super(FormTestMixIn, self).__init__(*args, **kwargs)
 
@@ -994,7 +995,7 @@ class FormTestMixIn(GlobalTestMixIn):
             if el.endswith('_0'):
                 if len(b) > 1:
                     if b[0] == el.replace('_0', '_1') and (len(b) <= 1 or
-                                                               not b[1].startswith(el.replace('_0', ''))):
+                                                           not b[1].startswith(el.replace('_0', ''))):
                         result_all_fields.append(el.replace('_0', ''))
                         b.pop(0)
                         continue
@@ -1015,22 +1016,20 @@ class FormTestMixIn(GlobalTestMixIn):
     def _prepare_all_form_fields_list(self):
         if self.all_fields_add is None:
             if self.all_fields is None:
-                self.all_fields_add = self._get_all_fields_from_default_params(
-                                                    self.default_params_add)
+                self.all_fields_add = self._get_all_fields_from_default_params(self.default_params_add)
             else:
                 self.all_fields_add = copy(self.all_fields)
         if self.all_fields_edit is None:
             if self.all_fields is None:
-                self.all_fields_edit = self._get_all_fields_from_default_params(
-                                                    self.default_params_edit)
+                self.all_fields_edit = self._get_all_fields_from_default_params(self.default_params_edit)
             else:
                 self.all_fields_edit = copy(self.all_fields)
 
     def _prepare_choice_fieds(self):
-        self.choice_fields_add = self.choice_fields_add or \
-                list(set(self.choice_fields).intersection(self.all_fields_add))
-        self.choice_fields_edit = self.choice_fields_edit or \
-                list(set(self.choice_fields).intersection(self.all_fields_edit))
+        self.choice_fields_add = (self.choice_fields_add or
+                                  list(set(self.choice_fields).intersection(self.all_fields_add)))
+        self.choice_fields_edit = (self.choice_fields_edit or
+                                   list(set(self.choice_fields).intersection(self.all_fields_edit)))
 
         self.choice_fields_add_with_value_in_error = self.choice_fields_add_with_value_in_error or \
                 list(set(self.choice_fields_with_value_in_error).intersection(self.all_fields_add))
@@ -1051,7 +1050,7 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.digital_fields_add = set(copy(self.digital_fields)).intersection(self.default_params_add.keys())
             else:
                 self.digital_fields_add = (set([k for k, v in self.default_params_add.iteritems() if
-                                                'FORMS' not in k and isinstance(v, (float, int)) \
+                                                'FORMS' not in k and isinstance(v, (float, int))
                                                                  and not isinstance(v, bool)])
                                            .difference(self.choice_fields_add)
                                            .difference(self.choice_fields_add_with_value_in_error))
@@ -1062,8 +1061,8 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.digital_fields_edit = (set([k for k, v in self.default_params_edit.iteritems() if
                                                  'FORMS' not in k and isinstance(v, (float, int))
                                                                   and not isinstance(v, bool)])
-                                           .difference(self.choice_fields_edit)
-                                           .difference(self.choice_fields_edit_with_value_in_error))
+                                            .difference(self.choice_fields_edit)
+                                            .difference(self.choice_fields_edit_with_value_in_error))
 
         if self.int_fields_add is None:
             if self.int_fields is not None:
@@ -1217,7 +1216,7 @@ class FormTestMixIn(GlobalTestMixIn):
                             params[f_name] = f.rel.to.objects.get(pk=choice(self.choice_fields_values[set_name + '-0-' + f_name]))
                         else:
                             params[f_name] = f.rel.to.objects.all()[0] if mro_names.intersection(['ForeignKey', ]) \
-                                                                      else self.get_value_for_field(10, field)
+                                                                       else self.get_value_for_field(10, field)
                     else:
                         params[f_name] = getattr(value, f_name)
                 getattr(obj, set_name).add(value.__class__(**params))
@@ -1387,15 +1386,17 @@ class FormAddTestMixIn(FormTestMixIn):
             if not re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
                 filters &= ~Q(**{'%s__isnull' % field: True})
                 field_class = self.get_field_by_name(self.obj, field)[0]
-                if not set([c.__name__ for c in field_class.__class__.__mro__])\
-                    .intersection(('RelatedField', 'ForeignKey', 'IntegerField')):
+                if not set([c.__name__ for c in field_class.__class__.__mro__]).intersection(('RelatedField',
+                                                                                              'ForeignKey',
+                                                                                              'IntegerField')):
                     filters &= ~Q(**{field: ''})
             else:
                 related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
                 filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
                 field_class = self.get_field_by_name(self.obj, field)[0]
-                if not set([c.__name__ for c in field_class.__class__.__mro__])\
-                    .intersection(('RelatedField', 'ForeignKey', 'IntegerField')):
+                if not set([c.__name__ for c in field_class.__class__.__mro__]).intersection(('RelatedField',
+                                                                                              'ForeignKey',
+                                                                                              'IntegerField')):
                     filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.obj.objects.filter(filters)
         if qs.exists():
@@ -1439,7 +1440,7 @@ class FormAddTestMixIn(FormTestMixIn):
         only_independent_fields = set(self.all_fields_add).difference(prepared_depends_fields.keys())
         for field in prepared_depends_fields.keys():
             self.set_empty_value_for_field(params, field)
-        self.fill_all_fields(list(only_independent_fields) + self.required_fields_add + \
+        self.fill_all_fields(list(only_independent_fields) + self.required_fields_add +
                              self._get_required_from_related(self.required_related_fields_add), params)
         self.update_params(params)
         if self.with_captcha:
@@ -1662,7 +1663,7 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: fill all fields with maximum length values
         """
         new_object = None
-        for field, length in [el for el in self.max_fields_length if el[0] in \
+        for field, length in [el for el in self.max_fields_length if el[0] in
                               self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             """if unique fields"""
@@ -1687,8 +1688,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For field "%s" with length %d\n(value "%s")' % \
-                                (field, length, value))
+                self.errors_append(text='For field "%s" with length %d\n(value "%s")' % (field, length, value))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -1698,7 +1698,7 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: values length > maximum
         """
         message_type = 'max_length'
-        for field, length in [el for el in self.max_fields_length if el[0] in \
+        for field, length in [el for el in self.max_fields_length if el[0] in
                               self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             params = deepcopy(self.default_params_add)
@@ -1727,7 +1727,7 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: values length < minimum
         """
         message_type = 'min_length'
-        for field, length in [el for el in self.min_fields_length if el[0] in \
+        for field, length in [el for el in self.min_fields_length if el[0] in
                               self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             params = deepcopy(self.default_params_add)
@@ -1837,8 +1837,9 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % \
-                                                             (field, params[field]) for field in el if field in params.keys()))
+                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
+                                                             (field, params[field]) for field
+                                                             in el if field in params.keys()))
 
         '''values is in uppercase'''
         for el in self.unique_fields_add:
@@ -1868,8 +1869,9 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % \
-                                                             (field, params[field]) for field in el if field in params.keys()))
+                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
+                                                             (field, params[field]) for field
+                                                             in el if field in params.keys()))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -1964,8 +1966,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For field "%s" with value "%s"' % \
-                                (field, params[field]))
+                self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -2082,7 +2083,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = params.get(field, None) or self.get_value_for_field(10, field)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2103,7 +2104,7 @@ class FormEditTestMixIn(FormTestMixIn):
     url_edit = ''
 
     def get_obj_id_for_edit(self):
-        if not '%' in self.url_edit and '/' in self.url_edit:
+        if '%' not in self.url_edit and '/' in self.url_edit:
             return int(re.findall(r"/(\d+)/", self.url_edit)[0])
         return self.obj.objects.all()[0].pk
 
@@ -2121,14 +2122,14 @@ class FormEditTestMixIn(FormTestMixIn):
                 filters &= ~Q(**{'%s__isnull' % field: True})
                 field_class = self.get_field_by_name(self.obj, field)[0]
                 if not set([c.__name__ for c in field_class.__class__.__mro__])\
-                    .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
+                        .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
                     filters &= ~Q(**{field: ''})
             else:
                 related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
                 filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
                 field_class = self.get_field_by_name(self.obj, field)[0]
                 if not set([c.__name__ for c in field_class.__class__.__mro__])\
-                    .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
+                        .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
                     filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.obj.objects.filter(filters)
         if qs.exists():
@@ -2173,7 +2174,7 @@ class FormEditTestMixIn(FormTestMixIn):
         only_independent_fields = set(self.all_fields_edit).difference(prepared_depends_fields.keys())
         for field in prepared_depends_fields.keys():
             self.set_empty_value_for_field(params, field)
-        self.fill_all_fields(list(only_independent_fields) + self.required_fields_edit + \
+        self.fill_all_fields(list(only_independent_fields) + self.required_fields_edit +
                              self._get_required_from_related(self.required_related_fields_edit), params)
         self.update_params(params)
         if self.with_captcha:
@@ -2242,8 +2243,7 @@ class FormEditTestMixIn(FormTestMixIn):
         if self.with_captcha:
             self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
             params.update(get_captcha_codes())
-        required_fields = self.required_fields_edit + \
-                          self._get_required_from_related(self.required_related_fields_edit)
+        required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
         self.update_params(params)
         for field in set(self.default_params_edit.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
@@ -2413,7 +2413,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: fill all fields with maximum length values
         """
-        for field, length in [el for el in self.max_fields_length if el[0] in \
+        for field, length in [el for el in self.max_fields_length if el[0] in
                               self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
@@ -2451,7 +2451,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     except:
                         self.errors_append(_errors, text='Second save with file max length')
                     if _errors:
-                        raise Exception, format_errors(_errors)
+                        raise Exception(format_errors(_errors))
             except:
                 transaction.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
@@ -2465,7 +2465,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Try edit object: values length > maximum
         """
         message_type = 'max_length'
-        for field, length in [el for el in self.max_fields_length if el[0] in \
+        for field, length in [el for el in self.max_fields_length if el[0] in
                               self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
@@ -2497,7 +2497,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Try edit object: values length < minimum
         """
         message_type = 'min_length'
-        for field, length in [el for el in self.min_fields_length if el[0] in \
+        for field, length in [el for el in self.min_fields_length if el[0] in
                               self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
@@ -2608,7 +2608,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[el_field] = self.get_params_according_to_type(value, u'')[0]
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                                            params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2616,8 +2616,9 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % \
-                                                             (field, params[field]) for field in el if field in params.keys()))
+                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
+                                                             (field, params[field]) for field
+                                                             in el if field in params.keys()))
         '''values is in uppercase'''
         for el in self.unique_fields_edit:
             field = self.all_unique[el]
@@ -2641,7 +2642,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[el_field] = params[el_field].upper()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                                            params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2649,8 +2650,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % \
-                                                             (field, params[field]) for field in el  if field in params.keys()))
+                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % (field, params[field])
+                                                             for field in el if field in params.keys()))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -2863,12 +2864,11 @@ class FormEditTestMixIn(FormTestMixIn):
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
-                self.assertNotEqual(self.get_value_for_compare(self.obj.objects.get(pk=test_obj.pk), field),
-                                    params[field])
+                self.assertNotEqual(self.get_value_for_compare(new_obj, field), params[field])
                 if field not in getattr(self, 'exclude_from_check_edit', []):
-                    self.assertEqual(self.get_value_for_compare(self.obj.objects.get(pk=test_obj.pk), field),
-                                     getattr(self, 'other_values_for_check', {}).get(field,
-                                             self.get_value_for_compare(test_obj, field)))
+                    self.assertEqual(self.get_value_for_compare(new_obj, field),
+                                     getattr(self, 'other_values_for_check',
+                                             {}).get(field, self.get_value_for_compare(test_obj, field)))
             except:
                 transaction.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
@@ -2942,7 +2942,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
     url_recovery = ''
 
     def __init__(self, *args, **kwargs):
-        super(FormRemoveTestCase, self).__init__(*args, **kwargs)
+        super(FormRemoveTestMixIn, self).__init__(*args, **kwargs)
         self.url_edit_in_trash = self.url_edit_in_trash or self.url_recovery.replace('trash_restore', 'trash_change')
 
     def get_is_removed(self, obj):
@@ -3157,19 +3157,23 @@ class FormRemoveTestMixIn(FormTestMixIn):
 
 
 class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
-    username = ''
-    password = ''
-    allowed_links = ()
-    links_404 = ()
-    links_403 = ()
-    links_redirect = ()
-    redirect_to = ''
     additional_params = {}
+    allowed_links = ()
+    links_400 = ()
+    links_401 = ()
+    links_403 = ()
+    links_404 = ()
+    links_405 = ()
+    links_redirect = ()
     method = 'GET'
+    password = ''
+    redirect_to = ''
+    urlpatterns = None
+    username = ''
 
     def get_urls(self):
-        #FIXME:
-        _urls = set(get_all_urls(urlpatterns))
+        # FIXME:
+        _urls = set(get_all_urls(self.urlpatterns))
         res = ''
         result = ()
         for aa in _urls:
@@ -3183,7 +3187,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                     res_kwargs = {k: v if str(v) != '123' else 1 for k, v in res.kwargs.iteritems()}
                     res_args = tuple([v if str(v) != '123' else 1 for v in res.args])
                     result += ((':'.join([el for el in [res.namespace, res.url_name] if el]),
-                            res_kwargs or res_args),)
+                                res_kwargs or res_args),)
             except:
                 print '!!!!!', res, aa
         return result
@@ -3360,7 +3364,7 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
 
     def _fixture_teardown(self):
         if not connections_support_transactions():
-            return super(BaseTestCase, self)._fixture_teardown()
+            return super(TransactionTestCase, self)._fixture_teardown()
 
         # If the test case has a multi_db=True flag, teardown all databases.
         # Otherwise, just teardown default.
@@ -3396,8 +3400,7 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
         verbosity = int(options.get('verbosity', 1))
         for db in connections:
             if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
-                fixtures = [fixture for fixture in self.fixtures_for_custom_db \
-                            if fixture.endswith(db + '.json')]
+                fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
                 sequence_sql = []
                 for fixture in fixtures:
@@ -3407,17 +3410,16 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
                     try:
                         cursor.execute(sql)
                     except Exception, e:
-                        sys.stderr.write("Failed to load fixtures for alias '%s': %s" % \
-                                        (db, str(e)))
+                        sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
                         transaction.rollback_unless_managed(using=db)
                     else:
                         transaction.commit_unless_managed(using=db)
 
                     for element in data:
-                        sequence_sql.append("SELECT setval(pg_get_serial_sequence('%s','%s'), coalesce(max(%s), 1), max(%s) IS NOT null) FROM %s;" % \
-                        (element['model'], element['pk'], element['pk'], element['pk'],
-                         element['model']))
-
+                        sequence_sql.append("SELECT setval(pg_get_serial_sequence('%s','%s'), coalesce(max(%s), 1), " + \
+                                            "max(%s) IS NOT null) FROM %s;" % (element['model'], element['pk'],
+                                                                               element['pk'], element['pk'],
+                                                                               element['model']))
                 if sequence_sql:
                     if verbosity >= 2:
                         sys.stdout.write("Resetting sequences\n")
@@ -3427,7 +3429,7 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
 
     def custom_fixture_teardown(self):
         for db in connections:
-            if hasattr(self, 'fixtures_for_custom_db')  and db != DEFAULT_DB_ALIAS:
+            if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
                 cursor = connections[db].cursor()
                 cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
                 tables = cursor.fetchall()

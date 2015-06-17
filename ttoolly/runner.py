@@ -1,11 +1,13 @@
-from django.test.simple import DjangoTestSuiteRunner, build_suite, build_test, get_app, get_apps
+from django.test.simple import DjangoTestSuiteRunner, get_app, get_apps
 try:
     from django.test.simple import reorder_suite
+
     class DjRunner(DjangoTestSuiteRunner):
         pass
 except:
     # django>=1.6
     from django.test.runner import reorder_suite, DiscoverRunner
+
     class DjRunner(DiscoverRunner):
         pass
 from django.utils import unittest
