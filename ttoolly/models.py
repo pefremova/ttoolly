@@ -21,6 +21,7 @@ from django.core.urlresolvers import reverse, resolve
 from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
 from django.db.models import Model, Q
 from django.db.models.fields import FieldDoesNotExist
+from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase
 from django.test.testcases import connections_support_transactions
 from django.utils.unittest import SkipTest
@@ -28,7 +29,7 @@ import psycopg2.extensions
 from utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                    get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                    get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_random_jpg_content,
-                   get_all_urls)
+                   get_all_urls, convert_size_to_bytes, get_random_image)
 
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
@@ -52,9 +53,14 @@ def only_with_obj(fn):
 
 
 def only_with(param_names=None):
+    if not isinstance(param_names, (tuple, list)):
+        param_names = [param_names, ]
     def decorator(fn):
         def tmp(self):
-            if all(getattr(self, param_name, None) for param_name in param_names):
+            def get_value(param_name):
+                return getattr(self, param_name, None)
+
+            if all(get_value(param_name) for param_name in param_names):
                 return fn(self)
             else:
                 raise SkipTest("Need all these params: %s" % repr(param_names))
@@ -543,7 +549,15 @@ class GlobalTestMixIn(object):
                           'wrong_value_email': u'Введите правильный адрес электронной почты.',
                           'unique': u'Объект с таким значением в поле {field} уже существует'.format(field=field),
                           'delete_not_exists': u'Произошла ошибка. Попробуйте позже.',
-                          'recovery_not_exists': u'Произошла ошибка. Попробуйте позже.', }
+                          'recovery_not_exists': u'Произошла ошибка. Попробуйте позже.',
+                          'empty_file': u'Загруженный файл пуст.',
+                          'max_count_file': u'Допускается загрузить не более {max_count} файлов.' if
+                                    (previous_locals.get('max_count', None) is None)
+                                    else u'Допускается загрузить не более {max_count} файлов.'.format(**previous_locals),
+                          'max_size_file': u'Размер файла {filename} больше {max_size}.' if
+                                    (previous_locals.get('filename', None) is None or
+                                     previous_locals.get('max_size', None) is None)
+                                    else u'Размер файла {filename} больше {max_size}.'.format(**previous_locals)}
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
         ERROR_MESSAGES.update(messages_from_settings)
@@ -1630,8 +1644,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
                 error_message = self.get_error_message(message_type, field)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 error_message)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
             except:
                 transaction.savepoint_rollback(sp)
                 self.errors_append(text='For params without field "%s"' % field)
@@ -1808,12 +1821,12 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     @only_with(('unique_fields_add',))
     def test_add_object_unique_already_exists_negative(self):
-        '''
+        """
         @author: Polina Efremova
         @note: Try add object with unique field values, that already used in other objects
-        '''
+        """
         message_type = 'unique'
-        '''values exactly equals'''
+        """values exactly equals"""
         for el in self.unique_fields_add:
             field = self.all_unique[el]
             existing_obj = self.get_existing_obj_with_filled(el)
@@ -1841,7 +1854,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
 
-        '''values is in uppercase'''
+        """values is in uppercase"""
         for el in self.unique_fields_add:
             field = self.all_unique[el]
             existing_obj = self.get_existing_obj_with_filled(el)
@@ -2584,12 +2597,12 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     @only_with(('unique_fields_edit',))
     def test_edit_object_unique_already_exists_negative(self):
-        '''
+        """
         @author: Polina Efremova
         @note: Try change object unique field values, to values, that already used in other objects
-        '''
+        """
         message_type = 'unique'
-        '''values exactly equals'''
+        """values exactly equals"""
         for el in self.unique_fields_edit:
             field = self.all_unique[el]
             obj_for_edit = self.get_obj_for_edit()
@@ -2619,7 +2632,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
-        '''values is in uppercase'''
+        """values is in uppercase"""
         for el in self.unique_fields_edit:
             field = self.all_unique[el]
             obj_for_edit = self.get_obj_for_edit()
@@ -3153,6 +3166,208 @@ class FormRemoveTestMixIn(FormTestMixIn):
                                                                    flat=True)))
         except:
             self.errors_append()
+        self.formatted_assert_errors()
+
+
+class FileTestMixIn(FormTestMixIn):
+
+    file_fields_params = {}
+    """{'field_name': {'extensions': ('jpg', 'txt'),
+                       'max_count': 3,
+                       'one_max_size': '3Mb',
+                       'all_max_size': '10Mb'}}"""
+
+
+    def get_random_file_content(self, filename, size=100):
+        if os.path.splitext(filename.lower())[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
+            content = get_random_jpg_content(size=size)
+        else:
+            content = get_randname(size)
+        return content
+
+    def humanize_file_size(self, size):
+        return filesizeformat(size)
+
+
+def only_with_files_params(param_names=None):
+    if not isinstance(param_names, (tuple, list)):
+        param_names = [param_names, ]
+    def decorator(fn):
+        def tmp(self):
+            def check_params(field_dict, param_names):
+                return all([param_name in field_dict.keys() for param_name in param_names])
+
+            if any([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+                return fn(self)
+            else:
+                raise SkipTest("Need all these params: %s" % repr(param_names))
+        tmp.__name__ = fn.__name__
+        return tmp
+    return decorator
+
+
+class FormAddFileTestMixIn(FileTestMixIn):
+
+    @only_with_obj
+    @only_with_files_params('max_count')
+    def test_add_object_many_files_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with files count > max files count
+        """
+        message_type = 'max_count_file'
+        for field, field_dict in self.file_fields_params.iteritems():
+            if field_dict.get('max_count', 1) <= 1:
+                continue
+            sp = transaction.savepoint()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                max_count = field_dict['max_count']
+                params[field] = self.get_value_for_field(10, field) * (max_count + 1)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assertEqual(self.obj.objects.count(), initial_obj_count)
+                error_message = self.get_error_message(message_type, field)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('max_count')
+    def test_add_object_many_files_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with photos count == max files count
+        """
+        new_object = None
+        for field, field_dict in self.file_fields_params.iteritems():
+            if field_dict.get('max_count', 1) <= 1:
+                continue
+            sp = transaction.savepoint()
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                max_count = field_dict['max_count']
+                params = deepcopy(self.default_params_add)
+                self.update_params(params)
+                params[field] = []
+                for _ in xrange(max_count):
+                    f = self.get_value_for_field(10, 'files')
+                    self.files.extend(f)
+                    params[field].extend(f)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                self.assert_object_fields(new_object, params,)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('one_max_size')
+    def test_add_object_big_file_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with file size > max one file size
+        """
+        message_type = 'max_size_file'
+        for field, field_dict in self.file_fields_params.iteritems():
+            sp = transaction.savepoint()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                size = convert_size_to_bytes(field_dict['one_max_size'])
+                max_size = self.humanize_file_size(size)
+                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
+                f = ContentFile(self.get_random_file_content(size=size + 100, filename=filename), name=filename)
+                self.files.append(f)
+                params[field] = [f, ]
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assertEqual(self.obj.objects.count(), initial_obj_count)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append()
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    def test_add_object_empty_file_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with file size = 0M
+        """
+        message_type = 'empty_file'
+        for field, field_dict in self.file_fields_params.iteritems():
+            sp = transaction.savepoint()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
+                f = ContentFile('', filename)
+                self.files.append(f)
+                params[field] = [f, ]
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assertEqual(self.obj.objects.count(), initial_obj_count)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append()
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('extensions')
+    def test_add_object_some_file_extensions_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with some available extensions
+        """
+        new_object = None
+        for field, field_dict in self.file_fields_params.iteritems():
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = deepcopy(self.default_params_add)
+            self.update_params(params)
+            params[field] = []
+            extensions = field_dict['extensions']
+            extensions += tuple([e.upper() for e in extensions])
+            for ext in extensions:
+                sp = transaction.savepoint()
+                filename = 'test.%s' % ext
+                f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                self.files.append(f)
+                params[field] = [f, ]
+                initial_obj_count = self.obj.objects.count()
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                try:
+                    self.assert_no_form_errors(response)
+                    self.assertEqual(self.obj.objects.count(), initial_obj_count + 1)
+                    new_obj = self.obj.objects.latest('pk')
+                    self.assert_object_fields(new_obj, params,)
+                except:
+                    transaction.savepoint_rollback(sp)
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
         self.formatted_assert_errors()
 
 
