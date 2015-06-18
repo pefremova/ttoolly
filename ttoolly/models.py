@@ -1257,11 +1257,11 @@ class FormTestMixIn(GlobalTestMixIn):
             else:
                 min_values.append(-32767 - 1)
         elif 'Integer' in class_name:
-            max_values.append(sys.maxint)
+            max_values.extend([2147483647, sys.maxint])
             if 'Positive' in class_name:
                 min_values.append(0)
             else:
-                min_values.append(-sys.maxint - 1)
+                min_values.extend([-2147483647 - 1, -sys.maxint - 1])
         elif 'Float' in class_name or 'Decimal' in class_name:
             max_values.append(sys.float_info.max)
             min_values.append(-sys.float_info.max)
