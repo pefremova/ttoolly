@@ -719,15 +719,16 @@ class GlobalTestMixIn(object):
         if default_file and is_list:
             default_file = default_file[0]
 
-        if default_file:
+        if default_file and os.path.splitext(default_file.name)[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
             type_name = os.path.splitext(default_file.name)[-1]
             if type_name:
                 filename = filename[:-len(type_name)] + type_name
             default_file.seek(0)
             text_for_file = default_file.read()
         else:
-            if field in self.IMAGE_FIELDS:
-                filename = filename[:-4] + ".jpg"
+            if field in self.IMAGE_FIELDS or os.path.splitext(filename)[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
+                if not os.path.splitext(filename)[1]:
+                    filename = filename[:-4] + ".jpg"
                 text_for_file = get_random_jpg_content()
             else:
                 text_for_file = get_randname(1000)
