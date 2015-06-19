@@ -355,7 +355,7 @@ class GlobalTestMixIn(object):
         @param exclude: exclude field from check
         @param other_values: dict, set custom value for fields
         """
-        params = deepcopy(params)
+        params = self.deepcopy(params)
         if not other_values:
             other_values = {}
         if not exclude:
@@ -363,7 +363,7 @@ class GlobalTestMixIn(object):
         exclude = list(exclude)
         if (getattr(self, 'obj', None) and isinstance(obj, self.obj)) or not getattr(self, 'obj', None):
             exclude.extend(getattr(self, 'exclude_from_check', []))
-            other_values_for_check = deepcopy(getattr(self, 'other_values_for_check', {}))
+            other_values_for_check = self.deepcopy(getattr(self, 'other_values_for_check', {}))
             for k in other_values_for_check.keys():
                 if k in other_values.keys():
                     other_values_for_check.pop(k)
@@ -459,6 +459,20 @@ class GlobalTestMixIn(object):
         real_count = len(doc.xpath(path))
         error_message = 'Found %s instances of \'%s\' (Should be %s)' % (real_count, path, count)
         self.assertEqual(real_count, count, error_message)
+
+    def deepcopy(self, params):
+        tmp_params = {}
+        old_params = params
+        params = copy(params)
+        keys = params.keys()
+        for k in keys:
+            if isinstance(params[k], ContentFile):
+                content_file = params.pop(k)
+                content_file.seek(0)
+                tmp_params[k] = ContentFile(content_file.read(), content_file.name)
+        params = deepcopy(params)
+        params.update(tmp_params)
+        return params
 
     def errors_append(self, errors=None, text='', color=231):
         if errors is None:
@@ -564,13 +578,13 @@ class GlobalTestMixIn(object):
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
         ERROR_MESSAGES.update(messages_from_settings)
-        custom_errors = deepcopy(getattr(self, 'custom_error_messages', {}).get(field if not
+        custom_errors = self.deepcopy(getattr(self, 'custom_error_messages', {}).get(field if not
                                                                                 isinstance(field, (list, tuple))
                                                                                 else tuple(field), {}))
 
         if isinstance(field, (list, tuple)) and not custom_errors:
             for fi in field:
-                custom_errors = custom_errors or deepcopy(getattr(self, 'custom_error_messages', {}).get(fi, {}))
+                custom_errors = custom_errors or self.deepcopy(getattr(self, 'custom_error_messages', {}).get(fi, {}))
                 if custom_errors:
                     break
 
@@ -596,7 +610,7 @@ class GlobalTestMixIn(object):
                                      not isinstance(field, (list, tuple)) else self.non_field_error_key)
             error_message = {error_field: [error_message] if not isinstance(error_message, list) else error_message}
         else:
-            error_message = deepcopy(error_message)
+            error_message = self.deepcopy(error_message)
 
         for k, v in error_message.iteritems():
             error_message[k] = [el.format(**previous_locals) for el in v] if \
@@ -695,6 +709,9 @@ class GlobalTestMixIn(object):
     def get_random_file(self, field, length):
         self.with_files = True
         filename = get_randname(length, 'r')
+        if getattr(self, 'file_fields_params', {}).get(field, {}).get('extensions', ()):
+            ext = choice(getattr(self, 'file_fields_params', {}).get(field, {}).get('extensions', ()))
+            filename = filename[:-len(ext) - 1] + '.' + ext
         default_file = ((getattr(self, 'default_params', None) and self.default_params.get(field, None))
                         or (getattr(self, 'default_params_add', None) and self.default_params_add.get(field, None))
                         or (getattr(self, 'default_params_edit', None) and self.default_params_edit.get(field, None)))
@@ -963,9 +980,9 @@ class FormTestMixIn(GlobalTestMixIn):
     def __init__(self, *args, **kwargs):
         super(FormTestMixIn, self).__init__(*args, **kwargs)
         if not self.default_params_add:
-            self.default_params_add = deepcopy(self.default_params)
+            self.default_params_add = self.deepcopy(self.default_params)
         if not self.default_params_edit:
-            self.default_params_edit = deepcopy(self.default_params)
+            self.default_params_edit = self.deepcopy(self.default_params)
 
         self.exclude_from_check_add = getattr(self, 'exclude_from_check_add', None) or copy(self.exclude_from_check)
         self.exclude_from_check_edit = getattr(self, 'exclude_from_check_edit', None) or copy(self.exclude_from_check)
@@ -1152,7 +1169,7 @@ class FormTestMixIn(GlobalTestMixIn):
                 _filter_params[param[0]] = param[1]
             else:
                 _filter_params[param] = None
-        self.filter_params = deepcopy(_filter_params)
+        self.filter_params = self.deepcopy(_filter_params)
 
     def _prepare_hidden_fields(self):
         if self.hidden_fields_add is None:
@@ -1355,7 +1372,7 @@ class FormTestMixIn(GlobalTestMixIn):
                 values = res.get(f, [])
                 values.extend(set(gr).difference((f,)))
                 res[f] = list(set(values))
-        return deepcopy(res)
+        return self.deepcopy(res)
 
     @only_with_obj
     @only_with(('url_list', 'filter_params'))
@@ -1458,7 +1475,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         initial_obj_count = self.obj.objects.count()
         old_pks = list(self.obj.objects.values_list('pk', flat=True))
-        params = deepcopy(self.default_params_add)
+        params = self.deepcopy(self.default_params_add)
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_add) if self.one_of_fields_add else {}
         only_independent_fields = set(self.all_fields_add).difference(prepared_depends_fields.keys())
         for field in prepared_depends_fields.keys():
@@ -1489,7 +1506,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_add)
         only_independent_fields = set(self.all_fields_add).difference(prepared_depends_fields.keys())
-        default_params = deepcopy(self.default_params_add)
+        default_params = self.deepcopy(self.default_params_add)
         for field in prepared_depends_fields.keys():
             self.set_empty_value_for_field(default_params, field)
         self.fill_all_fields(list(only_independent_fields), default_params)
@@ -1500,7 +1517,7 @@ class FormAddTestMixIn(FormTestMixIn):
             fields_from_groups = fields_from_groups.difference(prepared_depends_fields[field])
         self.fill_all_fields(fields_from_groups, default_params)
         for group in self.one_of_fields_add:
-            params = deepcopy(default_params)
+            params = self.deepcopy(default_params)
             for field in group:
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 initial_obj_count = self.obj.objects.count()
@@ -1530,7 +1547,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         initial_obj_count = self.obj.objects.count()
         old_pks = list(self.obj.objects.values_list('pk', flat=True))
-        params = deepcopy(self.default_params_add)
+        params = self.deepcopy(self.default_params_add)
         required_fields = self.required_fields_add + \
                           self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
@@ -1557,13 +1574,13 @@ class FormAddTestMixIn(FormTestMixIn):
 
         """если хотя бы одно поле из группы заполнено, объект создается"""
         for group in self.required_related_fields_add:
-            _params = deepcopy(self.default_params_add)
+            _params = self.deepcopy(self.default_params_add)
             for field in group:
                 self.set_empty_value_for_field(_params, field)
             for field in group:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(_params)
+                params = self.deepcopy(_params)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1597,7 +1614,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
             sp = transaction.savepoint()
             try:
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1614,7 +1631,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """обязательно хотя бы одно поле из группы (все пустые)"""
         for group in self.required_related_fields_add:
             sp = transaction.savepoint()
-            params = deepcopy(self.default_params_add)
+            params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             for field in group:
                 self.set_empty_value_for_field(params, field)
@@ -1644,7 +1661,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
             sp = transaction.savepoint()
             try:
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1661,7 +1678,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """обязательно хотя бы одно поле из группы (все пустые)"""
         for group in self.required_related_fields_add:
             sp = transaction.savepoint()
-            params = deepcopy(self.default_params_add)
+            params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             for field in group:
                 params.pop(field)
@@ -1694,7 +1711,7 @@ class FormAddTestMixIn(FormTestMixIn):
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
 
                 if self.with_captcha:
@@ -1723,7 +1740,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field, length in [el for el in self.max_fields_length if el[0] in
                               self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
-            params = deepcopy(self.default_params_add)
+            params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             if self.with_captcha:
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1752,7 +1769,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field, length in [el for el in self.min_fields_length if el[0] in
                               self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
-            params = deepcopy(self.default_params_add)
+            params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             if self.with_captcha:
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1779,7 +1796,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'wrong_value'
         for field in set(tuple(self.choice_fields_add) + tuple(self.choice_fields_add_with_value_in_error)):
-            params = deepcopy(self.default_params_add)
+            params = self.deepcopy(self.default_params_add)
             for value in (u'qwe', u'12345678', u'йцу'):
                 self.update_params(params)
                 initial_obj_count = self.obj.objects.count()
@@ -1808,7 +1825,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'wrong_value'
         for field in self.multiselect_fields_add:
-            params = deepcopy(self.default_params_add)
+            params = self.deepcopy(self.default_params_add)
             for value in (u'12345678',):
                 self.update_params(params)
                 initial_obj_count = self.obj.objects.count()
@@ -1841,7 +1858,7 @@ class FormAddTestMixIn(FormTestMixIn):
             existing_obj = self.get_existing_obj_with_filled(el)
             sp = transaction.savepoint()
             initial_obj_count = self.obj.objects.count()
-            params = deepcopy(self.default_params_add)
+            params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             if self.with_captcha:
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1867,7 +1884,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for el in self.unique_fields_add:
             field = self.all_unique[el]
             existing_obj = self.get_existing_obj_with_filled(el)
-            params = deepcopy(self.default_params_add)
+            params = self.deepcopy(self.default_params_add)
             if not any([isinstance(params[el_field], (str, unicode)) for el_field in el]):
                 continue
             sp = transaction.savepoint()
@@ -1909,7 +1926,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.obj.objects.count()
                 sp = transaction.savepoint()
                 try:
-                    params = deepcopy(self.default_params_add)
+                    params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     if self.with_captcha:
                         self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1938,7 +1955,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.obj.objects.count()
                 sp = transaction.savepoint()
                 try:
-                    params = deepcopy(self.default_params_add)
+                    params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     if self.with_captcha:
                         self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1974,7 +1991,7 @@ class FormAddTestMixIn(FormTestMixIn):
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -2005,7 +2022,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.obj.objects.count()
                 sp = transaction.savepoint()
                 try:
-                    params = deepcopy(self.default_params_add)
+                    params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     if self.with_captcha:
                         self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -2042,7 +2059,7 @@ class FormAddTestMixIn(FormTestMixIn):
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -2073,7 +2090,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.obj.objects.count()
                 sp = transaction.savepoint()
                 try:
-                    params = deepcopy(self.default_params_add)
+                    params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     if self.with_captcha:
                         self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -2102,7 +2119,7 @@ class FormAddTestMixIn(FormTestMixIn):
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -2191,7 +2208,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Edit object: fill all fields
         """
         obj_for_edit = self.get_obj_for_edit()
-        params = deepcopy(self.default_params_edit)
+        params = self.deepcopy(self.default_params_edit)
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_edit) if self.one_of_fields_edit else {}
         only_independent_fields = set(self.all_fields_edit).difference(prepared_depends_fields.keys())
         for field in prepared_depends_fields.keys():
@@ -2223,7 +2240,7 @@ class FormEditTestMixIn(FormTestMixIn):
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_edit)
         only_independent_fields = set(self.all_fields_edit).difference(prepared_depends_fields.keys())
         self.get_obj_for_edit()
-        default_params = deepcopy(self.default_params_edit)
+        default_params = self.deepcopy(self.default_params_edit)
         self.fill_all_fields(only_independent_fields, default_params)
         for field in prepared_depends_fields.keys():
             self.set_empty_value_for_field(default_params, field)
@@ -2236,7 +2253,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for group in self.one_of_fields_edit:
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
-                params = deepcopy(default_params)
+                params = self.deepcopy(default_params)
                 for f in prepared_depends_fields[field]:
                     self.set_empty_value_for_field(params, f)
                 self.fill_all_fields((field,), params)
@@ -2261,7 +2278,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Edit object: fill only required fields
         """
         obj_for_edit = self.get_obj_for_edit()
-        params = deepcopy(self.default_params_edit)
+        params = self.deepcopy(self.default_params_edit)
         if self.with_captcha:
             self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
             params.update(get_captcha_codes())
@@ -2286,11 +2303,11 @@ class FormEditTestMixIn(FormTestMixIn):
         """если хотя бы одно поле из группы заполнено, объект редактируется"""
         for group in self.required_related_fields_edit:
             obj_for_edit = self.get_obj_for_edit()
-            _params = deepcopy(self.default_params_edit)
+            _params = self.deepcopy(self.default_params_edit)
             for field in group:
                 self.set_empty_value_for_field(_params, field)
             for field in group:
-                params = deepcopy(_params)
+                params = self.deepcopy(_params)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
@@ -2321,7 +2338,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             test_obj = self.get_obj_for_edit()
             try:
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -2341,7 +2358,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for group in self.required_related_fields_edit:
             sp = transaction.savepoint()
             test_obj = self.get_obj_for_edit()
-            params = deepcopy(self.default_params_edit)
+            params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             for field in group:
                 if self.with_captcha:
@@ -2371,7 +2388,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -2392,7 +2409,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for group in self.required_related_fields_edit:
             test_obj = self.get_obj_for_edit()
             sp = transaction.savepoint()
-            params = deepcopy(self.default_params_edit)
+            params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             for field in group:
                 params.pop(field)
@@ -2439,7 +2456,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
@@ -2491,7 +2508,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -2523,7 +2540,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -2552,7 +2569,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in set(tuple(self.choice_fields_edit) + tuple(self.choice_fields_edit_with_value_in_error)):
             for value in (u'qwe', u'12345678', u'йцу'):
                 obj_for_edit = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
@@ -2583,7 +2600,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in self.multiselect_fields_edit:
             for value in (u'12345678',):
                 obj_for_edit = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
@@ -2616,7 +2633,7 @@ class FormEditTestMixIn(FormTestMixIn):
             obj_for_edit = self.get_obj_for_edit()
             existing_obj = self.get_other_obj_with_filled(el, obj_for_edit)
             sp = transaction.savepoint()
-            params = deepcopy(self.default_params_edit)
+            params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             if self.with_captcha:
                 self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
@@ -2645,7 +2662,7 @@ class FormEditTestMixIn(FormTestMixIn):
             field = self.all_unique[el]
             obj_for_edit = self.get_obj_for_edit()
             existing_obj = self.get_other_obj_with_filled(el, obj_for_edit)
-            params = deepcopy(self.default_params_edit)
+            params = self.deepcopy(self.default_params_edit)
             if not any([isinstance(params[el_field], (str, unicode)) for el_field in el]):
                 continue
             sp = transaction.savepoint()
@@ -2688,7 +2705,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 sp = transaction.savepoint()
                 try:
                     test_obj = self.get_obj_for_edit()
-                    params = deepcopy(self.default_params_edit)
+                    params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     if self.with_captcha:
                         self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -2719,7 +2736,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 sp = transaction.savepoint()
                 try:
                     test_obj = self.get_obj_for_edit()
-                    params = deepcopy(self.default_params_edit)
+                    params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     if self.with_captcha:
                         self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -2751,7 +2768,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             obj_for_edit = self.get_obj_for_edit()
             try:
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
@@ -2782,7 +2799,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 sp = transaction.savepoint()
                 try:
                     test_obj = self.get_obj_for_edit()
-                    params = deepcopy(self.default_params_edit)
+                    params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     if self.with_captcha:
                         self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -2815,7 +2832,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             obj_for_edit = self.get_obj_for_edit()
             try:
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
@@ -2846,7 +2863,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 sp = transaction.savepoint()
                 try:
                     test_obj = self.get_obj_for_edit()
-                    params = deepcopy(self.default_params_edit)
+                    params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     if self.with_captcha:
                         self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -2875,7 +2892,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
@@ -3001,7 +3018,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_for_test.save()
         obj_id = obj_for_test.id
         initial_obj_count = self.obj.objects.count()
-        additional_params = deepcopy(self.additional_params)
+        additional_params = self.deepcopy(self.additional_params)
         additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         try:
             recovery_url = self.get_url(self.url_recovery, (obj_id,))
@@ -3037,7 +3054,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try recovery object with invalid id
         """
-        additional_params = deepcopy(self.additional_params)
+        additional_params = self.deepcopy(self.additional_params)
         additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         for value in ('9999999', '2147483648',):
             try:
@@ -3062,7 +3079,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         obj_id = obj_for_test.id
-        params = deepcopy(self.default_params_edit)
+        params = self.deepcopy(self.default_params_edit)
         try:
             url = self.get_url_for_negative(self.url_recovery.replace('trash_restore', 'trash_change'), (obj_id,))
             response = self.client.post(url, params, follow=True, **self.additional_params)
@@ -3084,7 +3101,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         obj_id = obj_for_test.id
-        params = deepcopy(self.default_params_edit)
+        params = self.deepcopy(self.default_params_edit)
         try:
             response = self.client.post(self.get_url_for_negative(self.url_edit, (obj_id,)), params, follow=True)
             self.assertEqual(response.status_code, 404)
@@ -3099,7 +3116,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         initial_obj_count = self.obj.objects.count()
-        additional_params = deepcopy(self.additional_params)
+        additional_params = self.deepcopy(self.additional_params)
         additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         try:
             recovery_url = self.get_url_for_negative(self.url_recovery, (obj_for_test.pk,))
@@ -3230,7 +3247,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -3267,7 +3284,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 max_count = field_dict['max_count']
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 params[field] = []
                 for _ in xrange(max_count):
@@ -3299,7 +3316,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
             sp = transaction.savepoint()
             try:
                 initial_obj_count = self.obj.objects.count()
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -3333,7 +3350,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -3377,7 +3394,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -3414,7 +3431,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 filename = 'test.%s' % ext
                 f = ContentFile(self.get_random_file_content(filename=filename), filename)
                 self.files.append(f)
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 params[field] = [f, ] if is_file_list else f
                 initial_obj_count = self.obj.objects.count()
@@ -3446,7 +3463,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 ext = get_randname(3, 'wd')
             for filename in ('test', 'test.%s' % ext):
                 sp = transaction.savepoint()
-                params = deepcopy(self.default_params_add)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 f = ContentFile(self.get_random_file_content(filename=filename), filename)
                 self.files.append(f)
@@ -3479,7 +3496,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit), **self.additional_params)
@@ -3515,7 +3532,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 max_count = field_dict['max_count']
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 params[field] = []
                 for _ in xrange(max_count):
@@ -3547,7 +3564,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit), **self.additional_params)
@@ -3580,7 +3597,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit), **self.additional_params)
@@ -3624,7 +3641,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit), **self.additional_params)
@@ -3661,7 +3678,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 f = ContentFile(self.get_random_file_content(filename=filename), filename)
                 self.files.append(f)
                 obj_for_edit = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 params[field] = [f, ] if is_file_list else f
                 try:
@@ -3692,7 +3709,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
             for filename in ('test', 'test.%s' % ext):
                 sp = transaction.savepoint()
                 obj_for_edit = self.get_obj_for_edit()
-                params = deepcopy(self.default_params_edit)
+                params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 f = ContentFile(self.get_random_file_content(filename=filename), filename)
                 self.files.append(f)
