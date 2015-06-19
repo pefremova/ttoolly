@@ -3816,6 +3816,24 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
         self.formatted_assert_errors()
 
+    def test_unallowed_links_with_401_response(self):
+        """
+        @author: Polina Efremova
+        @note: check unallowed links, that should response 401
+        """
+        self.login()
+        for el in self.links_401:
+            url_name, args, custom_message = self._get_values(el)
+            url = self.get_url(url_name, args)
+            try:
+                response = self.client.get(url, follow=True, **self.additional_params)
+                self.assertEqual(response.status_code, 401)
+                self.assertEqual(self.get_all_form_errors(response),
+                                 {"detail": u'Учетные данные не были предоставлены.'})
+            except:
+                self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
+        self.formatted_assert_errors()
+
     @only_with(('links_403',))
     def test_unallowed_links_with_403_response(self):
         """

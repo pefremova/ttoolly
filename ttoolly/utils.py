@@ -519,8 +519,7 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
                 os.remove(path)
     filename = filename or get_randname(10, 'wrd ')
     if os.path.splitext(filename)[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
-        kwargs['filename'] = filename
-        return get_random_image(**kwargs)
+        return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename)
     size = convert_size_to_bytes(size)
     content = get_randname(size)
     if not path and return_opened:
