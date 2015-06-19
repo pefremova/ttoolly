@@ -721,13 +721,13 @@ def prepare_file_for_tests(model_name, field, filename=''):
                 os.makedirs(directory)
             if filename:
                 copyfile(filename, full_path)
-                return
+                continue
             elif 'ImageField' in mro_names:
                 get_random_image(path=full_path, return_opened=False)
-                return
+                continue
             else:
                 get_random_file(path=full_path, return_opened=False)
-                return
+                continue
 
 
 def unicode_to_readable(text):
