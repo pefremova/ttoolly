@@ -3816,6 +3816,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
         self.formatted_assert_errors()
 
+    @only_with('links_401')
     def test_unallowed_links_with_401_response(self):
         """
         @author: Polina Efremova
@@ -3851,6 +3852,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
         self.formatted_assert_errors()
 
+    @only_with('urlpatterns')
     def test_unallowed_links_with_404_response(self):
         """
         @author: Polina Efremova
