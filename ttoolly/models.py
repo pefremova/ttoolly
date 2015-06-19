@@ -557,7 +557,10 @@ class GlobalTestMixIn(object):
                           'max_size_file': u'Размер файла {filename} больше {max_size}.' if
                                     (previous_locals.get('filename', None) is None or
                                      previous_locals.get('max_size', None) is None)
-                                    else u'Размер файла {filename} больше {max_size}.'.format(**previous_locals)}
+                                    else u'Размер файла {filename} больше {max_size}.'.format(**previous_locals),
+                          'wrong_extension': u'Некорректный формат файла {filename}.' if
+                                    previous_locals.get('filename', None) is None
+                                    else u'Некорректный формат файла {filename}.'.format(**previous_locals)}
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
         ERROR_MESSAGES.update(messages_from_settings)
@@ -599,15 +602,6 @@ class GlobalTestMixIn(object):
             error_message[k] = [el.format(**previous_locals) for el in v] if \
                                 isinstance(v, list) else [v.format(**previous_locals)]
         return error_message
-
-    def get_value_for_error_message(self, field, value):
-        if self.is_file_field(field):
-            if isinstance(value, (list, tuple)):
-                return ', '.join([el.name for el in value])
-            else:
-                return value.name
-        else:
-            return value
 
     def get_field_by_name(self, model, field):
         if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
@@ -692,13 +686,19 @@ class GlobalTestMixIn(object):
 
         return value, params_value
 
+    def is_file_list(self, field):
+        return isinstance(((getattr(self, 'default_params', None) and self.default_params.get(field, None))
+                           or (getattr(self, 'default_params_add', None) and self.default_params_add.get(field, None))
+                           or (getattr(self, 'default_params_edit', None) and self.default_params_edit.get(field, None))),
+                          (list, tuple))
+
     def get_random_file(self, field, length):
         self.with_files = True
         filename = get_randname(length, 'r')
         default_file = ((getattr(self, 'default_params', None) and self.default_params.get(field, None))
                         or (getattr(self, 'default_params_add', None) and self.default_params_add.get(field, None))
                         or (getattr(self, 'default_params_edit', None) and self.default_params_edit.get(field, None)))
-        is_list = isinstance(default_file, (list, tuple))
+        is_list = self.is_file_list(field)
         if default_file and is_list:
             default_file = default_file[0]
 
@@ -775,6 +775,15 @@ class GlobalTestMixIn(object):
                 return uniform(max(values_range['min_values']), min(values_range['max_values']))
         else:
             return get_randname(length, 'w').decode('utf-8')
+
+    def get_value_for_error_message(self, field, value):
+        if self.is_file_field(field):
+            if isinstance(value, (list, tuple)):
+                return ', '.join([el.name for el in value])
+            else:
+                return value.name
+        else:
+            return value
 
     def get_url(self, *args, **kwargs):
         return get_url(*args, **kwargs)
@@ -2321,8 +2330,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 error_message)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
             except:
@@ -3174,8 +3182,7 @@ class FileTestMixIn(FormTestMixIn):
     file_fields_params = {}
     """{'field_name': {'extensions': ('jpg', 'txt'),
                        'max_count': 3,
-                       'one_max_size': '3Mb',
-                       'all_max_size': '10Mb'}}"""
+                       'one_max_size': '3Mb'}}"""
 
 
     def get_random_file_content(self, filename, size=100):
@@ -3229,7 +3236,11 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 max_count = field_dict['max_count']
-                params[field] = self.get_value_for_field(10, field) * (max_count + 1)
+                filename = '.'.join([s for s in [get_randname(10, 'wrd '),
+                                                     choice(field_dict.get('extensions', ('',)))] if s])
+                f = ContentFile(self.get_random_file_content(filename=filename), name=filename)
+                self.files.append(f)
+                params[field] = [f, ] * (max_count + 1)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
                 error_message = self.get_error_message(message_type, field)
@@ -3260,17 +3271,20 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.update_params(params)
                 params[field] = []
                 for _ in xrange(max_count):
-                    f = self.get_value_for_field(10, 'files')
-                    self.files.extend(f)
-                    params[field].extend(f)
+                    filename = '.'.join([s for s in [get_randname(10, 'wrd '),
+                                                     choice(field_dict.get('extensions', ('',)))] if s])
+                    f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                    self.files.append(f)
+                    params[field].append(f)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count + 1)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-                self.assert_object_fields(new_object, params,)
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
+                self.errors_append(text='For %s files in field %s' % (max_count, field))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3285,7 +3299,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             sp = transaction.savepoint()
             try:
                 initial_obj_count = self.obj.objects.count()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 params = deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
@@ -3296,10 +3309,57 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
                 f = ContentFile(self.get_random_file_content(size=size + 100, filename=filename), name=filename)
                 self.files.append(f)
-                params[field] = [f, ]
+                params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append()
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('one_max_size')
+    def test_add_object_big_file_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with file size == max one file size
+        """
+        new_object = None
+        for field, field_dict in self.file_fields_params.iteritems():
+            sp = transaction.savepoint()
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                size = convert_size_to_bytes(field_dict['one_max_size'])
+                max_size = self.humanize_file_size(size)
+                if self.is_file_list(field):
+                    params[field] = []
+                    for _ in xrange(field_dict['max_count']):
+                        filename = '.'.join([s for s in [get_randname(10, 'wrd'),
+                                                         choice(field_dict.get('extensions', ('',)))] if s])
+                        f = ContentFile(self.get_random_file_content(size=size, filename=filename), name=filename)
+                        self.files.append(f)
+                        params[field].append(f)
+                else:
+                    filename = '.'.join([s for s in [get_randname(10, 'wrd'),
+                                                     choice(field_dict.get('extensions', ('',)))] if s])
+                    f = ContentFile(self.get_random_file_content(size=size, filename=filename), name=filename)
+                    self.files.append(f)
+                    params[field] = f
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 transaction.savepoint_rollback(sp)
                 self.errors_append()
@@ -3325,7 +3385,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
                 f = ContentFile('', filename)
                 self.files.append(f)
-                params[field] = [f, ]
+                params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -3343,28 +3403,306 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         new_object = None
         for field, field_dict in self.file_fields_params.iteritems():
-            if new_object:
-                self.obj.objects.filter(pk=new_object.pk).delete()
-
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
-            params = deepcopy(self.default_params_add)
-            self.update_params(params)
-            params[field] = []
             extensions = field_dict['extensions']
             extensions += tuple([e.upper() for e in extensions])
+            is_file_list = self.is_file_list(field)
+            for ext in extensions:
+                sp = transaction.savepoint()
+                if new_object:
+                    self.obj.objects.filter(pk=new_object.pk).delete()
+                filename = 'test.%s' % ext
+                f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                self.files.append(f)
+                params = deepcopy(self.default_params_add)
+                self.update_params(params)
+                params[field] = [f, ] if is_file_list else f
+                initial_obj_count = self.obj.objects.count()
+                try:
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
+                    self.assert_no_form_errors(response)
+                    self.assertEqual(self.obj.objects.count(), initial_obj_count + 1)
+                    new_object = self.obj.objects.latest('pk')
+                    exclude = getattr(self, 'exclude_from_check_add', [])
+                    self.assert_object_fields(new_object, params, exclude=exclude)
+                except:
+                    transaction.savepoint_rollback(sp)
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('extensions')
+    def test_add_object_wrong_file_extensions_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with wrong extensions
+        """
+        message_type = 'wrong_extension'
+        for field, field_dict in self.file_fields_params.iteritems():
+            extensions = field_dict['extensions']
+            ext = get_randname(3, 'wd')
+            while ext in extensions:
+                ext = get_randname(3, 'wd')
+            for filename in ('test', 'test.%s' % ext):
+                sp = transaction.savepoint()
+                params = deepcopy(self.default_params_add)
+                self.update_params(params)
+                f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                initial_obj_count = self.obj.objects.count()
+                try:
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    self.assertEqual(self.obj.objects.count(), initial_obj_count)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                except:
+                    transaction.savepoint_rollback(sp)
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
+        self.formatted_assert_errors()
+
+
+class FormEditFileTestMixIn(FileTestMixIn):
+
+    @only_with_obj
+    @only_with_files_params('max_count')
+    def test_edit_object_many_files_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with files count > max files count
+        """
+        message_type = 'max_count_file'
+        for field, field_dict in self.file_fields_params.iteritems():
+            if field_dict.get('max_count', 1) <= 1:
+                continue
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    params.update(get_captcha_codes())
+                max_count = field_dict['max_count']
+                filename = '.'.join([s for s in [get_randname(10, 'wrd '),
+                                                     choice(field_dict.get('extensions', ('',)))] if s])
+                f = ContentFile(self.get_random_file_content(filename=filename), name=filename)
+                self.files.append(f)
+                params[field] = [f, ] * (max_count + 1)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_obj, obj_for_edit)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('max_count')
+    def test_edit_object_many_files_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with photos count == max files count
+        """
+        for field, field_dict in self.file_fields_params.iteritems():
+            if field_dict.get('max_count', 1) <= 1:
+                continue
+            sp = transaction.savepoint()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                max_count = field_dict['max_count']
+                params = deepcopy(self.default_params_edit)
+                self.update_params(params)
+                params[field] = []
+                for _ in xrange(max_count):
+                    filename = '.'.join([s for s in [get_randname(10, 'wrd '),
+                                                     choice(field_dict.get('extensions', ('',)))] if s])
+                    f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append(text='For %s files in field %s' % (max_count, field))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('one_max_size')
+    def test_edit_object_big_file_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with file size > max one file size
+        """
+        message_type = 'max_size_file'
+        for field, field_dict in self.file_fields_params.iteritems():
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    params.update(get_captcha_codes())
+                size = convert_size_to_bytes(field_dict['one_max_size'])
+                max_size = self.humanize_file_size(size)
+                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
+                f = ContentFile(self.get_random_file_content(size=size + 100, filename=filename), name=filename)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_obj, obj_for_edit)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append()
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('one_max_size')
+    def test_edit_object_big_file_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with file size == max one file size
+        """
+        for field, field_dict in self.file_fields_params.iteritems():
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    params.update(get_captcha_codes())
+                size = convert_size_to_bytes(field_dict['one_max_size'])
+                max_size = self.humanize_file_size(size)
+                if self.is_file_list(field):
+                    params[field] = []
+                    for _ in xrange(field_dict['max_count']):
+                        filename = '.'.join([s for s in [get_randname(10, 'wrd'),
+                                                         choice(field_dict.get('extensions', ('',)))] if s])
+                        f = ContentFile(self.get_random_file_content(size=size, filename=filename), name=filename)
+                        self.files.append(f)
+                        params[field].append(f)
+                else:
+                    filename = '.'.join([s for s in [get_randname(10, 'wrd'),
+                                                     choice(field_dict.get('extensions', ('',)))] if s])
+                    f = ContentFile(self.get_random_file_content(size=size, filename=filename), name=filename)
+                    self.files.append(f)
+                    params[field] = f
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append()
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    def test_edit_object_empty_file_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with file size = 0M
+        """
+        message_type = 'empty_file'
+        for field, field_dict in self.file_fields_params.iteritems():
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    params.update(get_captcha_codes())
+                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
+                f = ContentFile('', filename)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
+                                            **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_obj, obj_for_edit)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append()
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('extensions')
+    def test_edit_object_some_file_extensions_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with some available extensions
+        """
+        for field, field_dict in self.file_fields_params.iteritems():
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            extensions = field_dict['extensions']
+            extensions += tuple([e.upper() for e in extensions])
+            is_file_list = self.is_file_list(field)
             for ext in extensions:
                 sp = transaction.savepoint()
                 filename = 'test.%s' % ext
                 f = ContentFile(self.get_random_file_content(filename=filename), filename)
                 self.files.append(f)
-                params[field] = [f, ]
-                initial_obj_count = self.obj.objects.count()
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                obj_for_edit = self.get_obj_for_edit()
+                params = deepcopy(self.default_params_edit)
+                self.update_params(params)
+                params[field] = [f, ] if is_file_list else f
                 try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                                params, follow=True, **self.additional_params)
                     self.assert_no_form_errors(response)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count + 1)
-                    new_obj = self.obj.objects.latest('pk')
-                    self.assert_object_fields(new_obj, params,)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                    self.assert_object_fields(new_object, params, exclude=exclude)
+                except:
+                    transaction.savepoint_rollback(sp)
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('extensions')
+    def test_edit_object_wrong_file_extensions_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with wrong extensions
+        """
+        message_type = 'wrong_extension'
+        for field, field_dict in self.file_fields_params.iteritems():
+            extensions = field_dict['extensions']
+            ext = get_randname(3, 'wd')
+            while ext in extensions:
+                ext = get_randname(3, 'wd')
+            for filename in ('test', 'test.%s' % ext):
+                sp = transaction.savepoint()
+                obj_for_edit = self.get_obj_for_edit()
+                params = deepcopy(self.default_params_edit)
+                self.update_params(params)
+                f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
+                                                **self.additional_params)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_obj, obj_for_edit)
                 except:
                     transaction.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))

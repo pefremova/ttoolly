@@ -518,6 +518,9 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
             else:
                 os.remove(path)
     filename = filename or get_randname(10, 'wrd ')
+    if os.path.splitext(filename)[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
+        kwargs['filename'] = filename
+        return get_random_image(**kwargs)
     size = convert_size_to_bytes(size)
     content = get_randname(size)
     if not path and return_opened:
@@ -535,7 +538,7 @@ def generate_random_image_with_size(*args, **kwargs):
     raise DeprecationWarning('use get_random_image')
 
 
-def get_random_image(path='', size=10, width=1, height=1, rewrite=False, return_opened=True, filename=''):
+def get_random_image(path='', size=10, width=1, height=1, rewrite=False, return_opened=True, filename=None):
     """
     generate image file with size
     """
