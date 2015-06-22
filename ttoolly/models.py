@@ -3497,7 +3497,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
@@ -3531,8 +3530,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 continue
             sp = transaction.savepoint()
             try:
-                initial_obj_count = self.obj.objects.count()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                obj_for_edit = self.get_obj_for_edit()
                 max_count = field_dict['max_count']
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
