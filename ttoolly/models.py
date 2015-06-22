@@ -3221,7 +3221,8 @@ def only_with_files_params(param_names=None):
         def tmp(self):
             def check_params(field_dict, param_names):
                 return all([param_name in field_dict.keys() for param_name in param_names])
-
+            if not all([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+                warnings.warn('%s not set for all fields' % str(param_names))
             if any([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
                 return fn(self)
             else:
@@ -3261,7 +3262,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 params[field] = [f, ] * (max_count + 1)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
-                error_message = self.get_error_message(message_type, field)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
                 transaction.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
