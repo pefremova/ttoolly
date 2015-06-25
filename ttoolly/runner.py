@@ -1,13 +1,11 @@
-from django.test.simple import DjangoTestSuiteRunner, get_app, get_apps
+from django.test.simple import DjangoTestSuiteRunner, build_suite, build_test
 try:
-    from django.test.simple import reorder_suite
-
+    from django.test.simple import reorder_suite, get_app, get_apps
     class DjRunner(DjangoTestSuiteRunner):
         pass
 except:
     # django>=1.6
     from django.test.runner import reorder_suite, DiscoverRunner
-
     class DjRunner(DiscoverRunner):
         pass
 from django.utils import unittest
@@ -22,7 +20,6 @@ class RegexpTestSuiteRunner(DjRunner):
         full_suite = DjRunner.build_suite(self, None, extra_tests=None, **kwargs)
         my_suite = unittest.TestSuite()
         labels_for_suite = []
-
         if test_labels:
             full_re = []
             for label in test_labels:

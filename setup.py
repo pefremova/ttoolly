@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='ttoolly',
-    version='0.2.4',
+    version='0.2.5',
     description="Django test tools",
     include_package_data=True,
     install_requires=['django', 'psycopg2', 'lxml', 'chardet', 'Pillow'],
