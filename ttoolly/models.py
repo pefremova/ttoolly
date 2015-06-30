@@ -492,6 +492,9 @@ class GlobalTestMixIn(object):
         self.errors = []
         self.assertFalse(errors, format_errors(errors))
 
+    def generate_random_obj(self, obj_model, additional_params=None, filename=None):
+        return generate_random_obj(obj_model, additional_params, filename)
+
     def get_all_form_messages(self, response):
         try:
             return [ld.message for ld in response.context['messages']._loaded_data]
