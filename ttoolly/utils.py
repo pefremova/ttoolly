@@ -59,7 +59,7 @@ def generate_random_obj(obj_model, additional_params=None, filename=None):
             length = random.randint(10, f.max_length)
             params[f.name] = get_random_email_value(length)
         elif mro_names.intersection(['TextField', 'CharField']) and not f._choices:
-            length = random.randint(0 if f.blank else 1, f.max_length if f.max_length else 500)
+            length = random.randint(0 if f.blank else 1, int(f.max_length) if f.max_length else 500)
             if filename:
                 params[f.name] = get_randname_from_file(filename, length)
             else:
@@ -78,10 +78,17 @@ def generate_random_obj(obj_model, additional_params=None, filename=None):
         elif 'BooleanField' in mro_names:
             params[f.name] = random.randint(0, 1)
         elif mro_names.intersection(['FloatField', 'DecimalField']):
-            if f.name in ('latitude', 'longitude'):
-                params[f.name] = random.uniform(0, 90)
-            else:
-                params[f.name] = random.uniform(0, 1000)
+            max_value = 90 if f.name in ('latitude', 'longitude') else (10 ** (f.max_digits - f.decimal_places) - 1 if
+                                                                        (f.max_digits and f.decimal_places) else 1000)
+            params[f.name] = random.uniform(0, max_value)
+            if f.decimal_places:
+                params[f.name] = round(params[f.name], f.decimal_places)
+        elif 'ArrayField' in mro_names:
+            if f._choices:
+                params[f.name] = [random.choice(f._choices)[0] for i in xrange(random.randint(0 if f.blank else 1,
+                                                                                              len(f._choices)))]
+            elif 'IntegerArrayField' in mro_names:
+                params[f.name] = [random.randint(0, 1000) for i in xrange(random.randint(0 if f.blank else 1, 10))]
         elif f._choices:
             params[f.name] = random.choice(f._choices)[0]
         elif mro_names.intersection(['FileField', 'ImageField']):
