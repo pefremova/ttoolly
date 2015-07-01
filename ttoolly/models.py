@@ -466,7 +466,7 @@ class GlobalTestMixIn(object):
         params = copy(params)
         keys = params.keys()
         for k in keys:
-            if isinstance(params[k], ContentFile):
+            if isinstance(params[k], (ContentFile, file)):
                 content_file = params.pop(k)
                 content_file.seek(0)
                 tmp_params[k] = ContentFile(content_file.read(), content_file.name)
