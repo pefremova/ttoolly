@@ -93,7 +93,7 @@ def generate_random_obj(obj_model, additional_params=None, filename=None):
             params[f.name] = random.choice(f._choices)[0]
         elif mro_names.intersection(['FileField', 'ImageField']):
             if 'ImageField' in mro_names:
-                content = generate_random_image_content()
+                content = get_random_jpg_content()
             else:
                 content = get_randname(10)
             if not callable(f.upload_to):
@@ -143,6 +143,8 @@ def get_all_form_errors(response):
 
     def get_errors(form):
         errors = form._errors
+        if not errors:
+            errors = {}
         if form.prefix:
             errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
         return errors

@@ -3329,7 +3329,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 size = convert_size_to_bytes(field_dict['one_max_size'])
                 max_size = self.humanize_file_size(size)
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile(self.get_random_file_content(size=size + 100, filename=filename), name=filename)
+                current_size = size + 100
+                f = ContentFile(self.get_random_file_content(size=current_size, filename=filename), name=filename)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -3466,7 +3467,9 @@ class FormAddFileTestMixIn(FileTestMixIn):
             ext = get_randname(3, 'wd')
             while ext in extensions:
                 ext = get_randname(3, 'wd')
-            for filename in ('test', 'test.%s' % ext):
+            wrong_extensions = tuple(field_dict.get('wrong_extensions', ())) + ('', ext)
+            for ext in wrong_extensions:
+                filename = '.'.join([el for el in ['test', ext] if el])
                 sp = transaction.savepoint()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -3575,7 +3578,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 size = convert_size_to_bytes(field_dict['one_max_size'])
                 max_size = self.humanize_file_size(size)
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile(self.get_random_file_content(size=size + 100, filename=filename), name=filename)
+                current_size = size + 100
+                f = ContentFile(self.get_random_file_content(size=current_size, filename=filename), name=filename)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -3709,7 +3713,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
             ext = get_randname(3, 'wd')
             while ext in extensions:
                 ext = get_randname(3, 'wd')
-            for filename in ('test', 'test.%s' % ext):
+            wrong_extensions = tuple(field_dict.get('wrong_extensions', ())) + ('', ext)
+            for ext in wrong_extensions:
+                filename = '.'.join([el for el in ['test', ext] if el])
                 sp = transaction.savepoint()
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
