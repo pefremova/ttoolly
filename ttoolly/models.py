@@ -531,6 +531,9 @@ class GlobalTestMixIn(object):
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
+        verbose_obj = self.obj._meta.verbose_name if hasattr(self, 'obj') else u'Объект'
+        verbose_field = self.obj._meta.get_field_by_name(field)[0].verbose_name if \
+                            (hasattr(self, 'obj') and field in self.obj._meta.get_all_field_names()) else field
 
         ERROR_MESSAGES = {'required': u'Обязательное поле.',
                           'max_length': u'Убедитесь, что это значение содержит не ' + \
@@ -564,7 +567,7 @@ class GlobalTestMixIn(object):
                           'wrong_value_int': u'Введите целое число.',
                           'wrong_value_digital': u'Введите число.',
                           'wrong_value_email': u'Введите правильный адрес электронной почты.',
-                          'unique': u'Объект с таким значением в поле {field} уже существует'.format(field=field),
+                          'unique': u'{verbose_obj} с таким {verbose_field} уже существует.'.format(**locals()),
                           'delete_not_exists': u'Произошла ошибка. Попробуйте позже.',
                           'recovery_not_exists': u'Произошла ошибка. Попробуйте позже.',
                           'empty_file': u'Загруженный файл пуст.',

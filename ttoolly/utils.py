@@ -28,6 +28,26 @@ def convert_size_to_bytes(size):
     return int(size)
 
 
+def fill_all_obj_fields(obj, fields=(), save=True):
+    if not fields:
+        fields = [f.name for f in obj.__class__._meta.fields]
+    for field_name in fields:
+        if getattr(obj, field_name):
+            continue
+        f = obj.__class__._meta.get_field_by_name(field_name)[0]
+        if f.auto_created:
+            continue
+        if f.null and f.blank:
+            if random.randint(0, 1):
+                continue
+        value = get_value_for_obj_field(f)
+        if value:
+            setattr(obj, field_name, value)
+    if save:
+        obj.save()
+    return obj
+
+
 def format_errors(errors, space_count=0):
     joined_errors = '\n\n'.join(errors)
     if not isinstance(joined_errors, unicode):
@@ -49,60 +69,10 @@ def generate_random_obj(obj_model, additional_params=None, filename=None):
     for f in fields:
         if f.auto_created or f.name in additional_params.keys():
             continue
-        mro_names = set([m.__name__ for m in f.__class__.__mro__])
-        if 'AutoField' in mro_names:
-            continue
         if f.null and f.blank:
             if random.randint(0, 1):
                 continue
-        if 'EmailField' in mro_names:
-            length = random.randint(10, f.max_length)
-            params[f.name] = get_random_email_value(length)
-        elif mro_names.intersection(['TextField', 'CharField']) and not f._choices:
-            length = random.randint(0 if f.blank else 1, int(f.max_length) if f.max_length else 500)
-            if filename:
-                params[f.name] = get_randname_from_file(filename, length)
-            else:
-                params[f.name] = get_randname(length)
-        elif 'DateField' in mro_names:
-            params[f.name] = datetime.now()
-        elif mro_names.intersection(['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']) and not f._choices:
-            params[f.name] = random.randint(0, 1000)
-        elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
-            objects = f.related.parent_model.objects.all()
-            if objects.count() > 0:
-                obj = objects[random.randint(0, objects.count() - 1)] if objects.count() > 1 else objects[0]
-            else:
-                obj = generate_random_obj(f.related.parent_model, filename=filename)
-            params[f.name] = obj
-        elif 'BooleanField' in mro_names:
-            params[f.name] = random.randint(0, 1)
-        elif mro_names.intersection(['FloatField', 'DecimalField']):
-            max_value = 90 if f.name in ('latitude', 'longitude') else (10 ** (f.max_digits - f.decimal_places) - 1 if
-                                                                        (f.max_digits and f.decimal_places) else 1000)
-            params[f.name] = random.uniform(0, max_value)
-            if f.decimal_places:
-                params[f.name] = round(params[f.name], f.decimal_places)
-        elif 'ArrayField' in mro_names:
-            if f._choices:
-                params[f.name] = [random.choice(f._choices)[0] for i in xrange(random.randint(0 if f.blank else 1,
-                                                                                              len(f._choices)))]
-            elif 'IntegerArrayField' in mro_names:
-                params[f.name] = [random.randint(0, 1000) for i in xrange(random.randint(0 if f.blank else 1, 10))]
-        elif f._choices:
-            params[f.name] = random.choice(f._choices)[0]
-        elif mro_names.intersection(['FileField', 'ImageField']):
-            if 'ImageField' in mro_names:
-                content = get_random_jpg_content()
-            else:
-                content = get_randname(10)
-            if not callable(f.upload_to):
-                dir_path_length = len(f.upload_to)
-            else:
-                dir_path_length = 0
-            length = random.randint(1, f.max_length - 4 - dir_path_length - 1)
-            name = get_randname(length) + '.jpg'
-            params[f.name] = ContentFile(content, name=name)
+        params[f.name] = get_value_for_obj_field(f, filename)
 
     params.update(additional_params)
     return obj_model.objects.create(**params)
@@ -496,6 +466,60 @@ def get_random_email_value(length):
         username = username.replace(s, '\%s' % s)
     return '%s@%s' % (username.lower(),
                       get_random_domain_value(domain_length).lower())
+
+
+def get_value_for_obj_field(f, filename=None):
+    mro_names = set([m.__name__ for m in f.__class__.__mro__])
+    if 'AutoField' in mro_names:
+        return None
+    if 'EmailField' in mro_names:
+        length = random.randint(10, f.max_length)
+        return get_random_email_value(length)
+    elif mro_names.intersection(['TextField', 'CharField']) and not f._choices:
+        length = random.randint(0 if f.blank else 1, int(f.max_length) if f.max_length else 500)
+        if filename:
+            return get_randname_from_file(filename, length)
+        else:
+            return get_randname(length)
+    elif 'DateField' in mro_names:
+        return datetime.now()
+    elif mro_names.intersection(['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']) and not f._choices:
+        return random.randint(0, 1000)
+    elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
+        objects = f.related.parent_model.objects.all()
+        if objects.count() > 0:
+            return objects[random.randint(0, objects.count() - 1)] if objects.count() > 1 else objects[0]
+        else:
+            return generate_random_obj(f.related.parent_model, filename=filename)
+    elif 'BooleanField' in mro_names:
+        return random.randint(0, 1)
+    elif mro_names.intersection(['FloatField', 'DecimalField']):
+        max_value = 90 if f.name in ('latitude', 'longitude') else (10 ** (f.max_digits - f.decimal_places) - 1 if
+                                                                    (f.max_digits and f.decimal_places) else 1000)
+        value = random.uniform(0, max_value)
+        if f.decimal_places:
+            value = round(value, f.decimal_places)
+        return value
+    elif 'ArrayField' in mro_names:
+        if f._choices:
+            return [random.choice(f._choices)[0] for _ in xrange(random.randint(0 if f.blank else 1,
+                                                                                len(f._choices)))]
+        elif 'IntegerArrayField' in mro_names:
+            return [random.randint(0, 1000) for _ in xrange(random.randint(0 if f.blank else 1, 10))]
+    elif f._choices:
+        return random.choice(f._choices)[0]
+    elif mro_names.intersection(['FileField', 'ImageField']):
+        if 'ImageField' in mro_names:
+            content = get_random_jpg_content()
+        else:
+            content = get_randname(10)
+        if not callable(f.upload_to):
+            dir_path_length = len(f.upload_to)
+        else:
+            dir_path_length = 0
+        length = random.randint(1, f.max_length - 4 - dir_path_length - 1)
+        name = get_randname(length) + '.jpg'
+        return ContentFile(content, name=name)
 
 
 def generate_random_file_with_size(*args, **kwargs):
