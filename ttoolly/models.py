@@ -4171,8 +4171,8 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
                         transaction.commit_unless_managed(using=db)
 
                     for element in data:
-                        sequence_sql.append("SELECT setval(pg_get_serial_sequence('%s','%s'), coalesce(max(%s), 1), " + \
-                                            "max(%s) IS NOT null) FROM %s;" % (element['model'], element['pk'],
+                        sequence_sql.append(("SELECT setval(pg_get_serial_sequence('%s','%s'), coalesce(max(%s), 1), " + \
+                                             "max(%s) IS NOT null) FROM %s;") % (element['model'], element['pk'],
                                                                                element['pk'], element['pk'],
                                                                                element['model']))
                 if sequence_sql:
