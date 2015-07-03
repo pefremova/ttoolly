@@ -537,10 +537,11 @@ def generate_random_contentfile(*args, **kwargs):
 def get_random_contentfile(size=10, filename=None):
     if not filename:
         filename = get_randname(10, 'wd')
+    size = convert_size_to_bytes(size)
     return ContentFile(get_randname(size), filename)
 
 
-def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filename=None):
+def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filename=None, **kwargs):
     if path:
         filename = os.path.basename(path)
         if os.path.exists(path):
@@ -550,9 +551,14 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
                 return
             else:
                 os.remove(path)
-    filename = filename or get_randname(10, 'wrd ')
-    if os.path.splitext(filename)[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
-        return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename)
+    if not filename:
+        filename = get_randname(10, 'wrd ')
+        extensions = kwargs.get('extensions', ())
+        if extensions:
+            filename = '.'.join([filename, random.choice(extensions)])
+    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png',):
+        return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
+                                **kwargs)
     size = convert_size_to_bytes(size)
     content = get_randname(size)
     if not path and return_opened:
@@ -570,7 +576,8 @@ def generate_random_image_with_size(*args, **kwargs):
     raise DeprecationWarning('use get_random_image')
 
 
-def get_random_image(path='', size=10, width=1, height=1, rewrite=False, return_opened=True, filename=None):
+def get_random_image(path='', size=10, width=None, height=None, rewrite=False, return_opened=True, filename=None,
+                     **kwargs):
     """
     generate image file with size
     """
@@ -588,6 +595,12 @@ def get_random_image(path='', size=10, width=1, height=1, rewrite=False, return_
     if os.path.splitext(filename)[1] in ('.bmp'):
         content = get_random_bmp_content(size)
     else:
+        width = width or random.randint(kwargs.get('min_width', 1),
+                                        max(kwargs.get('max_width', 100),
+                                            kwargs.get('min_width', 0) + 100))
+        height = height or random.randint(kwargs.get('min_height', 1),
+                                          max(kwargs.get('max_height', 100),
+                                              kwargs.get('min_height', 0) + 100))
         content = get_random_jpg_content(size, width, height)
     if not path and return_opened:
         return ContentFile(content, filename)

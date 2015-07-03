@@ -29,7 +29,7 @@ import psycopg2.extensions
 from utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                    get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                    get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_random_jpg_content,
-                   get_all_urls, convert_size_to_bytes, get_random_image)
+                   get_all_urls, convert_size_to_bytes, get_random_image, get_random_file)
 
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
@@ -580,7 +580,11 @@ class GlobalTestMixIn(object):
                                     else u'Размер файла {filename} больше {max_size}.'.format(**previous_locals),
                           'wrong_extension': u'Некорректный формат файла {filename}.' if
                                     previous_locals.get('filename', None) is None
-                                    else u'Некорректный формат файла {filename}.'.format(**previous_locals)}
+                                    else u'Некорректный формат файла {filename}.'.format(**previous_locals),
+                          'min_dimensions': u'Минимальный размер изображения {min_width}x{min_height}' if
+                                    (previous_locals.get('min_width', None) is None or
+                                     previous_locals.get('min_height', None))
+                                     else u'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals)}
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
         ERROR_MESSAGES.update(messages_from_settings)
@@ -3208,14 +3212,6 @@ class FileTestMixIn(FormTestMixIn):
                        'max_count': 3,
                        'one_max_size': '3Mb'}}"""
 
-
-    def get_random_file_content(self, filename, size=100):
-        if os.path.splitext(filename.lower())[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
-            content = get_random_jpg_content(size=size)
-        else:
-            content = get_randname(size)
-        return content
-
     def humanize_file_size(self, size):
         return filesizeformat(size)
 
@@ -3227,9 +3223,27 @@ def only_with_files_params(param_names=None):
         def tmp(self):
             def check_params(field_dict, param_names):
                 return all([param_name in field_dict.keys() for param_name in param_names])
-            if not all([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
-                warnings.warn('%s not set for all fields' % str(param_names))
             if any([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+                if not all([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+                    warnings.warn('%s not set for all fields' % str(param_names))
+                return fn(self)
+            else:
+                raise SkipTest("Need all these params: %s" % repr(param_names))
+        tmp.__name__ = fn.__name__
+        return tmp
+    return decorator
+
+
+def only_with_any_files_params(param_names=None):
+    if not isinstance(param_names, (tuple, list)):
+        param_names = [param_names, ]
+    def decorator(fn):
+        def tmp(self):
+            def check_params(field_dict, param_names):
+                return any([param_name in field_dict.keys() for param_name in param_names])
+            if any([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+                if not all([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+                    warnings.warn('%s not set for all fields' % str(param_names))
                 return fn(self)
             else:
                 raise SkipTest("Need all these params: %s" % repr(param_names))
@@ -3263,7 +3277,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 max_count = field_dict['max_count']
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                      choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile(self.get_random_file_content(filename=filename), name=filename)
+                f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] * (max_count + 1)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -3296,9 +3310,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.update_params(params)
                 params[field] = []
                 for _ in xrange(max_count):
-                    filename = '.'.join([s for s in [get_randname(10, 'wrd '),
-                                                     choice(field_dict.get('extensions', ('',)))] if s])
-                    f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                    f = get_random_file(**field_dict)
                     self.files.append(f)
                     params[field].append(f)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -3333,7 +3345,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 max_size = self.humanize_file_size(size)
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
                 current_size = size + 100
-                f = ContentFile(self.get_random_file_content(size=current_size, filename=filename), name=filename)
+                f = get_random_file(filename=filename, size=current_size, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -3341,8 +3353,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For file size %s (%s)' % (self.humanize_file_size(current_size),
-                                                                   current_size))
+                self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
+                                                                               current_size, field))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3370,15 +3382,11 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.is_file_list(field):
                     params[field] = []
                     for _ in xrange(field_dict['max_count']):
-                        filename = '.'.join([s for s in [get_randname(10, 'wrd'),
-                                                         choice(field_dict.get('extensions', ('',)))] if s])
-                        f = ContentFile(self.get_random_file_content(size=size, filename=filename), name=filename)
+                        f = get_random_file(size=size, **field_dict)
                         self.files.append(f)
                         params[field].append(f)
                 else:
-                    filename = '.'.join([s for s in [get_randname(10, 'wrd'),
-                                                     choice(field_dict.get('extensions', ('',)))] if s])
-                    f = ContentFile(self.get_random_file_content(size=size, filename=filename), name=filename)
+                    f = get_random_file(size=size, **field_dict)
                     self.files.append(f)
                     params[field] = f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -3389,7 +3397,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append()
+                self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3418,7 +3426,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append()
+                self.errors_append(text='For empty file in field %s' % field)
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3439,7 +3447,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if new_object:
                     self.obj.objects.filter(pk=new_object.pk).delete()
                 filename = 'test.%s' % ext
-                f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -3477,7 +3485,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 sp = transaction.savepoint()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
-                f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 initial_obj_count = self.obj.objects.count()
@@ -3488,6 +3496,85 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 except:
                     transaction.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_any_files_params(['min_width', 'min_heihght'])
+    def test_add_object_min_image_dimensions_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with minimum image file dimensions
+        """
+        new_object = None
+        for field, field_dict in self.file_fields_params.iteritems():
+            sp = transaction.savepoint()
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                width = field_dict.get('min_width', 1)
+                height = field_dict.get('min_height', 1)
+                f = get_random_file(width=width, height=height, **field_dict)
+                self.files.append(f)
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_any_files_params(['min_width', 'min_heihght'])
+    def test_add_object_image_dimensions_lt_min_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with image file dimensions < minimum
+        """
+        message_type = 'min_dimensions'
+        for field, field_dict in self.file_fields_params.iteritems():
+            is_file_list = self.is_file_list(field)
+            values = ()
+            min_width = field_dict.get('min_width', None)
+            if min_width:
+                values += ((min_width - 1, field_dict.get('min_height', 1)),)
+            min_height = field_dict.get('min_height', None)
+            if min_height:
+                values += ((field_dict.get('min_width', 1), min_height - 1),)
+
+            for width, height in values:
+                sp = transaction.savepoint()
+                try:
+                    initial_obj_count = self.obj.objects.count()
+                    old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                    params = self.deepcopy(self.default_params_add)
+                    self.update_params(params)
+                    if self.with_captcha:
+                        self.client.get(self.get_url(self.url_add), **self.additional_params)
+                        params.update(get_captcha_codes())
+                    f = get_random_file(width=width, height=height, **field_dict)
+                    self.files.append(f)
+                    params = self.deepcopy(self.default_params_add)
+                    self.update_params(params)
+                    params[field] = [f, ] if is_file_list else f
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    self.assertEqual(self.obj.objects.count(), initial_obj_count)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                except:
+                    transaction.savepoint_rollback(sp)
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
         self.formatted_assert_errors()
 
 
@@ -3515,7 +3602,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 max_count = field_dict['max_count']
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                      choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile(self.get_random_file_content(filename=filename), name=filename)
+                f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] * (max_count + 1)
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -3546,9 +3633,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.update_params(params)
                 params[field] = []
                 for _ in xrange(max_count):
-                    filename = '.'.join([s for s in [get_randname(10, 'wrd '),
-                                                     choice(field_dict.get('extensions', ('',)))] if s])
-                    f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                    f = get_random_file(**field_dict)
                     self.files.append(f)
                     params[field].append(f)
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -3583,7 +3668,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 max_size = self.humanize_file_size(size)
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
                 current_size = size + 100
-                f = ContentFile(self.get_random_file_content(size=current_size, filename=filename), name=filename)
+                f = get_random_file(filename=filename, size=current_size, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -3593,8 +3678,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append(text='For file size %s (%s)' % (self.humanize_file_size(current_size),
-                                                                   current_size))
+                self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
+                                                                               current_size, field))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3619,15 +3704,11 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.is_file_list(field):
                     params[field] = []
                     for _ in xrange(field_dict['max_count']):
-                        filename = '.'.join([s for s in [get_randname(10, 'wrd'),
-                                                         choice(field_dict.get('extensions', ('',)))] if s])
-                        f = ContentFile(self.get_random_file_content(size=size, filename=filename), name=filename)
+                        f = get_random_file(size=size, **field_dict)
                         self.files.append(f)
                         params[field].append(f)
                 else:
-                    filename = '.'.join([s for s in [get_randname(10, 'wrd'),
-                                                     choice(field_dict.get('extensions', ('',)))] if s])
-                    f = ContentFile(self.get_random_file_content(size=size, filename=filename), name=filename)
+                    f = get_random_file(size=size, **field_dict)
                     self.files.append(f)
                     params[field] = f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -3638,7 +3719,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append()
+                self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3669,7 +3750,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append()
+                self.errors_append(text='For empty file in field %s' % field)
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3687,7 +3768,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
             for ext in extensions:
                 sp = transaction.savepoint()
                 filename = 'test.%s' % ext
-                f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
@@ -3725,7 +3806,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                f = ContentFile(self.get_random_file_content(filename=filename), filename)
+                f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 try:
@@ -3737,6 +3818,76 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 except:
                     transaction.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_any_files_params(['min_width', 'min_heihght'])
+    def test_edit_object_min_image_dimensions_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with minimum image file dimensions
+        """
+        for field, field_dict in self.file_fields_params.iteritems():
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    params.update(get_captcha_codes())
+                width = field_dict.get('min_width', 1)
+                height = field_dict.get('min_height', 1)
+                f = get_random_file(width=width, height=height, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                transaction.savepoint_rollback(sp)
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_any_files_params(['min_width', 'min_heihght'])
+    def test_edit_object_image_dimensions_lt_min_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with image file dimensions < minimum
+        """
+        message_type = 'min_dimensions'
+        for field, field_dict in self.file_fields_params.iteritems():
+            is_file_list = self.is_file_list(field)
+            values = ()
+            min_width = field_dict.get('min_width', None)
+            if min_width:
+                values += ((min_width - 1, field_dict.get('min_height', 1)),)
+            min_height = field_dict.get('min_height', None)
+            if min_height:
+                values += ((field_dict.get('min_width', 1), min_height - 1),)
+
+            for width, height in values:
+                sp = transaction.savepoint()
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                f = get_random_file(width=width, height=height, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] if is_file_list else f
+                try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
+                                                **self.additional_params)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_obj, obj_for_edit)
+                except:
+                    transaction.savepoint_rollback(sp)
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
         self.formatted_assert_errors()
 
 
