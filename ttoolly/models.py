@@ -532,7 +532,7 @@ class GlobalTestMixIn(object):
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
         verbose_obj = self.obj._meta.verbose_name if getattr(self, 'obj') else u'Объект'
-        verbose_field = self.obj._meta.get_field_by_name(field)[0].verbose_name if \
+        verbose_field = getattr(self.obj._meta.get_field_by_name(field)[0], 'verbose_name', field) if \
                             (getattr(self, 'obj') and field in self.obj._meta.get_all_field_names()) else field
 
         ERROR_MESSAGES = {'required': u'Обязательное поле.',
@@ -3341,7 +3341,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append()
+                self.errors_append(text='For file size %s (%s)' % (self.humanize_file_size(current_size),
+                                                                   current_size))
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3592,7 +3593,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
                 transaction.savepoint_rollback(sp)
-                self.errors_append()
+                self.errors_append(text='For file size %s (%s)' % (self.humanize_file_size(current_size),
+                                                                   current_size))
         self.formatted_assert_errors()
 
     @only_with_obj
