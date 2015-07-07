@@ -556,10 +556,10 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         extensions = kwargs.get('extensions', ())
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
-    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png',):
+    size = convert_size_to_bytes(size)
+    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png',) and size > 0:
         return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
                                 **kwargs)
-    size = convert_size_to_bytes(size)
     content = get_randname(size)
     if not path and return_opened:
         return ContentFile(content, filename)
