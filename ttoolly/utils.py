@@ -634,7 +634,11 @@ def get_random_jpg_content(size=10, width=1, height=1):
         from PIL import Image
     size = convert_size_to_bytes(size)
     image = Image.new('RGB', (width, height), "#%06x" % random.randint(0, 0xFFFFFF))
-    output = io.BytesIO()
+    if getattr(Image, 'PILLOW_VERSION', getattr(Image, 'VERSION', '2.')).split('.')[0] == '1':
+        from StringIO import StringIO
+        output = StringIO()
+    else:
+        output = io.BytesIO()
     image.save(output, format='JPEG')
     content = output.getvalue()
     size = size - len(content)
