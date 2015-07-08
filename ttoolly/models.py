@@ -1574,7 +1574,6 @@ class FormAddTestMixIn(FormTestMixIn):
         if self.with_captcha:
             self.client.get(self.get_url(self.url_add), **self.additional_params)
             params.update(get_captcha_codes())
-
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
 
@@ -3311,6 +3310,9 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 max_count = field_dict['max_count']
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
                 params[field] = []
                 for _ in xrange(max_count):
                     f = get_random_file(**field_dict)
@@ -3454,6 +3456,9 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.files.append(f)
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
                 params[field] = [f, ] if is_file_list else f
                 initial_obj_count = self.obj.objects.count()
                 try:
@@ -3488,6 +3493,9 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 sp = transaction.savepoint()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
                 f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
@@ -3600,7 +3608,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 max_count = field_dict['max_count']
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
@@ -3634,6 +3642,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 max_count = field_dict['max_count']
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
                 params[field] = []
                 for _ in xrange(max_count):
                     f = get_random_file(**field_dict)
@@ -3665,7 +3676,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 size = convert_size_to_bytes(field_dict['one_max_size'])
                 max_size = self.humanize_file_size(size)
@@ -3700,7 +3711,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 size = convert_size_to_bytes(field_dict['one_max_size'])
                 max_size = self.humanize_file_size(size)
@@ -3740,7 +3751,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
                 f = ContentFile('', filename)
@@ -3776,6 +3787,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
                 params[field] = [f, ] if is_file_list else f
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -3809,6 +3823,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
                 f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
@@ -3838,7 +3855,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 width = field_dict.get('min_width', 1)
                 height = field_dict.get('min_height', 1)
@@ -3879,6 +3896,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
                 f = get_random_file(width=width, height=height, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if is_file_list else f
