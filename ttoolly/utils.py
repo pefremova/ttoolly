@@ -175,8 +175,6 @@ def get_all_form_errors(response):
             fs_keys.append(key)
         elif 'BaseForm' in mro_names:
             forms.append(value)
-    fs_keys = [key for key in all_keys if
-               'BaseFormSet' in [cn.__name__ for cn in response.context[key].__class__.__mro__]]
 
     for form in set(forms):
         form_errors.update(get_errors(form))
@@ -297,13 +295,6 @@ def get_fields_list_from_response(response):
     except KeyError:
         pass
 
-    for form in forms:
-        _fields = get_form_fields(form)
-        fields.extend(_fields['fields'])
-        visible_fields.extend(_fields['visible_fields'])
-        hidden_fields.extend(_fields['hidden_fields'])
-        disabled_fields.extend(_fields['disabled_fields'])
-
     try:
         form = response.context['adminform'].form
         _fields = []
@@ -327,19 +318,26 @@ def get_fields_list_from_response(response):
     for subcontext in response.context:
         all_keys.extend(get_keys_from_context(subcontext))
     all_keys = set(all_keys)
-    fs_keys = [key for key in all_keys if
-               'BaseFormSet' in [cn.__name__ for cn in response.context[key].__class__.__mro__]]
+    fs_keys = []
+    for key in all_keys:
+        value = response.context[key]
+        mro_names = [cn.__name__ for cn in value.__class__.__mro__]
+        if 'BaseFormSet' in mro_names:
+            fs_keys.append(key)
+        elif 'BaseForm' in mro_names:
+            forms.append(value)
+
     for fs_key in fs_keys:
         formset = response.context[fs_key]
         for form in getattr(formset, 'forms', formset):
-            form_prefix = form.prefix
-            _fields = [form_prefix + '-' + f for f in form.fields.iterkeys()]
-            _visible_fields = [form_prefix + '-' + f.name for f in form.visible_fields()]
-            _hidden_fields = [form_prefix + '-' + f.name for f in form.hidden_fields()]
-            fields.extend(_fields)
-            visible_fields.extend(set(_fields).intersection(_visible_fields))
-            disabled_fields.extend(set(_fields).difference(_visible_fields).difference(_hidden_fields))
-            hidden_fields.extend(_hidden_fields)
+            forms.append(form)
+
+    for form in set(forms):
+        _fields = get_form_fields(form)
+        fields.extend(_fields['fields'])
+        visible_fields.extend(_fields['visible_fields'])
+        hidden_fields.extend(_fields['hidden_fields'])
+        disabled_fields.extend(_fields['disabled_fields'])
     try:
         for fs in response.context['inline_admin_formsets']:
             fs_name = fs.formset.prefix
