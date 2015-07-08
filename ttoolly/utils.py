@@ -118,7 +118,6 @@ def get_all_form_errors(response):
         if form.prefix:
             errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
         return errors
-
     if not response.context:
         return None
     form_errors = {}
@@ -139,8 +138,6 @@ def get_all_form_errors(response):
         forms.append(response.context['adminform'].form)
     except KeyError:
         pass
-    for form in forms:
-        form_errors.update(get_errors(form))
 
     try:
         for fs in response.context['form_set']:
@@ -170,8 +167,19 @@ def get_all_form_errors(response):
     for subcontext in response.context:
         all_keys.extend(get_keys_from_context(subcontext))
     all_keys = set(all_keys)
+    fs_keys = []
+    for key in all_keys:
+        value = response.context[key]
+        mro_names = [cn.__name__ for cn in value.__class__.__mro__]
+        if 'BaseFormSet' in mro_names:
+            fs_keys.append(key)
+        elif 'BaseForm' in mro_names:
+            forms.append(value)
     fs_keys = [key for key in all_keys if
                'BaseFormSet' in [cn.__name__ for cn in response.context[key].__class__.__mro__]]
+
+    for form in set(forms):
+        form_errors.update(get_errors(form))
     for fs_key in fs_keys:
         formset = response.context[fs_key]
         non_form_errors = formset._non_form_errors
@@ -591,6 +599,8 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
                 if return_opened:
                     return open(path, 'r')
                 return
+        elif os.path.exists(path) and rewrite:
+            os.remove(path)
     filename = filename or get_randname(10, 'wrd ')
     if os.path.splitext(filename)[1] in ('.bmp'):
         content = get_random_bmp_content(size)
