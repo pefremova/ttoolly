@@ -3443,11 +3443,11 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         new_object = None
         for field, field_dict in self.file_fields_params.iteritems():
-            old_pks = list(self.obj.objects.values_list('pk', flat=True))
             extensions = field_dict['extensions']
             extensions += tuple([e.upper() for e in extensions])
             is_file_list = self.is_file_list(field)
             for ext in extensions:
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 sp = transaction.savepoint()
                 if new_object:
                     self.obj.objects.filter(pk=new_object.pk).delete()
@@ -3466,7 +3466,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                                                 **self.additional_params)
                     self.assert_no_form_errors(response)
                     self.assertEqual(self.obj.objects.count(), initial_obj_count + 1)
-                    new_object = self.obj.objects.latest('pk')
+                    new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
