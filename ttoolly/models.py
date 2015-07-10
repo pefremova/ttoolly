@@ -22,7 +22,7 @@ from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
 from django.db.models import Model, Q
 from django.db.models.fields import FieldDoesNotExist
 from django.template.defaultfilters import filesizeformat
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
 from django.utils.unittest import SkipTest
 import psycopg2.extensions
@@ -881,6 +881,10 @@ class GlobalTestMixIn(object):
                     field in (getattr(self, 'multiselect_fields_add', ()) or ()),
                     field in (getattr(self, 'multiselect_fields_edit', ()) or ()), ])
 
+    def savepoint_rollback(self, sp):
+        if isinstance(self.__class__, TestCase):
+            transaction.savepoint_rollback(sp)
+
     def set_empty_value_for_field(self, params, field):
         mro_names = [m.__name__ for m in params[field].__class__.__mro__]
         if 'list' in mro_names or 'tuple' in mro_names or 'ValuesListQuerySet' in mro_names:
@@ -1638,7 +1642,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For empty field "%s"' % field)
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
@@ -1657,7 +1661,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % str(group))
         self.formatted_assert_errors()
 
@@ -1673,6 +1677,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
             sp = transaction.savepoint()
+
             try:
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -1685,7 +1690,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For params without field "%s"' % field)
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
@@ -1704,7 +1709,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % str(group))
         self.formatted_assert_errors()
 
@@ -1739,7 +1744,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' % (field, length, value))
         self.formatted_assert_errors()
 
@@ -1767,7 +1772,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
         self.formatted_assert_errors()
@@ -1796,7 +1801,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
         self.formatted_assert_errors()
@@ -1888,7 +1893,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
@@ -1920,7 +1925,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
@@ -1951,7 +1956,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
         self.formatted_assert_errors()
 
@@ -1980,7 +1985,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
         self.formatted_assert_errors()
 
@@ -2017,7 +2022,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
         self.formatted_assert_errors()
 
@@ -2048,7 +2053,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
         self.formatted_assert_errors()
 
@@ -2085,7 +2090,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
         self.formatted_assert_errors()
 
@@ -2116,7 +2121,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
         self.formatted_assert_errors()
 
@@ -2146,7 +2151,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, {field: ''}, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
         self.formatted_assert_errors()
 
@@ -2364,7 +2369,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For empty field "%s"' % field)
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
@@ -2386,7 +2391,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % str(group))
         self.formatted_assert_errors()
 
@@ -2415,7 +2420,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For params without field "%s"' % field)
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
@@ -2437,7 +2442,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % str(group))
         self.formatted_assert_errors()
 
@@ -2454,7 +2459,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                            follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
         self.formatted_assert_errors()
 
@@ -2504,7 +2509,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     if _errors:
                         raise Exception(format_errors(_errors))
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, length, value))
         self.formatted_assert_errors()
@@ -2536,7 +2541,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
         self.formatted_assert_errors()
@@ -2567,7 +2572,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
         self.formatted_assert_errors()
@@ -2666,7 +2671,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
@@ -2700,7 +2705,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % (field, params[field])
                                                              for field in el if field in params.keys()))
         self.formatted_assert_errors()
@@ -2732,7 +2737,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
         self.formatted_assert_errors()
 
@@ -2762,7 +2767,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
         self.formatted_assert_errors()
 
@@ -2794,7 +2799,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
         self.formatted_assert_errors()
 
@@ -2826,7 +2831,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
         self.formatted_assert_errors()
 
@@ -2858,7 +2863,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
         self.formatted_assert_errors()
 
@@ -2890,7 +2895,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
         self.formatted_assert_errors()
 
@@ -2921,7 +2926,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                      getattr(self, 'other_values_for_check',
                                              {}).get(field, self.get_value_for_compare(test_obj, field)))
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
         self.formatted_assert_errors()
 
@@ -2943,7 +2948,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
                                            follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
         self.formatted_assert_errors()
 
@@ -3286,7 +3291,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
         self.formatted_assert_errors()
 
@@ -3325,7 +3330,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count, field))
         self.formatted_assert_errors()
 
@@ -3357,7 +3362,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
         self.formatted_assert_errors()
@@ -3401,7 +3406,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
         self.formatted_assert_errors()
 
@@ -3430,7 +3435,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
         self.formatted_assert_errors()
 
@@ -3470,7 +3475,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     exclude = getattr(self, 'exclude_from_check_add', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
         self.formatted_assert_errors()
 
@@ -3505,7 +3510,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     self.assertEqual(self.obj.objects.count(), initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
         self.formatted_assert_errors()
 
@@ -3543,7 +3548,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
         self.formatted_assert_errors()
 
@@ -3584,7 +3589,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     self.assertEqual(self.obj.objects.count(), initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
         self.formatted_assert_errors()
 
@@ -3622,7 +3627,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
         self.formatted_assert_errors()
 
@@ -3657,7 +3662,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count, field))
         self.formatted_assert_errors()
 
@@ -3691,7 +3696,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
         self.formatted_assert_errors()
@@ -3732,7 +3737,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
         self.formatted_assert_errors()
 
@@ -3763,7 +3768,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
         self.formatted_assert_errors()
 
@@ -3799,7 +3804,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
         self.formatted_assert_errors()
 
@@ -3836,7 +3841,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                     self.assert_objects_equal(new_obj, obj_for_edit)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
         self.formatted_assert_errors()
 
@@ -3869,7 +3874,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
-                transaction.savepoint_rollback(sp)
+                self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
         self.formatted_assert_errors()
 
@@ -3909,7 +3914,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                     self.assert_objects_equal(new_obj, obj_for_edit)
                 except:
-                    transaction.savepoint_rollback(sp)
+                    self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
         self.formatted_assert_errors()
 
