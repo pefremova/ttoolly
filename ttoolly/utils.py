@@ -599,7 +599,11 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
                 return
         elif os.path.exists(path) and rewrite:
             os.remove(path)
-    filename = filename or get_randname(10, 'wrd ')
+    if not filename:
+        filename = get_randname(10, 'wrd ')
+        extensions = kwargs.get('extensions', ())
+        if extensions:
+            filename = '.'.join([filename, random.choice(extensions)])
     if os.path.splitext(filename)[1] in ('.bmp'):
         content = get_random_bmp_content(size)
     else:
