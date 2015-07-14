@@ -531,11 +531,11 @@ class GlobalTestMixIn(object):
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
-        verbose_obj = self.obj._meta.verbose_name if getattr(self, 'obj') else u'Объект'
+        verbose_obj = self.obj._meta.verbose_name if getattr(self, 'obj', None) else u'Объект'
         if isinstance(verbose_obj, str):
             verbose_obj = verbose_obj.decode('utf-8')
         verbose_field = getattr(self.obj._meta.get_field_by_name(field)[0], 'verbose_name', field) if \
-                            (getattr(self, 'obj') and field in self.obj._meta.get_all_field_names()) else field
+                            (getattr(self, 'obj', None) and field in self.obj._meta.get_all_field_names()) else field
         if isinstance(verbose_field, str):
             verbose_field = verbose_field.decode('utf-8')
         ERROR_MESSAGES = {'required': u'Обязательное поле.',
