@@ -925,7 +925,7 @@ class GlobalTestMixIn(object):
         return params
 
 
-class LoginMixIn():
+class LoginMixIn(object):
     def user_login(self, username, password, **kwargs):
         additional_params = kwargs.get('additional_params', getattr(self, 'additional_params', {}))
         url_name = getattr(settings, 'LOGIN_URL_NAME', 'login')
@@ -940,8 +940,8 @@ class LoginMixIn():
         params.update(get_captcha_codes())
         return self.client.post(reverse(url_name), params, **additional_params)
 
-    def user_logout(self):
-        additional_params = getattr(self, 'additional_params', {})
+    def user_logout(self, **kwargs):
+        additional_params = kwargs.get('additional_params', getattr(self, 'additional_params', {}))
         url_name = getattr(settings, 'LOGOUT_URL_NAME', 'auth_logout')
         return self.client.get(reverse(url_name), **additional_params)
 
