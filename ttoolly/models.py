@@ -2979,8 +2979,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
         params = {'_selected_action': obj_ids,
                   'action': 'delete_selected',
                   'post': 'yes'}
-        response = self.client.post(self.get_url(self.url_list), params, follow=True)
-
+        response = self.client.post(self.get_url(self.url_list), params, follow=True, **self.additional_params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
                              [u'Успешно удалены %d %s.' % (len(obj_ids), self.obj._meta.verbose_name)])
@@ -3121,7 +3120,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_id = obj_for_test.id
         params = self.deepcopy(self.default_params_edit)
         try:
-            response = self.client.post(self.get_url_for_negative(self.url_edit, (obj_id,)), params, follow=True)
+            response = self.client.post(self.get_url_for_negative(self.url_edit, (obj_id,)), params, follow=True, **self.additional_params)
             self.assertEqual(response.status_code, 404)
         except:
             self.errors_append()
@@ -3176,7 +3175,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         params = {'_selected_action': obj_ids,
                   'action': 'action_remove',
                   'select_across': '0'}
-        response = self.client.post(self.get_url(self.url_list), params, follow=True)
+        response = self.client.post(self.get_url(self.url_list), params, follow=True, **self.additional_params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
                              [u'Успешно удалено %d объектов.' % len(obj_ids)])
@@ -3198,9 +3197,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         params = {'_selected_action': obj_ids,
                   'action': 'action_restore',
                   'select_across': '0'}
-        response = self.client.post(self.get_url(self.url_trash_list),
-                                   params,
-                                   follow=True)
+        response = self.client.post(self.get_url(self.url_trash_list), params, follow=True, **self.additional_params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
                              [u'Успешно восстановлено %d объектов.' % len(obj_ids)])
