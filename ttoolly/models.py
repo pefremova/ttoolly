@@ -3445,15 +3445,17 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         new_object = None
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict['extensions']
-            extensions += tuple([e.upper() for e in extensions])
+            extensions = field_dict.get('extensions', ())
+            if not extensions:
+                extensions = (get_randname(3, 'wd'), '')
+            extensions += tuple([e.upper() for e in extensions if e])
             is_file_list = self.is_file_list(field)
             for ext in extensions:
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 sp = transaction.savepoint()
                 if new_object:
                     self.obj.objects.filter(pk=new_object.pk).delete()
-                filename = 'test.%s' % ext
+                filename = '.'.join([el for el in ['test', ext] if el])
                 f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 params = self.deepcopy(self.default_params_add)
@@ -3485,7 +3487,9 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         message_type = 'wrong_extension'
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict['extensions']
+            extensions = field_dict.get('extensions', ())
+            if not extensions:
+                continue
             ext = get_randname(3, 'wd')
             while ext in extensions:
                 ext = get_randname(3, 'wd')
@@ -3778,12 +3782,14 @@ class FormEditFileTestMixIn(FileTestMixIn):
         """
         for field, field_dict in self.file_fields_params.iteritems():
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
-            extensions = field_dict['extensions']
-            extensions += tuple([e.upper() for e in extensions])
+            extensions = field_dict.get('extensions', ())
+            if not extensions:
+                extensions = (get_randname(3, 'wd'), '')
+            extensions += tuple([e.upper() for e in extensions if e])
             is_file_list = self.is_file_list(field)
             for ext in extensions:
                 sp = transaction.savepoint()
-                filename = 'test.%s' % ext
+                filename = '.'.join([el for el in ['test', ext] if el])
                 f = get_random_file(filename=filename, **field_dict)
                 self.files.append(f)
                 obj_for_edit = self.get_obj_for_edit()
@@ -3814,7 +3820,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
         """
         message_type = 'wrong_extension'
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict['extensions']
+            extensions = field_dict.get('extensions', ())
+            if not extensions:
+                continue
             ext = get_randname(3, 'wd')
             while ext in extensions:
                 ext = get_randname(3, 'wd')
