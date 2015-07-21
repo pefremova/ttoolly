@@ -1624,11 +1624,11 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: empty required fields
         """
-        initial_obj_count = self.obj.objects.count()
         self.client.get(self.get_url(self.url_add), **self.additional_params)
         message_type = 'required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
+            initial_obj_count = self.obj.objects.count()
             sp = transaction.savepoint()
             try:
                 params = self.deepcopy(self.default_params_add)
@@ -1636,6 +1636,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
+                print field
                 self.set_empty_value_for_field(params, field)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
@@ -1647,6 +1648,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
         for group in self.required_related_fields_add:
+            initial_obj_count = self.obj.objects.count()
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -1671,13 +1673,12 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: required fields are not exists in params
         """
-        initial_obj_count = self.obj.objects.count()
         self.client.get(self.get_url(self.url_add), **self.additional_params)
         message_type = 'required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
+            initial_obj_count = self.obj.objects.count()
             sp = transaction.savepoint()
-
             try:
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -1695,6 +1696,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
         for group in self.required_related_fields_add:
+            initial_obj_count = self.obj.objects.count()
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
