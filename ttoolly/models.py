@@ -470,6 +470,7 @@ class GlobalTestMixIn(object):
                 content_file = params.pop(k)
                 content_file.seek(0)
                 tmp_params[k] = ContentFile(content_file.read(), content_file.name)
+                self.files.extend([old_params[k], content_file, tmp_params[k]])
         params = deepcopy(params)
         params.update(tmp_params)
         return params
@@ -746,10 +747,7 @@ class GlobalTestMixIn(object):
             else:
                 text_for_file = get_randname(1000)
         f = ContentFile(text_for_file, name=filename)
-        if hasattr(self, 'files'):
-            self.files.append(f)
-        else:
-            self.files = [f, ]
+        self.files.append(f)
         if is_list:
             return [f, ]
         return f
@@ -778,7 +776,9 @@ class GlobalTestMixIn(object):
         if self.is_email_field(field_name):
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
-            return self.get_random_file(field_name, length)
+            value = self.get_random_file(field_name, length)
+            self.files.append(value)
+            return value
         elif self.is_choice_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, ''):
             return choice(self.choice_fields_values[field_name])
         elif self.is_multiselect_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, []):
