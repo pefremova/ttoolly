@@ -501,9 +501,10 @@ def get_value_for_obj_field(f, filename=None):
         return random.randint(0, 1)
     elif mro_names.intersection(['FloatField', 'DecimalField']):
         max_value = 90 if f.name in ('latitude', 'longitude') else (10 ** (f.max_digits - f.decimal_places) - 1 if
-                                                                    (f.max_digits and f.decimal_places) else 1000)
+                                                                    (getattr(f, 'max_digits', None) and
+                                                                     getattr(f, 'decimal_places', None)) else 1000)
         value = random.uniform(0, max_value)
-        if f.decimal_places:
+        if getattr(f, 'decimal_places', None):
             value = round(value, f.decimal_places)
         return value
     elif 'ArrayField' in mro_names:
