@@ -1636,7 +1636,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                print field
                 self.set_empty_value_for_field(params, field)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count)
