@@ -1,6 +1,6 @@
-from django.test.simple import DjangoTestSuiteRunner, build_suite, build_test
+# -*- coding=utf-8 -*-
 try:
-    from django.test.simple import reorder_suite, get_app, get_apps
+    from django.test.simple import DjangoTestSuiteRunner, reorder_suite, get_app, get_apps
     class DjRunner(DjangoTestSuiteRunner):
         pass
 except:
