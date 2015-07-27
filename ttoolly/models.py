@@ -2921,7 +2921,6 @@ class FormEditTestMixIn(FormTestMixIn):
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
-                self.assertNotEqual(self.get_value_for_compare(new_obj, field), params[field])
                 if field not in getattr(self, 'exclude_from_check_edit', []):
                     self.assertEqual(self.get_value_for_compare(new_obj, field),
                                      getattr(self, 'other_values_for_check',
