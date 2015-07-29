@@ -753,7 +753,7 @@ class GlobalTestMixIn(object):
         return f
 
     def get_related_names(self, model):
-        obj_related_objects = dict([(el.get_accessor_name(), el.var_name) for el in
+        obj_related_objects = dict([(el.get_accessor_name(), getattr(el, 'var_name', '')) for el in
                                     model._meta.get_all_related_objects()])
         obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
