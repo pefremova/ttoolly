@@ -777,7 +777,6 @@ class GlobalTestMixIn(object):
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
             value = self.get_random_file(field_name, length)
-            self.files.append(value)
             return value
         elif self.is_choice_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, ''):
             return choice(self.choice_fields_values[field_name])
