@@ -3445,7 +3445,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         new_object = None
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict.get('extensions', ())
+            extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 extensions = (get_randname(3, 'wd'), '')
             extensions += tuple([e.upper() for e in extensions if e])
@@ -3487,7 +3487,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         message_type = 'wrong_extension'
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict.get('extensions', ())
+            extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 continue
             ext = get_randname(3, 'wd')
@@ -3782,7 +3782,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         """
         for field, field_dict in self.file_fields_params.iteritems():
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
-            extensions = field_dict.get('extensions', ())
+            extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 extensions = (get_randname(3, 'wd'), '')
             extensions += tuple([e.upper() for e in extensions if e])
@@ -3820,7 +3820,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         """
         message_type = 'wrong_extension'
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict.get('extensions', ())
+            extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 continue
             ext = get_randname(3, 'wd')
