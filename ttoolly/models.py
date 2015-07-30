@@ -3516,7 +3516,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         self.formatted_assert_errors()
 
     @only_with_obj
-    @only_with_any_files_params(['min_width', 'min_heihght'])
+    @only_with_any_files_params(['min_width', 'min_height'])
     def test_add_object_min_image_dimensions_positive(self):
         """
         @author: Polina Efremova
@@ -3554,7 +3554,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         self.formatted_assert_errors()
 
     @only_with_obj
-    @only_with_any_files_params(['min_width', 'min_heihght'])
+    @only_with_any_files_params(['min_width', 'min_height'])
     def test_add_object_image_dimensions_lt_min_negative(self):
         """
         @author: Polina Efremova
@@ -3851,7 +3851,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         self.formatted_assert_errors()
 
     @only_with_obj
-    @only_with_any_files_params(['min_width', 'min_heihght'])
+    @only_with_any_files_params(['min_width', 'min_height'])
     def test_edit_object_min_image_dimensions_positive(self):
         """
         @author: Polina Efremova
@@ -3884,7 +3884,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         self.formatted_assert_errors()
 
     @only_with_obj
-    @only_with_any_files_params(['min_width', 'min_heihght'])
+    @only_with_any_files_params(['min_width', 'min_height'])
     def test_edit_object_image_dimensions_lt_min_negative(self):
         """
         @author: Polina Efremova
