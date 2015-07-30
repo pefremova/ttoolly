@@ -753,7 +753,7 @@ class GlobalTestMixIn(object):
         return f
 
     def get_related_names(self, model):
-        obj_related_objects = dict([(el.get_accessor_name(), getattr(el, 'var_name', '')) for el in
+        obj_related_objects = dict([(el.get_accessor_name(), el.var_name) for el in
                                     model._meta.get_all_related_objects()])
         obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
@@ -2916,6 +2916,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
+                current_value = self.get_value_for_compare(test_obj, field)
                 params[field] = params.get(field, None) or self.get_value_for_field(10, field)
                 response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -3445,7 +3446,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         new_object = None
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict.get('extensions', ())
+            extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 extensions = (get_randname(3, 'wd'), '')
             extensions += tuple([e.upper() for e in extensions if e])
@@ -3487,7 +3488,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         message_type = 'wrong_extension'
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict.get('extensions', ())
+            extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 continue
             ext = get_randname(3, 'wd')
@@ -3782,7 +3783,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         """
         for field, field_dict in self.file_fields_params.iteritems():
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
-            extensions = field_dict.get('extensions', ())
+            extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 extensions = (get_randname(3, 'wd'), '')
             extensions += tuple([e.upper() for e in extensions if e])
@@ -3820,7 +3821,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         """
         message_type = 'wrong_extension'
         for field, field_dict in self.file_fields_params.iteritems():
-            extensions = field_dict.get('extensions', ())
+            extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 continue
             ext = get_randname(3, 'wd')
