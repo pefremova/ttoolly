@@ -29,7 +29,7 @@ import psycopg2.extensions
 from utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                    get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                    get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_random_jpg_content,
-                   get_all_urls, convert_size_to_bytes, get_random_image, get_random_file)
+                   get_all_urls, convert_size_to_bytes, get_random_file)
 
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
@@ -55,6 +55,7 @@ def only_with_obj(fn):
 def only_with(param_names=None):
     if not isinstance(param_names, (tuple, list)):
         param_names = [param_names, ]
+
     def decorator(fn):
         def tmp(self):
             def get_value(param_name):
@@ -588,7 +589,10 @@ class GlobalTestMixIn(object):
                           'min_dimensions': u'Минимальный размер изображения {min_width}x{min_height}' if
                                     (previous_locals.get('min_width', None) is None or
                                      previous_locals.get('min_height', None))
-                                     else u'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals)}
+                                     else u'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals),
+                          'one_of': u'Оставьте одно из значений в полях {group}.' if
+                                    (previous_locals.get('group', None) is None)
+                                    else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals)}
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
         ERROR_MESSAGES.update(messages_from_settings)
@@ -2155,6 +2159,35 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text='For field "%s"' % field)
         self.formatted_assert_errors()
 
+    @only_with_obj
+    @only_with(('one_of_fields_add',))
+    def test_add_object_one_of_fields_all_filled_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try add object with all filled fields, that should be filled singly
+        """
+        message_type = 'one_of'
+        for group in self.one_of_fields_add:
+            for filled_group in tuple(set([(el, additional_el) for i, el in enumerate(group) for additional_el in
+                                           group[i + 1:]]).difference(set(self.one_of_fields_add).difference(group))) + \
+                                           (group,):
+                sp = transaction.savepoint()
+                try:
+                    params = self.deepcopy(self.default_params_add)
+                    self.update_params(params)
+                    if self.with_captcha:
+                        self.client.get(self.get_url(self.url_add), **self.additional_params)
+                        params.update(get_captcha_codes())
+                    self.fill_all_fields(filled_group, params)
+                    initial_obj_count = self.obj.objects.count()
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    self.assertEqual(self.obj.objects.count(), initial_obj_count)
+                    error_message = self.get_error_message(message_type, group)
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
+
 
 class FormEditTestMixIn(FormTestMixIn):
 
@@ -2929,6 +2962,37 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.errors_append(text='For field "%s"' % field)
         self.formatted_assert_errors()
 
+    @only_with_obj
+    @only_with(('one_of_fields_edit',))
+    def test_edit_object_one_of_fields_all_filled_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit object: fill all fields, that should be filled singly
+        """
+        message_type = 'one_of'
+        for group in self.one_of_fields_edit:
+            for filled_group in tuple(set([(el, additional_el) for i, el in enumerate(group) for additional_el in
+                                           group[i + 1:]]).difference(set(self.one_of_fields_edit).difference(group))) + \
+                                           (group,):
+                sp = transaction.savepoint()
+                try:
+                    test_obj = self.get_obj_for_edit()
+                    params = self.deepcopy(self.default_params_edit)
+                    self.update_params(params)
+                    self.fill_all_fields(filled_group, params)
+                    if self.with_captcha:
+                        self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                        params.update(get_captcha_codes())
+                    response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                                                params, follow=True, **self.additional_params)
+                    error_message = self.get_error_message(message_type, group)
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    new_obj = self.obj.objects.get(pk=test_obj.pk)
+                    self.assert_objects_equal(new_obj, test_obj)
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
+
 
 class FormDeleteTestMixIn(FormTestMixIn):
 
@@ -3240,6 +3304,7 @@ def only_with_files_params(param_names=None):
 def only_with_any_files_params(param_names=None):
     if not isinstance(param_names, (tuple, list)):
         param_names = [param_names, ]
+
     def decorator(fn):
         def tmp(self):
             def check_params(field_dict, param_names):
