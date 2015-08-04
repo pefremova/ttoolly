@@ -885,7 +885,7 @@ class GlobalTestMixIn(object):
                     field in (getattr(self, 'multiselect_fields_edit', ()) or ()), ])
 
     def savepoint_rollback(self, sp):
-        if isinstance(self.__class__, TestCase):
+        if isinstance(self, TestCase):
             transaction.savepoint_rollback(sp)
 
     def set_empty_value_for_field(self, params, field):
