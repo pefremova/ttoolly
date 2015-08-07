@@ -190,11 +190,7 @@ class GlobalTestMixIn(object):
         self.for_pre_setup()
 
     def for_post_tear_down(self):
-        while self.files:
-            f = self.files.pop()
-            if not f.closed:
-                f.close()
-            del f
+        self.del_files()
         if os.path.exists(TEMP_DIR):
             try:
                 rmtree(TEMP_DIR)
@@ -475,6 +471,13 @@ class GlobalTestMixIn(object):
         params = deepcopy(params)
         params.update(tmp_params)
         return params
+
+    def del_files(self):
+        while self.files:
+            f = self.files.pop()
+            if not f.closed:
+                f.close()
+            del f
 
     def errors_append(self, errors=None, text='', color=231):
         if errors is None:
@@ -3429,6 +3432,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
+            self.del_files()
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3472,6 +3476,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
+            self.del_files()
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3769,6 +3774,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
+            self.del_files()
         self.formatted_assert_errors()
 
     @only_with_obj
@@ -3809,6 +3815,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
+            self.del_files()
         self.formatted_assert_errors()
 
     @only_with_obj
