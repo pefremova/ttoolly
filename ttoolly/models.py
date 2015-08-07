@@ -3405,6 +3405,9 @@ class FormAddFileTestMixIn(FileTestMixIn):
         message_type = 'max_size_file'
         for field, field_dict in self.file_fields_params.iteritems():
             sp = transaction.savepoint()
+            one_max_size = field_dict.get('one_max_size', None)
+            if not one_max_size:
+                continue
             try:
                 initial_obj_count = self.obj.objects.count()
                 params = self.deepcopy(self.default_params_add)
@@ -3412,7 +3415,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(field_dict['one_max_size'])
+                size = convert_size_to_bytes(one_max_size)
                 max_size = self.humanize_file_size(size)
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
                 current_size = size + 100
@@ -3429,7 +3432,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
         self.formatted_assert_errors()
 
     @only_with_obj
-    @only_with_files_params('one_max_size')
     def test_add_object_big_file_positive(self):
         """
         @author: Polina Efremova
@@ -3440,6 +3442,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
+            one_max_size = field_dict.get('one_max_size', '10M')
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
@@ -3448,7 +3451,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(field_dict['one_max_size'])
+                size = convert_size_to_bytes(one_max_size)
                 max_size = self.humanize_file_size(size)
                 if self.is_file_list(field):
                     params[field] = []
@@ -3501,7 +3504,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
         self.formatted_assert_errors()
 
     @only_with_obj
-    @only_with_files_params('extensions')
     def test_add_object_some_file_extensions_positive(self):
         """
         @author: Polina Efremova
@@ -3741,6 +3743,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
         message_type = 'max_size_file'
         for field, field_dict in self.file_fields_params.iteritems():
             sp = transaction.savepoint()
+            one_max_size = field_dict.get('one_max_size', None)
+            if not one_max_size:
+                continue
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
@@ -3748,7 +3753,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(field_dict['one_max_size'])
+                size = convert_size_to_bytes(one_max_size)
                 max_size = self.humanize_file_size(size)
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
                 current_size = size + 100
@@ -3767,7 +3772,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
         self.formatted_assert_errors()
 
     @only_with_obj
-    @only_with_files_params('one_max_size')
     def test_edit_object_big_file_positive(self):
         """
         @author: Polina Efremova
@@ -3775,6 +3779,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         """
         for field, field_dict in self.file_fields_params.iteritems():
             sp = transaction.savepoint()
+            one_max_size = field_dict.get('one_max_size', '10M')
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
@@ -3783,7 +3788,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(field_dict['one_max_size'])
+                size = convert_size_to_bytes(one_max_size)
                 max_size = self.humanize_file_size(size)
                 if self.is_file_list(field):
                     params[field] = []
@@ -3838,7 +3843,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
         self.formatted_assert_errors()
 
     @only_with_obj
-    @only_with_files_params('extensions')
     def test_edit_object_some_file_extensions_positive(self):
         """
         @author: Polina Efremova
