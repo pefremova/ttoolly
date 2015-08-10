@@ -754,8 +754,8 @@ def move_dir(path_to_dir):
         if os.path.exists(path_to_dir):
             os.rename(path_to_dir, tmp_path)
         else:
-            os.mkdir(tmp_path)
-        os.mkdir(path_to_dir)
+            os.makedirs(tmp_path)
+        os.makedirs(path_to_dir)
 
 
 def prepare_custom_file_for_tests(file_path, filename=''):

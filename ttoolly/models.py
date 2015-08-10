@@ -204,7 +204,7 @@ class GlobalTestMixIn(object):
     def for_pre_setup(self):
         self.errors = []
         if not os.path.exists(TEMP_DIR):
-            os.mkdir(TEMP_DIR)
+            os.makedirs(TEMP_DIR)
         if getattr(self, 'with_files', False):
             DIRS_FOR_MOVE = get_dirs_for_move()
             for path in DIRS_FOR_MOVE:
