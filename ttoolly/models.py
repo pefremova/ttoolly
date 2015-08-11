@@ -424,8 +424,8 @@ class GlobalTestMixIn(object):
             except AssertionError:
                 local_errors.append('[%s]: %s != %s' %
                                     (field,
-                                     repr(value) if not isinstance(value, str) else value,
-                                     repr(params_value) if not isinstance(params_value, str) else params_value))
+                                     repr(value) if not isinstance(value, str) else "'%s'" % value,
+                                     repr(params_value) if not isinstance(params_value, str) else "'%s'" % params_value))
         if local_errors:
             raise AssertionError("Values from object != expected values from dict:\n" + "\n".join(local_errors))
 
