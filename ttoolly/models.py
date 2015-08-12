@@ -149,8 +149,9 @@ class GlobalTestMixIn(object):
 
     __metaclass__ = MetaCheckFailures
 
+    additional_params = None
     all_unique = None
-    choice_fields_values = {}
+    choice_fields_values = None
     errors = []
     FILE_FIELDS = ('file', 'filename', 'image', 'preview')
     files = []
@@ -160,6 +161,10 @@ class GlobalTestMixIn(object):
     unique_fields = None
 
     def __init__(self, *args, **kwargs):
+        if self.additional_params is None:
+            self.additional_params = {}
+        if self.choice_fields_values is None:
+            self.choice_fields_values = {}
         if not self.all_unique:
             self.all_unique = {}
         if self.unique_fields is None:
@@ -426,6 +431,7 @@ class GlobalTestMixIn(object):
                                     (field,
                                      repr(value) if not isinstance(value, str) else "'%s'" % value,
                                      repr(params_value) if not isinstance(params_value, str) else "'%s'" % params_value))
+
         if local_errors:
             raise AssertionError("Values from object != expected values from dict:\n" + "\n".join(local_errors))
 
@@ -937,6 +943,7 @@ class GlobalTestMixIn(object):
 
 
 class LoginMixIn(object):
+
     def user_login(self, username, password, **kwargs):
         additional_params = kwargs.get('additional_params', getattr(self, 'additional_params', {}))
         url_name = getattr(settings, 'LOGIN_URL_NAME', 'login')
@@ -959,7 +966,6 @@ class LoginMixIn(object):
 
 class FormTestMixIn(GlobalTestMixIn):
     obj = None
-    additional_params = {}
     all_fields = None
     all_fields_add = None
     all_fields_edit = None
@@ -969,7 +975,7 @@ class FormTestMixIn(GlobalTestMixIn):
     choice_fields_with_value_in_error = []
     choice_fields_add_with_value_in_error = []
     choice_fields_edit_with_value_in_error = []
-    default_params = {}
+    default_params = None
     default_params_add = None
     default_params_edit = None
     date_fields = None
@@ -1008,6 +1014,8 @@ class FormTestMixIn(GlobalTestMixIn):
 
     def __init__(self, *args, **kwargs):
         super(FormTestMixIn, self).__init__(*args, **kwargs)
+        if self.default_params is None:
+            self.default_params = {}
         if not self.default_params_add:
             self.default_params_add = self.deepcopy(self.default_params)
         if not self.default_params_edit:
@@ -3336,10 +3344,15 @@ class FormRemoveTestMixIn(FormTestMixIn):
 
 class FileTestMixIn(FormTestMixIn):
 
-    file_fields_params = {}
+    file_fields_params = None
     """{'field_name': {'extensions': ('jpg', 'txt'),
                        'max_count': 3,
                        'one_max_size': '3Mb'}}"""
+
+    def __init__(self, *args, **kwargs):
+        super(FileTestMixIn, self).__init__(*args, **kwargs)
+        if self.file_fields_params is None:
+            self.file_fields_params = {}
 
     def humanize_file_size(self, size):
         return filesizeformat(size)
@@ -4077,7 +4090,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
 
 
 class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
-    additional_params = {}
     allowed_links = ()
     links_400 = ()
     links_401 = ()
