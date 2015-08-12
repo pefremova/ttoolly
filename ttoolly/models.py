@@ -1007,6 +1007,9 @@ class FormTestMixIn(GlobalTestMixIn):
     required_fields = None
     required_fields_add = None
     required_fields_edit = None
+    status_code_success_add = 200
+    status_code_success_edit = 200
+    status_code_error = 200
     unique_fields_add = None
     unique_fields_edit = None
     url_add = ''
@@ -1526,6 +1529,8 @@ class FormAddTestMixIn(FormTestMixIn):
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                              u'Objects count after add = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count + 1))
@@ -1570,6 +1575,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                     self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_add,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                     self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                      u'Objects count after add = %s (expect %s)' %
                                      (self.obj.objects.count(), initial_obj_count + 1))
@@ -1603,8 +1610,9 @@ class FormAddTestMixIn(FormTestMixIn):
             params.update(get_captcha_codes())
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-
             self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                              u'Objects count after add = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count + 1))
@@ -1634,6 +1642,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
                     self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_add,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                     self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                      u'Objects count after add = %s (expect %s)' %
                                      (self.obj.objects.count(), initial_obj_count + 1))
@@ -1670,6 +1680,8 @@ class FormAddTestMixIn(FormTestMixIn):
                                  (self.obj.objects.count(), initial_obj_count))
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty field "%s"' % field)
@@ -1692,6 +1704,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count,
                                  u'Objects count after wrong add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count))
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % str(group))
@@ -1722,6 +1736,8 @@ class FormAddTestMixIn(FormTestMixIn):
                                  (self.obj.objects.count(), initial_obj_count))
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without field "%s"' % field)
@@ -1744,6 +1760,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count,
                                  u'Objects count after wrong add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count))
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % str(group))
@@ -1775,6 +1793,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 value = self.get_value_for_error_message(field, params[field])
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                  u'Objects count after add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count + 1))
@@ -1811,6 +1831,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count,
                                  u'Objects count after wrong add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count))
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
@@ -1842,6 +1864,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count,
                                  u'Objects count after wrong add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count))
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
@@ -1874,6 +1898,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.get_all_form_errors(response)
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message(message_type, field, locals=_locals))
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
         self.formatted_assert_errors()
@@ -1904,6 +1930,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.get_all_form_errors(response)
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message(message_type, field, locals=_locals))
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
         self.formatted_assert_errors()
@@ -1940,6 +1968,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count,
                                  u'Objects count after wrong add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count))
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
@@ -1974,6 +2004,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.obj.objects.count(), initial_obj_count,
                                  u'Objects count after wrong add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count))
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
@@ -2007,6 +2039,8 @@ class FormAddTestMixIn(FormTestMixIn):
                                      (self.obj.objects.count(), initial_obj_count))
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                    'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
@@ -2038,6 +2072,8 @@ class FormAddTestMixIn(FormTestMixIn):
                                      (self.obj.objects.count(), initial_obj_count))
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
@@ -2071,6 +2107,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = value
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                  u'Objects count after add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count + 1))
@@ -2108,8 +2146,9 @@ class FormAddTestMixIn(FormTestMixIn):
                                      u'Objects count after wrong add = %s (expect %s)' %
                                      (self.obj.objects.count(), initial_obj_count))
                     error_message = self.get_error_message(message_type, field)
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     error_message)
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
@@ -2143,6 +2182,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = value
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                  u'Objects count after add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count + 1))
@@ -2180,8 +2221,9 @@ class FormAddTestMixIn(FormTestMixIn):
                                      u'Objects count after wrong add = %s (expect %s)' %
                                      (self.obj.objects.count(), initial_obj_count))
                     error_message = self.get_error_message(message_type, field)
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     error_message)
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
@@ -2207,6 +2249,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = params.get(field, None) or self.get_value_for_field(10, field)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                  u'Objects count after add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count + 1))
@@ -2246,6 +2290,8 @@ class FormAddTestMixIn(FormTestMixIn):
                                     (self.obj.objects.count(), initial_obj_count))
                     error_message = self.get_error_message(message_type, group)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
@@ -2336,6 +2382,8 @@ class FormEditTestMixIn(FormTestMixIn):
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2377,6 +2425,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True, **self.additional_params)
                     self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_edit,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                     exclude = getattr(self, 'exclude_from_check_edit', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2407,6 +2457,8 @@ class FormEditTestMixIn(FormTestMixIn):
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2432,6 +2484,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_edit,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                     self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2463,6 +2517,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty field "%s"' % field)
@@ -2485,6 +2541,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % str(group))
@@ -2510,10 +2568,11 @@ class FormEditTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 error_message)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without field "%s"' % field)
@@ -2536,6 +2595,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % str(group))
@@ -2552,7 +2613,7 @@ class FormEditTestMixIn(FormTestMixIn):
             try:
                 response = self.client.get(self.get_url_for_negative(self.url_edit, (value,)),
                                            follow=True, **self.additional_params)
-                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
@@ -2579,6 +2640,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2595,6 +2658,8 @@ class FormEditTestMixIn(FormTestMixIn):
                         response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                     params, follow=True, **self.additional_params)
                         self.assert_no_form_errors(response)
+                        self.assertEqual(response.status_code, self.status_code_success_edit,
+                                         'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                         new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                         exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                         self.assert_object_fields(new_object, params, exclude=exclude,
@@ -2631,10 +2696,11 @@ class FormEditTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field, length)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 error_message)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
@@ -2666,6 +2732,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 self.assert_objects_equal(new_obj, test_obj)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
@@ -2698,6 +2766,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                      error_message)
                     new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                     self.assert_objects_equal(new_obj, obj_for_edit)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
         self.formatted_assert_errors()
@@ -2724,10 +2794,11 @@ class FormEditTestMixIn(FormTestMixIn):
                                                 params, follow=True, **self.additional_params)
                     _locals = {'field': field, 'value': value}
                     error_message = self.get_error_message(message_type, field, locals=_locals)
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     error_message)
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
                     new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                     self.assert_objects_equal(new_obj, obj_for_edit)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
         self.formatted_assert_errors()
@@ -2765,6 +2836,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
@@ -2799,6 +2872,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % (field, params[field])
@@ -2831,6 +2906,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                      error_message)
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
@@ -2861,6 +2938,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
@@ -2890,6 +2969,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2921,10 +3002,11 @@ class FormEditTestMixIn(FormTestMixIn):
                     response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     error_message)
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
@@ -2954,6 +3036,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2985,10 +3069,11 @@ class FormEditTestMixIn(FormTestMixIn):
                     response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     error_message)
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
@@ -3014,6 +3099,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                 new_obj = self.obj.objects.get(pk=test_obj.pk)
                 if field not in getattr(self, 'exclude_from_check_edit', []):
                     self.assertEqual(self.get_value_for_compare(new_obj, field),
@@ -3051,6 +3138,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     new_obj = self.obj.objects.get(pk=test_obj.pk)
                     self.assert_objects_equal(new_obj, test_obj)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                    'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
@@ -3071,7 +3160,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
             try:
                 response = self.client.get(self.get_url_for_negative(self.url_delete, (value,)),
                                            follow=True, **self.additional_params)
-                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
@@ -3250,7 +3339,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         params = self.deepcopy(self.default_params_edit)
         try:
             response = self.client.post(self.get_url_for_negative(self.url_edit, (obj_id,)), params, follow=True, **self.additional_params)
-            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
         except:
             self.errors_append()
         self.formatted_assert_errors()
@@ -3463,6 +3552,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     params[field].append(f)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                  u'Objects count after add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count + 1))
@@ -3547,6 +3638,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     params[field] = f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                  u'Objects count after add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count + 1))
@@ -3622,6 +3715,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
                     self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_add,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                     self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                      u'Objects count after add = %s (expect %s)' %
                                      (self.obj.objects.count(), initial_obj_count + 1))
@@ -3701,6 +3796,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
                                  u'Objects count after add = %s (expect %s)' %
                                  (self.obj.objects.count(), initial_obj_count + 1))
@@ -3788,6 +3885,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
@@ -3820,6 +3919,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -3860,6 +3961,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
@@ -3899,6 +4002,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -3934,6 +4039,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.assert_objects_equal(new_obj, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
@@ -3968,6 +4075,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_edit,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                     self.assert_object_fields(new_object, params, exclude=exclude)
@@ -4010,6 +4119,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                     self.assert_objects_equal(new_obj, obj_for_edit)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
@@ -4040,6 +4151,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -4083,6 +4196,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
                     self.assert_objects_equal(new_obj, obj_for_edit)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
