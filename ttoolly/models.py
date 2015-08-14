@@ -251,8 +251,13 @@ class GlobalTestMixIn(object):
                         text.append('%s[%s]:\n%s' % (parent_key if parent_key else '',
                                                      key, '\n'.join(errors)))
                 else:
-                    text.append('%s[%s]: %s != %s' % (parent_key if parent_key else '',
-                                                      key, d1[key], d2[key]))
+                    d1_value = d1[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
+                                           (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) else repr(d1[key])
+                    d2_value = d2[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
+                                           (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) else repr(d2[key])
+                    text.append('%s[%s]: %s != %s' %
+                                (parent_key if parent_key else u'',
+                                 key, d1_value, d2_value))
         res = '\n'.join(text)
         if not isinstance(res, unicode):
             res = res.decode('utf-8')
