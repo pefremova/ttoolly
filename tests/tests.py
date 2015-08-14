@@ -7,6 +7,7 @@ from ttoolly.utils import get_random_image
 class TestTest(FormAddTestMixIn, FormAddFileTestMixIn, TestCase):
 
     choice_fields_with_value_in_error = ('many_related_fields',)
+    custom_error_messages = {'file_field': {'empty_file': u'Отправленный файл пуст.'}}
     default_params = {'text_field': u'йцу',
                       'many_related_field': [],
                       'file_field': get_random_image(),
@@ -16,11 +17,16 @@ class TestTest(FormAddTestMixIn, FormAddFileTestMixIn, TestCase):
                       'email_field': 'test@test.test',
                       'char_field': u'йцуу'}
 
-    file_fields_params = {'file_field': {}}           
+    file_fields_params = {'file_field': {}}    
     max_fields_length = (('char_field', 120),)
     obj = SomeModel
-
     required_fields = ('int_field',)
     unique_fields = ('unique_int_field', )
     url_add = '/test-url/'
     with_files = True
+
+    def test_test(self):
+        try:
+            self.assert_dict_equal({'a': '1', 'b': u'йцу'}, {'a': 1, 'b': 'йцук'})
+        except:
+            self.errors_append()
