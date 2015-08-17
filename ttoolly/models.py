@@ -1640,7 +1640,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = self.default_params_add[field] if params[field] not in (None, '') else \
+                params[field] = params[field] if params[field] not in (None, '') else \
                         self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
                                                  dict(self.max_fields_length).get(field, 10)), field)
                 try:
@@ -1969,6 +1969,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
+
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count,
                                  u'Objects count after wrong add = %s (expect %s)' %
