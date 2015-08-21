@@ -8,7 +8,7 @@ from ttoolly.utils import prepare_file_for_tests
 class Command(BaseCommand):
 
     help = "Create random files for all models, if not exists on file system"
-   
+
     option_list = BaseCommand.option_list + (
         make_option('--show', dest='show', action="store_true", default=False,
                     help='Only show output, not generate files'),)
@@ -23,16 +23,16 @@ class Command(BaseCommand):
             if fields:
                 if verbosity > 1:
                     print 'In model %s.%s (%s) found file fields: %s' % \
-                                (model._meta.app_label, model.__name__, model._meta.verbosity_name,
-                                 ', '.join(['%s (%s)' % (f.name, f.verbosity_name) for f in fields]))            
+                                (model._meta.app_label, model.__name__, model._meta.verbose_name,
+                                 ', '.join(['%s (%s)' % (f.name, f.verbose_name) for f in fields]))
                 models_with_files[model] = fields
 
         if kwargs.get('show'):
             return
         for model in models_with_files.keys():
             if verbosity > 1: print '\nGenerate files for model %s.%s (%s)' % \
-                                    (model._meta.app_label, model.__name__, model._meta.verbosity_name)
+                                    (model._meta.app_label, model.__name__, model._meta.verbose_name)
             for field in models_with_files[model]:
-                if verbosity > 1: print '  Generate files for field %s (%s)' % (field.name, field.verbosity_name)
+                if verbosity > 1: print '  Generate files for field %s (%s)' % (field.name, field.verbose_name)
                 prepare_file_for_tests(model, field.name, verbosity=verbosity)
 
