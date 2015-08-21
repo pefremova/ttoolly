@@ -773,12 +773,16 @@ def prepare_custom_file_for_tests(file_path, filename=''):
         return
 
 
-def prepare_file_for_tests(model_name, field, filename=''):
+def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
     mro_names = [m.__name__ for m in model_name._meta.get_field_by_name(field)[0].__class__.__mro__]
     for obj in model_name.objects.all():
         file_from_obj = getattr(obj, field, None)
         if file_from_obj:
             full_path = os.path.join(settings.MEDIA_ROOT, file_from_obj.path)
+            if os.path.exists(full_path):
+                continue
+            if verbosity > 2:
+                print 'Generate file for path %s' % full_path
             directory = os.path.dirname(full_path)
             if not os.path.exists(directory):
                 os.makedirs(directory)
