@@ -1604,7 +1604,7 @@ class FormAddTestMixIn(FormTestMixIn):
         required_fields = self.required_fields_add + \
                           self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
-        for field in set(self.default_params_add.keys()).difference(required_fields):
+        for field in set(self.all_fields_add).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params[field] not in (None, '') else \
@@ -1780,7 +1780,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         new_object = None
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             """if unique fields"""
             if new_object:
@@ -1819,7 +1819,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'max_length'
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -1852,7 +1852,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'min_length'
         for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -1961,7 +1961,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
                 params.update(get_captcha_codes())
             for el_field in el:
-                if el_field not in self.default_params_add.keys():
+                if el_field not in self.all_fields_add:
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, u'')[0]
@@ -1996,7 +1996,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
                 params.update(get_captcha_codes())
             for el_field in el:
-                if el_field not in self.default_params_add.keys():
+                if el_field not in self.all_fields_add:
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, u'')[0]
@@ -2456,7 +2456,7 @@ class FormEditTestMixIn(FormTestMixIn):
             params.update(get_captcha_codes())
         required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
         self.update_params(params)
-        for field in set(self.default_params_edit.keys()).difference(required_fields):
+        for field in set(self.all_fields_edit).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params[field] not in (None, '') else \
@@ -2635,7 +2635,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Edit object: fill all fields with maximum length values
         """
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -2691,7 +2691,7 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'max_length'
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -2724,7 +2724,7 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'min_length'
         for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -2832,7 +2832,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                 params.update(get_captcha_codes())
             for el_field in el:
-                if el_field not in self.default_params_edit.keys():
+                if el_field not in self.all_fields_edit:
                     """only if user can change this field"""
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
@@ -2866,7 +2866,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                 params.update(get_captcha_codes())
             for el_field in el:
-                if el_field not in self.default_params_edit.keys():
+                if el_field not in self.all_fields_edit:
                     """only if user can change this field"""
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
@@ -3461,10 +3461,11 @@ def only_with_files_params(param_names=None):
         param_names = [param_names, ]
     def decorator(fn):
         def tmp(self):
+            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in  fn.__name__ else '_edit')
             def check_params(field_dict, param_names):
                 return all([param_name in field_dict.keys() for param_name in param_names])
-            if any([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
-                if not all([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
+                if not all([check_params(field_dict, param_names) for field_dict in  getattr(self, params_dict_name).values()]):
                     warnings.warn('%s not set for all fields' % str(param_names))
                 return fn(self)
             else:
@@ -3480,10 +3481,11 @@ def only_with_any_files_params(param_names=None):
 
     def decorator(fn):
         def tmp(self):
+            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in  fn.__name__ else '_edit')
             def check_params(field_dict, param_names):
                 return any([param_name in field_dict.keys() for param_name in param_names])
-            if any([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
-                if not all([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
+                if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
                     warnings.warn('%s not set for all fields' % str(param_names))
                 return fn(self)
             else:
@@ -3495,6 +3497,13 @@ def only_with_any_files_params(param_names=None):
 
 class FormAddFileTestMixIn(FileTestMixIn):
 
+    file_fields_params_add = None
+
+    def __init__(self, *args, **kwargs):
+        super(FormAddFileTestMixIn, self).__init__(*args, **kwargs)
+        if self.file_fields_params_add is None:
+            self.file_fields_params_add = self.deepcopy(self.file_fields_params)
+
     @only_with_obj
     @only_with_files_params('max_count')
     def test_add_object_many_files_negative(self):
@@ -3503,7 +3512,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with files count > max files count
         """
         message_type = 'max_count_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
             sp = transaction.savepoint()
@@ -3539,7 +3548,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with photos count == max files count
         """
         new_object = None
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
             sp = transaction.savepoint()
@@ -3582,7 +3591,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with file size > max one file size
         """
         message_type = 'max_size_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             one_max_size = field_dict.get('one_max_size', None)
             if not one_max_size:
@@ -3620,7 +3629,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with file size == max one file size
         """
         new_object = None
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
@@ -3668,7 +3677,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with file size = 0M
         """
         message_type = 'empty_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             try:
                 initial_obj_count = self.obj.objects.count()
@@ -3699,7 +3708,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with some available extensions
         """
         new_object = None
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 extensions = (get_randname(3, 'wd'), '')
@@ -3745,7 +3754,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with wrong extensions
         """
         message_type = 'wrong_extension'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 continue
@@ -3784,7 +3793,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with minimum image file dimensions
         """
         new_object = None
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
@@ -3826,7 +3835,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with image file dimensions < minimum
         """
         message_type = 'min_dimensions'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             is_file_list = self.is_file_list(field)
             values = ()
             min_width = field_dict.get('min_width', None)
@@ -3864,6 +3873,13 @@ class FormAddFileTestMixIn(FileTestMixIn):
 
 class FormEditFileTestMixIn(FileTestMixIn):
 
+    file_fields_params_edit = None
+
+    def __init__(self, *args, **kwargs):
+        super(FormEditFileTestMixIn, self).__init__(*args, **kwargs)
+        if self.file_fields_params_edit is None:
+            self.file_fields_params_edit = self.deepcopy(self.file_fields_params)
+
     @only_with_obj
     @only_with_files_params('max_count')
     def test_edit_object_many_files_negative(self):
@@ -3872,7 +3888,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Try edit obj with files count > max files count
         """
         message_type = 'max_count_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
             sp = transaction.savepoint()
@@ -3908,7 +3924,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Try edit obj with photos count == max files count
         """
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
             sp = transaction.savepoint()
@@ -3946,7 +3962,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Try edit obj with file size > max one file size
         """
         message_type = 'max_size_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             one_max_size = field_dict.get('one_max_size', None)
             if not one_max_size:
@@ -3985,7 +4001,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Edit obj with file size == max one file size
         """
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             one_max_size = field_dict.get('one_max_size', '10M')
             try:
@@ -4029,7 +4045,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Try edit obj with file size = 0M
         """
         message_type = 'empty_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -4061,7 +4077,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Edit obj with some available extensions
         """
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
@@ -4102,7 +4118,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Edit obj with wrong extensions
         """
         message_type = 'wrong_extension'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 continue
@@ -4142,7 +4158,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Edit obj with minimum image file dimensions
         """
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -4178,7 +4194,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Edit obj with image file dimensions < minimum
         """
         message_type = 'min_dimensions'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             is_file_list = self.is_file_list(field)
             values = ()
             min_width = field_dict.get('min_width', None)
