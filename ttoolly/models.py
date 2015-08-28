@@ -725,7 +725,7 @@ class GlobalTestMixIn(object):
                     params_value = repr(params_value)
                 params_value = Decimal(params_value)
         elif (set([m.__name__ for m in value.__class__.__mro__]).intersection(['file', 'FieldFile', 'ImageFieldFile'])
-              or isinstance(params_value, file)):
+              or isinstance(params_value, (file, ContentFile))):
             if value:
                 value = value if (isinstance(value, str) or isinstance(value, unicode)) else value.name
                 value = re.sub(r'_[a-zA-Z0-9]+(?=$|\.[\w\d]+$)', '', os.path.basename(value))
@@ -1604,7 +1604,7 @@ class FormAddTestMixIn(FormTestMixIn):
         required_fields = self.required_fields_add + \
                           self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
-        for field in set(self.all_fields_add).difference(required_fields):
+        for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params[field] not in (None, '') else \
@@ -2456,7 +2456,7 @@ class FormEditTestMixIn(FormTestMixIn):
             params.update(get_captcha_codes())
         required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
         self.update_params(params)
-        for field in set(self.all_fields_edit).difference(required_fields):
+        for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params[field] not in (None, '') else \
