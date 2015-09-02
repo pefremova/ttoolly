@@ -4391,7 +4391,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 else:
                     url = self.get_url(url_name, args=(), kwargs=args)
                 self.login()
-                response = self.client.get(url)
+                response = self.client.get(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
