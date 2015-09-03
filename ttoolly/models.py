@@ -4243,6 +4243,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     urlpatterns = None
     username = ''
 
+    @property
+    def get_method(self):
+        return getattr(self.client, self.method.lower())
+
     def get_urls(self):
         # FIXME:
         _urls = set(get_all_urls(self.urlpatterns))
@@ -4295,7 +4299,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, **self.additional_params)
+                response = self.get_method(url, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
@@ -4312,7 +4316,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertRedirects(response, self.get_url(self.redirect_to))
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
@@ -4329,7 +4333,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 400)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
@@ -4346,7 +4350,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 401)
                 self.assertEqual(self.get_all_form_errors(response),
                                  {"detail": u'Учетные данные не были предоставлены.'})
@@ -4365,7 +4369,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 403)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
@@ -4391,7 +4395,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 else:
                     url = self.get_url(url_name, args=(), kwargs=args)
                 self.login()
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
@@ -4408,7 +4412,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 405)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
