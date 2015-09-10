@@ -605,7 +605,7 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
         extensions = kwargs.get('extensions', ())
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
-    if os.path.splitext(filename)[1] in ('.bmp'):
+    if os.path.splitext(filename)[1] in ('.bmp',):
         content = get_random_bmp_content(size)
     else:
         width = width or random.randint(kwargs.get('min_width', 1),
@@ -614,7 +614,10 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
         height = height or random.randint(kwargs.get('min_height', 1),
                                           max(kwargs.get('max_height', 100),
                                               kwargs.get('min_height', 0) + 100))
-        content = get_random_jpg_content(size, width, height)
+        if os.path.splitext(filename)[1] in ('.gif',):
+            content = get_random_gif_content(size, width, height)
+        else:
+            content = get_random_jpg_content(size, width, height)
     if not path and return_opened:
         return ContentFile(content, filename)
     f = open(path, 'ab')
@@ -640,7 +643,7 @@ def get_random_image_contentfile(size=10, width=1, height=1, filename=None):
     return ContentFile(data, filename)
 
 
-def get_random_jpg_content(size=10, width=1, height=1):
+def get_random_img_content(_format, size=10, width=1, height=1):
     try:
         import Image
     except ImportError:
@@ -652,12 +655,20 @@ def get_random_jpg_content(size=10, width=1, height=1):
         output = StringIO()
     else:
         output = io.BytesIO()
-    image.save(output, format='JPEG')
+    image.save(output, format=_format)
     content = output.getvalue()
     size = size - len(content)
     if size > 0:
         content += bytearray(size)
     return content
+
+
+def get_random_gif_content(size=10, width=1, height=1):
+    return get_random_img_content('GIF', size, width, height)
+
+
+def get_random_jpg_content(size=10, width=1, height=1):
+    return get_random_img_content('JPEG', size, width, height)
 
 
 def generate_random_bmp_image_with_size(*args, **kwargs):
