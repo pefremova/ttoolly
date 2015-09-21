@@ -170,7 +170,7 @@ def get_all_form_errors(response):
     fs_keys = []
     for key in all_keys:
         value = response.context[key]
-        mro_names = [cn.__name__ for cn in value.__class__.__mro__]
+        mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
         if 'BaseFormSet' in mro_names:
             fs_keys.append(key)
         elif 'BaseForm' in mro_names:
@@ -321,7 +321,7 @@ def get_fields_list_from_response(response):
     fs_keys = []
     for key in all_keys:
         value = response.context[key]
-        mro_names = [cn.__name__ for cn in value.__class__.__mro__]
+        mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
         if 'BaseFormSet' in mro_names:
             fs_keys.append(key)
         elif 'BaseForm' in mro_names:
