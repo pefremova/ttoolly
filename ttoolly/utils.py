@@ -177,13 +177,18 @@ def get_all_form_errors(response):
             forms.append(value)
 
     for form in set(forms):
-        form_errors.update(get_errors(form))
+        if form:
+            form_errors.update(get_errors(form))
     for fs_key in fs_keys:
         formset = response.context[fs_key]
+        if not formset:
+            continue
         non_form_errors = formset._non_form_errors
         if non_form_errors:
             form_errors.update({'%s-__all__' % formset.prefix: non_form_errors})
         for form in getattr(formset, 'forms', formset):
+            if not form:
+                continue
             errors = form._errors
             if errors:
                 for key, value in errors.iteritems():
