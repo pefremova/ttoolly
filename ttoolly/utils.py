@@ -569,7 +569,7 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
     size = convert_size_to_bytes(size)
-    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png',) and size > 0:
+    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif') and size > 0:
         return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
                                 **kwargs)
     content = get_randname(size)
@@ -781,7 +781,7 @@ def prepare_custom_file_for_tests(file_path, filename=''):
     if filename:
         copyfile(filename, file_path)
         return
-    elif os.path.splitext(file_path)[1].lower() in ('.jpg', '.jpeg', 'png', '.bmp'):
+    elif os.path.splitext(file_path)[1].lower() in ('.jpg', '.jpeg', 'png', '.bmp', '.gif'):
         get_random_image(path=file_path, return_opened=False)
         return
     else:
