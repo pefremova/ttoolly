@@ -2243,7 +2243,7 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Try add obj with filled disabled fields
         """
         new_object = None
-        for field in self.disabled_fields_edit:
+        for field in self.disabled_fields_add:
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
