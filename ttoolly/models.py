@@ -4438,7 +4438,7 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
             for db in databases:
                 call_command('flush', verbosity=0, interactive=False, database=db)
 
-                if hasattr(self, 'fixtures'):
+                if getattr(self, 'fixtures', None):
                     # We have to use this slightly awkward syntax due to the fact
                     # that we're using *args and **kwargs together.
                     call_command('loaddata', *self.fixtures,
