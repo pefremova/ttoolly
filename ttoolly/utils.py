@@ -492,8 +492,10 @@ def get_value_for_obj_field(f, filename=None):
             return get_randname_from_file(filename, length)
         else:
             return get_randname(length)
-    elif 'DateField' in mro_names:
+    elif 'DateTimeField' in mro_names:
         return datetime.now()
+    elif 'DateField' in mro_names:
+        return date.today()
     elif mro_names.intersection(['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']) and not f._choices:
         return random.randint(0, 1000)
     elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
