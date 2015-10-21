@@ -19,6 +19,7 @@ import string
 import struct
 import sys
 import traceback
+from xml.etree import ElementTree as et
 
 
 def convert_size_to_bytes(size):
@@ -571,7 +572,7 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
     size = convert_size_to_bytes(size)
-    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif') and size > 0:
+    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif', '.svg') and size > 0:
         return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
                                 **kwargs)
     content = get_randname(size)
@@ -623,6 +624,8 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
                                               kwargs.get('min_height', 0) + 100))
         if os.path.splitext(filename)[1] in ('.gif',):
             content = get_random_gif_content(size, width, height)
+        elif os.path.splitext(filename)[1] in ('.svg',):
+            content = get_random_svg_content(size, width, height)
         else:
             content = get_random_jpg_content(size, width, height)
     if not path and return_opened:
@@ -664,7 +667,7 @@ def get_random_img_content(_format, size=10, width=1, height=1):
         output = io.BytesIO()
     image.save(output, format=_format)
     content = output.getvalue()
-    size = size - len(content)
+    size -= len(content)
     if size > 0:
         content += bytearray(size)
     return content
@@ -708,6 +711,28 @@ def get_random_bmp_content(size=10,):
             x = struct.pack('<B', 0)
             padbytes = padbytes + x
         content += padbytes
+    return content
+
+
+def get_random_svg_content(size=10, width=1, height=1):
+    """
+    generates svg content
+    """
+    from StringIO import StringIO
+    size = convert_size_to_bytes(size)
+    doc = et.Element('svg', width=str(width), height=str(height), version='1.1', xmlns='http://www.w3.org/2000/svg')
+    et.SubElement(doc, 'rect', width=str(width), height=str(height),
+                  fill='rgb(%s, %s, %s)' % (random.randint(1, 255), random.randint(1, 255), random.randint(1, 255)))
+    output = StringIO()
+    header = '<?xml version=\"1.0\" standalone=\"no\"?>\n'\
+             '<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n'
+    output.write(header)
+    output.write(et.tostring(doc))
+    content = output.getvalue()
+    size -= len(content)
+    if size > 0:
+        content += '<!-- %s -->' % ('a' * (size - 9))
+    output.close()
     return content
 
 
