@@ -500,11 +500,12 @@ def get_value_for_obj_field(f, filename=None):
     elif mro_names.intersection(['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']) and not f._choices:
         return random.randint(0, 1000)
     elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
-        objects = f.related.parent_model.objects.all()
+        related_model = getattr(f.related, 'parent_model', f.related.model)
+        objects = related_model.objects.all()
         if objects.count() > 0:
             return objects[random.randint(0, objects.count() - 1)] if objects.count() > 1 else objects[0]
         else:
-            return generate_random_obj(f.related.parent_model, filename=filename)
+            return generate_random_obj(related_model, filename=filename)
     elif 'BooleanField' in mro_names:
         return random.randint(0, 1)
     elif mro_names.intersection(['FloatField', 'DecimalField']):
