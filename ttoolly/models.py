@@ -708,7 +708,7 @@ class GlobalTestMixIn(object):
         if isinstance(value, Model):
             value = value.pk
             params_value = int(params_value) if params_value else params_value
-        elif 'ManyRelatedManager' == value.__class__.__name__:
+        elif value.__class__.__name__ in ('ManyRelatedManager', 'GenericRelatedObjectManager'):
             value = [unicode(v) for v in value.values_list('pk', flat=True)]
             value.sort()
             if isinstance(params_value, list):
@@ -787,7 +787,7 @@ class GlobalTestMixIn(object):
     def get_value_for_compare(self, obj, field):
         if not hasattr(obj, field):
             value = None
-        elif getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager'):
+        elif getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager', 'GenericRelatedObjectManager'):
             value = u', '.join([str(v) for v in getattr(obj, field).values_list('pk', flat=True).order_by('pk')])
         else:
             value = getattr(obj, field)
