@@ -394,7 +394,8 @@ class GlobalTestMixIn(object):
             # TODO: refactor me
             if field in one_to_one_fields:
                 cls = obj._meta.get_field_by_name(name)[0]
-                value = cls.model.objects.filter(**{cls.field.name: obj})
+                _model = getattr(cls, 'related_model', cls.model)
+                value = _model.objects.filter(**{cls.field.name: obj})
             else:
                 value = getattr(obj, field)
 
@@ -661,7 +662,8 @@ class GlobalTestMixIn(object):
             all_names = model._meta.get_all_field_names()
             field_name = field.split('-')[0]
             field_name = field_name if field_name in all_names else obj_related_objects.get(field_name, field_name)
-            model = model._meta.get_field_by_name(field_name)[0].model
+            related = model._meta.get_field_by_name(field_name)[0]
+            model = getattr(related, 'related_model', related.model)
             field = field.split('-')[-1]
         return model._meta.get_field_by_name(field)
 
@@ -1297,7 +1299,8 @@ class FormTestMixIn(GlobalTestMixIn):
                     mro_names = set([m.__name__ for m in f.__class__.__mro__])
                     if 'AutoField' in mro_names:
                         continue
-                    if mro_names.intersection(['ForeignKey', ]) and f.related.parent_model == obj.__class__:
+                    if mro_names.intersection(['ForeignKey', ]) and getattr(f.related, 'parent_model',
+                                                                            f.related.model) == obj.__class__:
                         params[f_name] = obj
                     elif f_name in inline_models_dict[set_name]:
                         if getattr(self, 'choice_fields_values', {}).get(set_name + '-0-' + f_name, ''):
@@ -1400,7 +1403,7 @@ class FormTestMixIn(GlobalTestMixIn):
             if field_class_name == 'ForeignKey':
                 next_obj = field.rel.to
             elif field_class_name == 'RelatedObject':
-                next_obj = field.model
+                next_obj = getattr(field, 'related_model', field.model)
             else:
                 if i == 0:  # is_public__exact
                     return
