@@ -776,7 +776,10 @@ def get_url_for_negative(url, args=()):
         return ''.join([item for tup in zip(l, l_args) for item in tup][:-1])
     try:
         res = resolve(url)
-        url = get_url(':'.join([res.namespace, res.url_name]), args=args)
+        if res.url_name:
+            url = get_url(':'.join([res.namespace, res.url_name]), args=args)
+        else:
+            url = get_url(url, args)
     except Resolver404:
         try:
             url = get_url(url, args)
