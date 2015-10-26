@@ -779,7 +779,7 @@ def get_url_for_negative(url, args=()):
         if res.url_name:
             url = get_url(':'.join([res.namespace, res.url_name]), args=args)
         else:
-            url = get_url(url, args)
+            url = repl(url, args)
     except Resolver404:
         try:
             url = get_url(url, args)
