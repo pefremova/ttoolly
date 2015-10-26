@@ -12,6 +12,7 @@ from shutil import rmtree
 import sys
 import warnings
 
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
@@ -669,13 +670,15 @@ class GlobalTestMixIn(object):
 
     def get_object_fields(self, obj):
         object_fields = []
-        for name in obj._meta.get_all_field_names():
-            field = self.get_field_by_name(obj, name)[0]
-
+        if DJANGO_VERSION < (1, 8):
+            fields = [self.get_field_by_name(obj, name)[0] for name in obj._meta.get_all_field_names()]
+        else:
+            fields = obj._meta.get_fields()
+        for field in fields:
             if field.__class__.__name__ == 'RelatedObject':
                 object_fields.append(field.get_accessor_name())
             else:
-                object_fields.append(name)
+                object_fields.append(field.name)
         return object_fields
 
     def get_params_according_to_type(self, value, params_value):
