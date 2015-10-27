@@ -8,6 +8,7 @@ from django.template.context import Context
 from django.test import Client
 from shutil import copyfile, rmtree
 from time import mktime
+import rstr
 
 import chardet
 import io
@@ -211,7 +212,11 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
                 url = '/' + url
             fres = re.findall(r'\(.+?\)', url)
             for fr in fres:
-                url = url.replace(fr, '123')
+                value_for_replace = '123'
+                if (re.findall('>(.+?)\)', fr) and
+                    not set(re.findall('>(.+?)\)', fr)).intersection(['.*', '\d+', '.+', '[^/.]+'])):
+                    value_for_replace = rstr.xeger(fr)
+                url = url.replace(fr, value_for_replace)
             result.append(url)
     result.sort()
     return result
