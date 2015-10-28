@@ -4263,7 +4263,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             try:
                 res = resolve(aa)
                 if '.' in res.url_name:
-                    print '***', aa
                     result += (aa,)
                 else:
                     res_kwargs = {k: v if str(v) != '123' else 1 for k, v in res.kwargs.iteritems()}
@@ -4271,6 +4270,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                     result += ((':'.join([el for el in [res.namespace, res.url_name] if el]),
                                 res_kwargs or res_args),)
             except:
+                result += (aa,)
                 print '!!!!!', res, aa
         return result
 
