@@ -210,7 +210,8 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
         else:
             if not url.startswith('/'):
                 url = '/' + url
-            fres = re.findall(r'\(.+?\)', url)
+            # TODO: переписать регулярку. Должны находиться значения и с вложенными скобками "(/(\w+)/)" и без
+            fres = re.findall(r'\(.+?\)+', url)
             for fr in fres:
                 value_for_replace = '123'
                 if (re.findall('>(.+?)\)', fr) and
