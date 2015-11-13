@@ -1442,7 +1442,6 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.assertEqual(response.status_code, 200)
             except:
                 self.errors_append(text='For filter %s=%s' % (field, value))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('url_list', 'filter_params'))
@@ -1460,7 +1459,6 @@ class FormTestMixIn(GlobalTestMixIn):
                     self.assertEqual(response.status_code, 200)
                 except:
                     self.errors_append(text='For filter %s=%s' % (field, value))
-        self.formatted_assert_errors()
 
 
 class FormAddTestMixIn(FormTestMixIn):
@@ -1519,7 +1517,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_add)
             except:
                 self.errors_append(text='For hidden fields')
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_all_fields_filled_positive(self):
@@ -1553,7 +1550,6 @@ class FormAddTestMixIn(FormTestMixIn):
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('one_of_fields_add',))
@@ -1599,7 +1595,6 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
                     self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_only_required_fields_positive(self):
@@ -1667,7 +1662,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.errors_append(text='For filled field %s from group "%s"' %
                                        (field, str(group)))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_empty_required_fields_negative(self):
@@ -1723,7 +1717,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % str(group))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_without_required_fields_negative(self):
@@ -1779,7 +1772,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % str(group))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_max_length_values_positive(self):
@@ -1818,7 +1810,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' % (field, length, value))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_values_length_gt_max_negative(self):
@@ -1851,7 +1842,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_values_length_lt_min_negative(self):
@@ -1884,7 +1874,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_with_wrong_choices_negative(self):
@@ -1916,7 +1905,6 @@ class FormAddTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('multiselect_fields_add',))
@@ -1948,7 +1936,6 @@ class FormAddTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('unique_fields_add',))
@@ -2026,7 +2013,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2059,7 +2045,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('email_fields_add',))
@@ -2092,7 +2077,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2133,7 +2117,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2167,7 +2150,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2208,7 +2190,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2242,7 +2223,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('disabled_fields_add',))
@@ -2279,7 +2259,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('one_of_fields_add',))
@@ -2376,7 +2355,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_edit)
             except:
                 self.errors_append(text='For hidden fields')
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_all_fields_filled_positive(self):
@@ -2407,7 +2385,6 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('one_of_fields_edit',))
@@ -2450,7 +2427,6 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
                     self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_only_required_fields_positive(self):
@@ -2510,7 +2486,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.errors_append(text='For filled field %s from group "%s"' %
                                        (field, str(group)))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_empty_required_fields_negative(self):
@@ -2564,7 +2539,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % str(group))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_without_required_fields_negative(self):
@@ -2618,7 +2592,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % str(group))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_not_exists_object_negative(self):
@@ -2635,7 +2608,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_max_length_values_positive(self):
@@ -2690,7 +2662,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, length, value))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_values_length_gt_max_negative(self):
@@ -2723,7 +2694,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_values_length_lt_min_negative(self):
@@ -2756,7 +2726,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_with_wrong_choices_negative(self):
@@ -2788,7 +2757,6 @@ class FormEditTestMixIn(FormTestMixIn):
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('multiselect_fields_edit',))
@@ -2819,7 +2787,6 @@ class FormEditTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('unique_fields_edit',))
@@ -2896,7 +2863,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % (field, params[field])
                                                              for field in el if field in params.keys()))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -2929,7 +2895,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('email_fields_edit',))
@@ -2961,7 +2926,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -2995,7 +2959,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -3028,7 +2991,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -3062,7 +3024,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -3095,7 +3056,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('disabled_fields_edit',))
@@ -3127,7 +3087,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('one_of_fields_edit',))
@@ -3182,7 +3141,6 @@ class FormDeleteTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_delete_obj_positive(self):
@@ -3222,7 +3180,6 @@ class FormDeleteTestMixIn(FormTestMixIn):
                              (self.obj.objects.count(), initial_obj_count - len(obj_ids)))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
 
 class FormRemoveTestMixIn(FormTestMixIn):
@@ -3258,7 +3215,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_recovery_obj_positive(self):
@@ -3280,7 +3236,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_delete_not_exists_object_negative(self):
@@ -3299,7 +3254,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_messages(response), [error_message])
             except:
                 self.errors_append(text='For value "%s" error' % value)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_recovery_not_exists_object_negative(self):
@@ -3320,7 +3274,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_messages(response), [error_message])
             except:
                 self.errors_append(text='For value "%s" error' % value)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_in_trash_negative(self):
@@ -3342,7 +3295,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(self.get_all_form_messages(response), [error_message])
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_in_trash_by_edit_url_negative(self):
@@ -3360,7 +3312,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('others_objects',))
@@ -3379,7 +3330,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('others_objects',))
@@ -3397,7 +3347,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('url_list',))
@@ -3421,7 +3370,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertTrue(all([self.get_is_removed(obj) for obj in self.obj.objects.filter(pk__in=obj_ids)]))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_recovery_obj_from_list_positive(self):
@@ -3446,7 +3394,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
                                                                    flat=True)))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
 
 class FileTestMixIn(FormTestMixIn):
@@ -3548,7 +3495,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('max_count')
@@ -3591,7 +3537,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('one_max_size')
@@ -3630,7 +3575,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
             self.del_files()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('sum_max_size')
@@ -3672,7 +3616,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                                    (self.humanize_file_size(current_size), current_size, one_size,
                                     field_dict['max_count'], field))
             self.del_files()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_big_file_positive(self):
@@ -3720,7 +3663,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             self.del_files()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('sum_max_size')
@@ -3769,7 +3711,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                                    (max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
                                     field))
             self.del_files()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_empty_file_negative(self):
@@ -3800,7 +3741,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_some_file_extensions_positive(self):
@@ -3845,7 +3785,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('extensions')
@@ -3884,7 +3823,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_any_files_params(['min_width', 'min_height'])
@@ -3926,7 +3864,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_any_files_params(['min_width', 'min_height'])
@@ -3969,7 +3906,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-        self.formatted_assert_errors()
 
 
 class FormEditFileTestMixIn(FileTestMixIn):
@@ -4016,7 +3952,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('max_count')
@@ -4053,7 +3988,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('one_max_size')
@@ -4094,7 +4028,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
             self.del_files()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('sum_max_size')
@@ -4138,7 +4071,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                                    (self.humanize_file_size(current_size), current_size, one_size,
                                     field_dict['max_count'], field))
             self.del_files()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_big_file_positive(self):
@@ -4181,7 +4113,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             self.del_files()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('sum_max_size')
@@ -4225,7 +4156,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                                    (max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
                                     field))
             self.del_files()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_empty_file_negative(self):
@@ -4258,7 +4188,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_some_file_extensions_positive(self):
@@ -4297,7 +4226,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('extensions')
@@ -4338,7 +4266,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_any_files_params(['min_width', 'min_height'])
@@ -4373,7 +4300,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_any_files_params(['min_width', 'min_height'])
@@ -4415,7 +4341,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-        self.formatted_assert_errors()
 
 
 class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
@@ -4492,7 +4417,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.assertEqual(response.status_code, 200)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with(('links_redirect',))
     def test_unallowed_links_with_redirect(self):
@@ -4509,7 +4433,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.assertRedirects(response, self.get_url(self.redirect_to))
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with(('links_400',))
     def test_unallowed_links_with_400_response(self):
@@ -4526,7 +4449,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.assertEqual(response.status_code, 400)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with('links_401')
     def test_unallowed_links_with_401_response(self):
@@ -4545,7 +4467,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                                  {"detail": u'Учетные данные не были предоставлены.'})
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with(('links_403',))
     def test_unallowed_links_with_403_response(self):
@@ -4562,7 +4483,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.assertEqual(response.status_code, 403)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with('urlpatterns')
     def test_unallowed_links_with_404_response(self):
@@ -4588,7 +4508,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.assertEqual(response.status_code, 404)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with(('links_405',))
     def test_unallowed_links_with_405_response(self):
@@ -4605,7 +4524,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.assertEqual(response.status_code, 405)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
 
 class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
