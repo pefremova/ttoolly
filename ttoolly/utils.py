@@ -118,7 +118,12 @@ def get_all_form_errors(response):
         if not errors:
             errors = {}
         if form.prefix:
-            errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
+            if isinstance(errors, list):
+                errors = {}
+                for n, el in enumerate(errors):
+                    errors.update({'%s-%s-%s' % (form.prefix, n, k): v for k, v in el.iteritems()})
+            else:
+                errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
         return errors
     if not response.context:
         return None
@@ -344,6 +349,10 @@ def get_fields_list_from_response(response):
         for form in getattr(formset, 'forms', formset):
             forms.append(form)
 
+    forms = list(set(forms))
+    for i in xrange(len(forms)):
+        form = forms.pop(0)
+        forms.extend(getattr(form, 'forms', []))
     for form in set(forms):
         _fields = get_form_fields(form)
         fields.extend(_fields['fields'])
