@@ -350,9 +350,14 @@ def get_fields_list_from_response(response):
             forms.append(form)
 
     forms = list(set(forms))
-    for i in xrange(len(forms)):
-        form = forms.pop(0)
-        forms.extend(getattr(form, 'forms', []))
+    n = 0
+    while n < len(forms):
+        _forms = getattr(forms[n], 'forms', [])
+        if _forms:
+            forms.pop(n)
+            forms.extend(_forms)
+        else:
+            n += 1
     for form in set(forms):
         _fields = get_form_fields(form)
         fields.extend(_fields['fields'])
