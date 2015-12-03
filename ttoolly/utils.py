@@ -793,7 +793,7 @@ def get_url_for_negative(url, args=()):
         l.append(url[start:])
         while len(l_args) < len(l):
             l_args.append(l_args[-1])
-        return ''.join([item for tup in zip(l, l_args) for item in tup][:-1])
+        return ''.join([item.decode('utf-8') if isinstance(item, str) else item for tup in zip(l, l_args) for item in tup][:-1])
     try:
         res = resolve(url)
         if res.url_name:
