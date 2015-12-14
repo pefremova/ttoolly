@@ -11,6 +11,7 @@ from time import mktime
 import rstr
 
 import chardet
+import decimal
 import io
 import json
 import os
@@ -535,6 +536,8 @@ def get_value_for_obj_field(f, filename=None):
         value = random.uniform(0, max_value)
         if getattr(f, 'decimal_places', None):
             value = round(value, f.decimal_places)
+        if mro_names.intersection(['DecimalField', ]):
+            value = decimal.Decimal(str(value))
         return value
     elif 'ArrayField' in mro_names:
         if f._choices:
