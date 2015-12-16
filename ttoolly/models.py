@@ -3403,6 +3403,7 @@ class FileTestMixIn(FormTestMixIn):
                        'max_count': 3,
                        'one_max_size': '3Mb',
                        'sum_max_size': '9Mb'}}"""
+    with_files = True
 
     def __init__(self, *args, **kwargs):
         super(FileTestMixIn, self).__init__(*args, **kwargs)
