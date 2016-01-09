@@ -597,6 +597,10 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
     size = convert_size_to_bytes(size)
+    if not getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True) and size != 10: # not default value
+        size_text = '_size_%d_' % size
+        filename = os.path.splitext(filename)[0][:-len(size_text)] + size_text + os.path.splitext(filename)[1]
+
     if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif', '.svg') and size > 0:
         return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
                                 **kwargs)
@@ -897,7 +901,10 @@ def use_in_all_tests(decorator):
 
 
 class FakeSizeMemoryFileUploadHandler(MemoryFileUploadHandler):
+
     def file_complete(self, file_size):
+        if getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True):
+            return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)
         re_size = re.match(r'^.*_size_(\d+)_.*', self.file_name, re.I)
         if re_size:
             file_size = int(re_size.group(1))
