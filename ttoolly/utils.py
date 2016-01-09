@@ -3,6 +3,7 @@ from datetime import datetime, date, time
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
+from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
 from django.template.context import Context
 from django.test import Client
@@ -893,3 +894,11 @@ def use_in_all_tests(decorator):
             decorate(base)
         return cls
     return decorate
+
+
+class FakeSizeMemoryFileUploadHandler(MemoryFileUploadHandler):
+    def file_complete(self, file_size):
+        re_size = re.match(r'^.*_size_(\d+)_.*', self.file_name, re.I)
+        if re_size:
+            file_size = int(re_size.group(1))
+        return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)
