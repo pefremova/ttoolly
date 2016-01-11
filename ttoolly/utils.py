@@ -597,8 +597,9 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
     size = convert_size_to_bytes(size)
-    if not getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True) and size != 10: # not default value
+    if not getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True) and size != 10:  # not default value
         size_text = '_size_%d_' % size
+        size = 10
         filename = os.path.splitext(filename)[0][:-len(size_text)] + size_text + os.path.splitext(filename)[1]
 
     if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif', '.svg') and size > 0:
