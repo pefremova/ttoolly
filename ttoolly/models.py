@@ -12,6 +12,7 @@ from shutil import rmtree
 import sys
 import warnings
 
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
@@ -393,7 +394,8 @@ class GlobalTestMixIn(object):
             # TODO: refactor me
             if field in one_to_one_fields:
                 cls = obj._meta.get_field_by_name(name)[0]
-                value = cls.model.objects.filter(**{cls.field.name: obj})
+                _model = getattr(cls, 'related_model', cls.model)
+                value = _model.objects.filter(**{cls.field.name: obj})
             else:
                 value = getattr(obj, field)
 
@@ -609,6 +611,9 @@ class GlobalTestMixIn(object):
                                     (previous_locals.get('min_width', None) is None or
                                      previous_locals.get('min_height', None))
                                      else u'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals),
+                          'max_sum_size_file': u'Суммарный размер изображений не должен превышать {max_size}.' if
+                                    previous_locals.get('max_size', None) is None
+                                    else  u'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
                           'one_of': u'Оставьте одно из значений в полях {group}.' if
                                     (previous_locals.get('group', None) is None)
                                     else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals)}
@@ -660,7 +665,8 @@ class GlobalTestMixIn(object):
             all_names = model._meta.get_all_field_names()
             field_name = field.split('-')[0]
             field_name = field_name if field_name in all_names else obj_related_objects.get(field_name, field_name)
-            model = model._meta.get_field_by_name(field_name)[0].model
+            related = model._meta.get_field_by_name(field_name)[0]
+            model = getattr(related, 'related_model', related.model)
             field = field.split('-')[-1]
         return model._meta.get_field_by_name(field)
 
@@ -669,13 +675,15 @@ class GlobalTestMixIn(object):
 
     def get_object_fields(self, obj):
         object_fields = []
-        for name in obj._meta.get_all_field_names():
-            field = self.get_field_by_name(obj, name)[0]
-
+        if DJANGO_VERSION < (1, 8):
+            fields = [self.get_field_by_name(obj, name)[0] for name in obj._meta.get_all_field_names()]
+        else:
+            fields = obj._meta.get_fields()
+        for field in fields:
             if field.__class__.__name__ == 'RelatedObject':
                 object_fields.append(field.get_accessor_name())
             else:
-                object_fields.append(name)
+                object_fields.append(field.name)
         return object_fields
 
     def get_params_according_to_type(self, value, params_value):
@@ -708,7 +716,7 @@ class GlobalTestMixIn(object):
         if isinstance(value, Model):
             value = value.pk
             params_value = int(params_value) if params_value else params_value
-        elif 'ManyRelatedManager' == value.__class__.__name__:
+        elif value.__class__.__name__ in ('ManyRelatedManager', 'GenericRelatedObjectManager'):
             value = [unicode(v) for v in value.values_list('pk', flat=True)]
             value.sort()
             if isinstance(params_value, list):
@@ -725,7 +733,7 @@ class GlobalTestMixIn(object):
                     params_value = repr(params_value)
                 params_value = Decimal(params_value)
         elif (set([m.__name__ for m in value.__class__.__mro__]).intersection(['file', 'FieldFile', 'ImageFieldFile'])
-              or isinstance(params_value, file)):
+              or isinstance(params_value, (file, ContentFile))):
             if value:
                 value = value if (isinstance(value, str) or isinstance(value, unicode)) else value.name
                 value = re.sub(r'_[a-zA-Z0-9]+(?=$|\.[\w\d]+$)', '', os.path.basename(value))
@@ -787,7 +795,7 @@ class GlobalTestMixIn(object):
     def get_value_for_compare(self, obj, field):
         if not hasattr(obj, field):
             value = None
-        elif getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager'):
+        elif getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager', 'GenericRelatedObjectManager'):
             value = u', '.join([str(v) for v in getattr(obj, field).values_list('pk', flat=True).order_by('pk')])
         else:
             value = getattr(obj, field)
@@ -1294,7 +1302,8 @@ class FormTestMixIn(GlobalTestMixIn):
                     mro_names = set([m.__name__ for m in f.__class__.__mro__])
                     if 'AutoField' in mro_names:
                         continue
-                    if mro_names.intersection(['ForeignKey', ]) and f.related.parent_model == obj.__class__:
+                    if mro_names.intersection(['ForeignKey', ]) and getattr(f.related, 'parent_model',
+                                                                            f.related.model) == obj.__class__:
                         params[f_name] = obj
                     elif f_name in inline_models_dict[set_name]:
                         if getattr(self, 'choice_fields_values', {}).get(set_name + '-0-' + f_name, ''):
@@ -1397,7 +1406,7 @@ class FormTestMixIn(GlobalTestMixIn):
             if field_class_name == 'ForeignKey':
                 next_obj = field.rel.to
             elif field_class_name == 'RelatedObject':
-                next_obj = field.model
+                next_obj = getattr(field, 'related_model', field.model)
             else:
                 if i == 0:  # is_public__exact
                     return
@@ -1433,7 +1442,6 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.assertEqual(response.status_code, 200)
             except:
                 self.errors_append(text='For filter %s=%s' % (field, value))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('url_list', 'filter_params'))
@@ -1451,7 +1459,6 @@ class FormTestMixIn(GlobalTestMixIn):
                     self.assertEqual(response.status_code, 200)
                 except:
                     self.errors_append(text='For filter %s=%s' % (field, value))
-        self.formatted_assert_errors()
 
 
 class FormAddTestMixIn(FormTestMixIn):
@@ -1510,7 +1517,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_add)
             except:
                 self.errors_append(text='For hidden fields')
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_all_fields_filled_positive(self):
@@ -1544,7 +1550,6 @@ class FormAddTestMixIn(FormTestMixIn):
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('one_of_fields_add',))
@@ -1590,7 +1595,6 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
                     self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_only_required_fields_positive(self):
@@ -1604,7 +1608,7 @@ class FormAddTestMixIn(FormTestMixIn):
         required_fields = self.required_fields_add + \
                           self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
-        for field in set(self.default_params_add.keys()).difference(required_fields):
+        for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params[field] not in (None, '') else \
@@ -1640,7 +1644,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = self.default_params_add[field] if params[field] not in (None, '') else \
+                params[field] = params[field] if params[field] not in (None, '') else \
                         self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
                                                  dict(self.max_fields_length).get(field, 10)), field)
                 try:
@@ -1658,7 +1662,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.errors_append(text='For filled field %s from group "%s"' %
                                        (field, str(group)))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_empty_required_fields_negative(self):
@@ -1714,7 +1717,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % str(group))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_without_required_fields_negative(self):
@@ -1770,7 +1772,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % str(group))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_max_length_values_positive(self):
@@ -1780,7 +1781,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         new_object = None
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             """if unique fields"""
             if new_object:
@@ -1809,7 +1810,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' % (field, length, value))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_values_length_gt_max_negative(self):
@@ -1819,7 +1819,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'max_length'
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -1842,7 +1842,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_values_length_lt_min_negative(self):
@@ -1852,7 +1851,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'min_length'
         for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.default_params_add.keys() and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -1875,7 +1874,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_with_wrong_choices_negative(self):
@@ -1907,7 +1905,6 @@ class FormAddTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('multiselect_fields_add',))
@@ -1939,7 +1936,6 @@ class FormAddTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('unique_fields_add',))
@@ -1961,7 +1957,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
                 params.update(get_captcha_codes())
             for el_field in el:
-                if el_field not in self.default_params_add.keys():
+                if el_field not in self.all_fields_add:
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, u'')[0]
@@ -1969,6 +1965,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
+
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(self.obj.objects.count(), initial_obj_count,
                                  u'Objects count after wrong add = %s (expect %s)' %
@@ -1995,7 +1992,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
                 params.update(get_captcha_codes())
             for el_field in el:
-                if el_field not in self.default_params_add.keys():
+                if el_field not in self.all_fields_add:
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, u'')[0]
@@ -2016,7 +2013,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2049,7 +2045,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('email_fields_add',))
@@ -2082,7 +2077,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2123,7 +2117,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2157,7 +2150,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2198,7 +2190,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2232,7 +2223,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('disabled_fields_add',))
@@ -2242,7 +2232,7 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Try add obj with filled disabled fields
         """
         new_object = None
-        for field in self.disabled_fields_edit:
+        for field in self.disabled_fields_add:
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
@@ -2269,7 +2259,6 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('one_of_fields_add',))
@@ -2366,7 +2355,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_edit)
             except:
                 self.errors_append(text='For hidden fields')
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_all_fields_filled_positive(self):
@@ -2397,7 +2385,6 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('one_of_fields_edit',))
@@ -2440,7 +2427,6 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
                     self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_only_required_fields_positive(self):
@@ -2455,7 +2441,7 @@ class FormEditTestMixIn(FormTestMixIn):
             params.update(get_captcha_codes())
         required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
         self.update_params(params)
-        for field in set(self.default_params_edit.keys()).difference(required_fields):
+        for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params[field] not in (None, '') else \
@@ -2500,7 +2486,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.errors_append(text='For filled field %s from group "%s"' %
                                        (field, str(group)))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_empty_required_fields_negative(self):
@@ -2554,7 +2539,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % str(group))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_without_required_fields_negative(self):
@@ -2608,7 +2592,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % str(group))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_not_exists_object_negative(self):
@@ -2625,7 +2608,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_max_length_values_positive(self):
@@ -2634,7 +2616,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Edit object: fill all fields with maximum length values
         """
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -2680,7 +2662,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, length, value))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_values_length_gt_max_negative(self):
@@ -2690,7 +2671,7 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'max_length'
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -2713,7 +2694,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_values_length_lt_min_negative(self):
@@ -2723,7 +2703,7 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'min_length'
         for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.default_params_edit.keys() and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -2746,7 +2726,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_with_wrong_choices_negative(self):
@@ -2778,7 +2757,6 @@ class FormEditTestMixIn(FormTestMixIn):
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('multiselect_fields_edit',))
@@ -2809,7 +2787,6 @@ class FormEditTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('unique_fields_edit',))
@@ -2831,7 +2808,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                 params.update(get_captcha_codes())
             for el_field in el:
-                if el_field not in self.default_params_edit.keys():
+                if el_field not in self.all_fields_edit:
                     """only if user can change this field"""
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
@@ -2865,7 +2842,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                 params.update(get_captcha_codes())
             for el_field in el:
-                if el_field not in self.default_params_edit.keys():
+                if el_field not in self.all_fields_edit:
                     """only if user can change this field"""
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
@@ -2886,7 +2863,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % (field, params[field])
                                                              for field in el if field in params.keys()))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -2919,7 +2895,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('email_fields_edit',))
@@ -2951,7 +2926,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -2985,7 +2959,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -3018,7 +2991,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -3052,7 +3024,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -3085,7 +3056,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('disabled_fields_edit',))
@@ -3117,7 +3087,6 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('one_of_fields_edit',))
@@ -3172,7 +3141,6 @@ class FormDeleteTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_delete_obj_positive(self):
@@ -3212,7 +3180,6 @@ class FormDeleteTestMixIn(FormTestMixIn):
                              (self.obj.objects.count(), initial_obj_count - len(obj_ids)))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
 
 class FormRemoveTestMixIn(FormTestMixIn):
@@ -3248,7 +3215,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_recovery_obj_positive(self):
@@ -3270,7 +3236,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_delete_not_exists_object_negative(self):
@@ -3289,7 +3254,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_messages(response), [error_message])
             except:
                 self.errors_append(text='For value "%s" error' % value)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_recovery_not_exists_object_negative(self):
@@ -3310,7 +3274,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_messages(response), [error_message])
             except:
                 self.errors_append(text='For value "%s" error' % value)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_in_trash_negative(self):
@@ -3332,7 +3295,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(self.get_all_form_messages(response), [error_message])
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_in_trash_by_edit_url_negative(self):
@@ -3350,7 +3312,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('others_objects',))
@@ -3369,7 +3330,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('others_objects',))
@@ -3387,7 +3347,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with(('url_list',))
@@ -3411,7 +3370,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertTrue(all([self.get_is_removed(obj) for obj in self.obj.objects.filter(pk__in=obj_ids)]))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_recovery_obj_from_list_positive(self):
@@ -3436,7 +3394,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
                                                                    flat=True)))
         except:
             self.errors_append()
-        self.formatted_assert_errors()
 
 
 class FileTestMixIn(FormTestMixIn):
@@ -3444,7 +3401,9 @@ class FileTestMixIn(FormTestMixIn):
     file_fields_params = None
     """{'field_name': {'extensions': ('jpg', 'txt'),
                        'max_count': 3,
-                       'one_max_size': '3Mb'}}"""
+                       'one_max_size': '3Mb',
+                       'sum_max_size': '9Mb'}}"""
+    with_files = True
 
     def __init__(self, *args, **kwargs):
         super(FileTestMixIn, self).__init__(*args, **kwargs)
@@ -3460,10 +3419,11 @@ def only_with_files_params(param_names=None):
         param_names = [param_names, ]
     def decorator(fn):
         def tmp(self):
+            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in  fn.__name__ else '_edit')
             def check_params(field_dict, param_names):
                 return all([param_name in field_dict.keys() for param_name in param_names])
-            if any([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
-                if not all([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
+                if not all([check_params(field_dict, param_names) for field_dict in  getattr(self, params_dict_name).values()]):
                     warnings.warn('%s not set for all fields' % str(param_names))
                 return fn(self)
             else:
@@ -3479,10 +3439,11 @@ def only_with_any_files_params(param_names=None):
 
     def decorator(fn):
         def tmp(self):
+            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in  fn.__name__ else '_edit')
             def check_params(field_dict, param_names):
                 return any([param_name in field_dict.keys() for param_name in param_names])
-            if any([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
-                if not all([check_params(field_dict, param_names) for field_dict in self.file_fields_params.values()]):
+            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
+                if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
                     warnings.warn('%s not set for all fields' % str(param_names))
                 return fn(self)
             else:
@@ -3494,6 +3455,13 @@ def only_with_any_files_params(param_names=None):
 
 class FormAddFileTestMixIn(FileTestMixIn):
 
+    file_fields_params_add = None
+
+    def __init__(self, *args, **kwargs):
+        super(FormAddFileTestMixIn, self).__init__(*args, **kwargs)
+        if self.file_fields_params_add is None:
+            self.file_fields_params_add = self.deepcopy(self.file_fields_params)
+
     @only_with_obj
     @only_with_files_params('max_count')
     def test_add_object_many_files_negative(self):
@@ -3502,7 +3470,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with files count > max files count
         """
         message_type = 'max_count_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
             sp = transaction.savepoint()
@@ -3528,7 +3496,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('max_count')
@@ -3538,7 +3505,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with photos count == max files count
         """
         new_object = None
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
             sp = transaction.savepoint()
@@ -3571,7 +3538,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('one_max_size')
@@ -3581,7 +3547,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with file size > max one file size
         """
         message_type = 'max_size_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             one_max_size = field_dict.get('one_max_size', None)
             if not one_max_size:
@@ -3610,7 +3576,47 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
             self.del_files()
-        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('sum_max_size')
+    def test_add_object_big_summary_file_size_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with summary files size > max summary files size
+        """
+        message_type = 'max_sum_size_file'
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            sp = transaction.savepoint()
+            sum_max_size = field_dict.get('sum_max_size', None)
+            if not sum_max_size:
+                continue
+            try:
+                initial_obj_count = self.obj.objects.count()
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                size = convert_size_to_bytes(sum_max_size)
+                current_size = size + 100
+                max_size = self.humanize_file_size(size)
+                one_size = current_size / field_dict['max_count']
+                params[field] = []
+                for _ in xrange(field_dict['max_count']):
+                    f = get_random_file(size=one_size, **field_dict)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assertEqual(self.obj.objects.count(), initial_obj_count,
+                                 u'Objects count after wrong add = %s (expect %s)' %
+                                 (self.obj.objects.count(), initial_obj_count))
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
+                                   (self.humanize_file_size(current_size), current_size, one_size,
+                                    field_dict['max_count'], field))
+            self.del_files()
 
     @only_with_obj
     def test_add_object_big_file_positive(self):
@@ -3619,7 +3625,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with file size == max one file size
         """
         new_object = None
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
@@ -3636,7 +3642,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 max_size = self.humanize_file_size(size)
                 if self.is_file_list(field):
                     params[field] = []
-                    for _ in xrange(field_dict['max_count']):
+                    for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
                         f = get_random_file(size=size, **field_dict)
                         self.files.append(f)
                         params[field].append(f)
@@ -3658,7 +3664,54 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             self.del_files()
-        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('sum_max_size')
+    def test_add_object_big_summary_file_size_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with summary files size == max summary files size
+        """
+        new_object = None
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            sp = transaction.savepoint()
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            sum_max_size = field_dict.get('sum_max_size', None)
+            if not sum_max_size:
+                continue
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                size = convert_size_to_bytes(sum_max_size)
+                max_size = self.humanize_file_size(size)
+                one_size = size / field_dict['max_count']
+                params[field] = []
+                for _ in xrange(field_dict['max_count']):
+                    f = get_random_file(size=one_size, **field_dict)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
+                                 u'Objects count after add = %s (expect %s)' %
+                                 (self.obj.objects.count(), initial_obj_count + 1))
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
+                                   (max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
+                                    field))
+            self.del_files()
 
     @only_with_obj
     def test_add_object_empty_file_negative(self):
@@ -3667,7 +3720,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with file size = 0M
         """
         message_type = 'empty_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             try:
                 initial_obj_count = self.obj.objects.count()
@@ -3689,7 +3742,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_add_object_some_file_extensions_positive(self):
@@ -3698,7 +3750,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with some available extensions
         """
         new_object = None
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 extensions = (get_randname(3, 'wd'), '')
@@ -3734,7 +3786,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('extensions')
@@ -3744,7 +3795,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with wrong extensions
         """
         message_type = 'wrong_extension'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 continue
@@ -3773,7 +3824,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_any_files_params(['min_width', 'min_height'])
@@ -3783,7 +3833,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with minimum image file dimensions
         """
         new_object = None
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
@@ -3815,7 +3865,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_any_files_params(['min_width', 'min_height'])
@@ -3825,7 +3874,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with image file dimensions < minimum
         """
         message_type = 'min_dimensions'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_add.iteritems():
             is_file_list = self.is_file_list(field)
             values = ()
             min_width = field_dict.get('min_width', None)
@@ -3858,10 +3907,16 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-        self.formatted_assert_errors()
 
 
 class FormEditFileTestMixIn(FileTestMixIn):
+
+    file_fields_params_edit = None
+
+    def __init__(self, *args, **kwargs):
+        super(FormEditFileTestMixIn, self).__init__(*args, **kwargs)
+        if self.file_fields_params_edit is None:
+            self.file_fields_params_edit = self.deepcopy(self.file_fields_params)
 
     @only_with_obj
     @only_with_files_params('max_count')
@@ -3871,7 +3926,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Try edit obj with files count > max files count
         """
         message_type = 'max_count_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
             sp = transaction.savepoint()
@@ -3898,7 +3953,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('max_count')
@@ -3907,7 +3961,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Try edit obj with photos count == max files count
         """
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
             sp = transaction.savepoint()
@@ -3935,7 +3989,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('one_max_size')
@@ -3945,7 +3998,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Try edit obj with file size > max one file size
         """
         message_type = 'max_size_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             one_max_size = field_dict.get('one_max_size', None)
             if not one_max_size:
@@ -3976,7 +4029,49 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
             self.del_files()
-        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('sum_max_size')
+    def test_edit_object_big_summary_file_size_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with summary files size > max summary file size
+        """
+        message_type = 'max_sum_size_file'
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            sp = transaction.savepoint()
+            sum_max_size = field_dict.get('sum_max_size', None)
+            if not sum_max_size:
+                continue
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                size = convert_size_to_bytes(sum_max_size)
+                current_size = size + 100
+                max_size = self.humanize_file_size(size)
+                one_size = current_size / field_dict['max_count']
+                params[field] = []
+                for _ in xrange(field_dict['max_count']):
+                    f = get_random_file(size=one_size, **field_dict)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_obj, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
+                                   (self.humanize_file_size(current_size), current_size, one_size,
+                                    field_dict['max_count'], field))
+            self.del_files()
 
     @only_with_obj
     def test_edit_object_big_file_positive(self):
@@ -3984,7 +4079,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Edit obj with file size == max one file size
         """
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             one_max_size = field_dict.get('one_max_size', '10M')
             try:
@@ -3999,7 +4094,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 max_size = self.humanize_file_size(size)
                 if self.is_file_list(field):
                     params[field] = []
-                    for _ in xrange(field_dict['max_count']):
+                    for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
                         f = get_random_file(size=size, **field_dict)
                         self.files.append(f)
                         params[field].append(f)
@@ -4019,7 +4114,49 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             self.del_files()
-        self.formatted_assert_errors()
+
+    @only_with_obj
+    @only_with_files_params('sum_max_size')
+    def test_edit_object_big_summary_file_size_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with summary files size == max summary files size
+        """
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            sp = transaction.savepoint()
+            sum_max_size = field_dict.get('sum_max_size', None)
+            if not sum_max_size:
+                continue
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                size = convert_size_to_bytes(sum_max_size)
+                max_size = self.humanize_file_size(size)
+                one_size = size / field_dict['max_count']
+                params[field] = []
+                for _ in xrange(field_dict['max_count']):
+                    f = get_random_file(size=one_size, **field_dict)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
+                                   (max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
+                                    field))
+            self.del_files()
 
     @only_with_obj
     def test_edit_object_empty_file_negative(self):
@@ -4028,7 +4165,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Try edit obj with file size = 0M
         """
         message_type = 'empty_file'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -4052,7 +4189,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
-        self.formatted_assert_errors()
 
     @only_with_obj
     def test_edit_object_some_file_extensions_positive(self):
@@ -4060,7 +4196,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Edit obj with some available extensions
         """
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
@@ -4091,7 +4227,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_files_params('extensions')
@@ -4101,7 +4236,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Edit obj with wrong extensions
         """
         message_type = 'wrong_extension'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
                 continue
@@ -4132,7 +4267,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_any_files_params(['min_width', 'min_height'])
@@ -4141,7 +4275,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Edit obj with minimum image file dimensions
         """
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -4167,7 +4301,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-        self.formatted_assert_errors()
 
     @only_with_obj
     @only_with_any_files_params(['min_width', 'min_height'])
@@ -4177,7 +4310,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Edit obj with image file dimensions < minimum
         """
         message_type = 'min_dimensions'
-        for field, field_dict in self.file_fields_params.iteritems():
+        for field, field_dict in self.file_fields_params_edit.iteritems():
             is_file_list = self.is_file_list(field)
             values = ()
             min_width = field_dict.get('min_width', None)
@@ -4209,7 +4342,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-        self.formatted_assert_errors()
 
 
 class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
@@ -4226,6 +4358,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     urlpatterns = None
     username = ''
 
+    @property
+    def get_method(self):
+        return getattr(self.client, self.method.lower())
+
     def get_urls(self):
         # FIXME:
         _urls = set(get_all_urls(self.urlpatterns))
@@ -4236,7 +4372,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             try:
                 res = resolve(aa)
                 if '.' in res.url_name:
-                    print '***', aa
                     result += (aa,)
                 else:
                     res_kwargs = {k: v if str(v) != '123' else 1 for k, v in res.kwargs.iteritems()}
@@ -4244,6 +4379,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                     result += ((':'.join([el for el in [res.namespace, res.url_name] if el]),
                                 res_kwargs or res_args),)
             except:
+                result += (aa,)
                 print '!!!!!', res, aa
         return result
 
@@ -4278,11 +4414,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, **self.additional_params)
+                response = self.get_method(url, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with(('links_redirect',))
     def test_unallowed_links_with_redirect(self):
@@ -4295,11 +4430,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertRedirects(response, self.get_url(self.redirect_to))
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with(('links_400',))
     def test_unallowed_links_with_400_response(self):
@@ -4312,11 +4446,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 400)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with('links_401')
     def test_unallowed_links_with_401_response(self):
@@ -4329,13 +4462,12 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 401)
                 self.assertEqual(self.get_all_form_errors(response),
                                  {"detail": u'Учетные данные не были предоставлены.'})
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with(('links_403',))
     def test_unallowed_links_with_403_response(self):
@@ -4348,11 +4480,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 403)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with('urlpatterns')
     def test_unallowed_links_with_404_response(self):
@@ -4374,11 +4505,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 else:
                     url = self.get_url(url_name, args=(), kwargs=args)
                 self.login()
-                response = self.client.get(url)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
     @only_with(('links_405',))
     def test_unallowed_links_with_405_response(self):
@@ -4391,11 +4521,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             url_name, args, custom_message = self._get_values(el)
             url = self.get_url(url_name, args)
             try:
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 405)
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
-        self.formatted_assert_errors()
 
 
 class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
@@ -4417,7 +4546,7 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
             for db in databases:
                 call_command('flush', verbosity=0, interactive=False, database=db)
 
-                if hasattr(self, 'fixtures'):
+                if getattr(self, 'fixtures', None):
                     # We have to use this slightly awkward syntax due to the fact
                     # that we're using *args and **kwargs together.
                     call_command('loaddata', *self.fixtures,

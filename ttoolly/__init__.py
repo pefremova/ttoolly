@@ -10,3 +10,6 @@ if getattr(settings, 'COLORIZE_TESTS', False):
             return "\x1B[38;5;230m" + str(test) + "\x1B[0m"
 
     TextTestResult.getDescription = _getDescription
+
+
+settings.FILE_UPLOAD_HANDLERS = ('ttoolly.utils.FakeSizeMemoryFileUploadHandler',) + settings.FILE_UPLOAD_HANDLERS

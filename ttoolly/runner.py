@@ -30,11 +30,15 @@ class RegexpTestSuiteRunner(DjRunner):
                 if 'DjangoTestSuiteRunner' in self.mro_names:
                     if len(label.split('.')) > 2:
                         text_for_re += '$'
+                    else:
+                        text_for_re += '\..+$'
                     app = get_app(label.split('.')[0])
                     text_for_re = text_for_re.replace(label.split('.')[0], app.__name__.split('.models')[0])
                 elif 'DiscoverRunner' in self.mro_names:
                     if len(label.split('.')) > 3:
                         text_for_re += '$'
+                    else:
+                        text_for_re += '\..+$'
                 full_re.append(text_for_re)
             full_re = '(^' + ')|(^'.join(full_re) + ')' if full_re else ''
             if 'DjangoTestSuiteRunner' in self.mro_names:

@@ -3,13 +3,16 @@ from datetime import datetime, date, time
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
+from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
 from django.template.context import Context
 from django.test import Client
 from shutil import copyfile, rmtree
 from time import mktime
+import rstr
 
 import chardet
+import decimal
 import io
 import json
 import os
@@ -19,6 +22,7 @@ import string
 import struct
 import sys
 import traceback
+from xml.etree import ElementTree as et
 
 
 def convert_size_to_bytes(size):
@@ -116,7 +120,12 @@ def get_all_form_errors(response):
         if not errors:
             errors = {}
         if form.prefix:
-            errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
+            if isinstance(errors, list):
+                errors = {}
+                for n, el in enumerate(errors):
+                    errors.update({'%s-%s-%s' % (form.prefix, n, k): v for k, v in el.iteritems()})
+            else:
+                errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
         return errors
     if not response.context:
         return None
@@ -170,20 +179,25 @@ def get_all_form_errors(response):
     fs_keys = []
     for key in all_keys:
         value = response.context[key]
-        mro_names = [cn.__name__ for cn in value.__class__.__mro__]
+        mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
         if 'BaseFormSet' in mro_names:
             fs_keys.append(key)
         elif 'BaseForm' in mro_names:
             forms.append(value)
 
     for form in set(forms):
-        form_errors.update(get_errors(form))
+        if form:
+            form_errors.update(get_errors(form))
     for fs_key in fs_keys:
         formset = response.context[fs_key]
+        if not formset:
+            continue
         non_form_errors = formset._non_form_errors
         if non_form_errors:
             form_errors.update({'%s-__all__' % formset.prefix: non_form_errors})
         for form in getattr(formset, 'forms', formset):
+            if not form:
+                continue
             errors = form._errors
             if errors:
                 for key, value in errors.iteritems():
@@ -203,9 +217,14 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
         else:
             if not url.startswith('/'):
                 url = '/' + url
-            fres = re.findall(r'\(.+?\)', url)
+            # TODO: переписать регулярку. Должны находиться значения и с вложенными скобками "(/(\w+)/)" и без
+            fres = re.findall(r'\(.+?\)+', url)
             for fr in fres:
-                url = url.replace(fr, '123')
+                value_for_replace = '123'
+                if (re.findall('>(.+?)\)', fr) and
+                    not set(re.findall('>(.+?)\)', fr)).intersection(['.*', '\d+', '.+', '[^/.]+'])):
+                    value_for_replace = rstr.xeger(fr)
+                url = url.replace(fr, value_for_replace)
             result.append(url)
     result.sort()
     return result
@@ -321,7 +340,7 @@ def get_fields_list_from_response(response):
     fs_keys = []
     for key in all_keys:
         value = response.context[key]
-        mro_names = [cn.__name__ for cn in value.__class__.__mro__]
+        mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
         if 'BaseFormSet' in mro_names:
             fs_keys.append(key)
         elif 'BaseForm' in mro_names:
@@ -332,6 +351,15 @@ def get_fields_list_from_response(response):
         for form in getattr(formset, 'forms', formset):
             forms.append(form)
 
+    forms = list(set(forms))
+    n = 0
+    while n < len(forms):
+        _forms = getattr(forms[n], 'forms', [])
+        if _forms:
+            forms.pop(n)
+            forms.extend(_forms)
+        else:
+            n += 1
     for form in set(forms):
         _fields = get_form_fields(form)
         fields.extend(_fields['fields'])
@@ -487,16 +515,19 @@ def get_value_for_obj_field(f, filename=None):
             return get_randname_from_file(filename, length)
         else:
             return get_randname(length)
-    elif 'DateField' in mro_names:
+    elif 'DateTimeField' in mro_names:
         return datetime.now()
+    elif 'DateField' in mro_names:
+        return date.today()
     elif mro_names.intersection(['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']) and not f._choices:
         return random.randint(0, 1000)
     elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
-        objects = f.related.parent_model.objects.all()
+        related_model = getattr(f.related, 'parent_model', f.related.model)
+        objects = related_model.objects.all()
         if objects.count() > 0:
             return objects[random.randint(0, objects.count() - 1)] if objects.count() > 1 else objects[0]
         else:
-            return generate_random_obj(f.related.parent_model, filename=filename)
+            return generate_random_obj(related_model, filename=filename)
     elif 'BooleanField' in mro_names:
         return random.randint(0, 1)
     elif mro_names.intersection(['FloatField', 'DecimalField']):
@@ -506,6 +537,8 @@ def get_value_for_obj_field(f, filename=None):
         value = random.uniform(0, max_value)
         if getattr(f, 'decimal_places', None):
             value = round(value, f.decimal_places)
+        if mro_names.intersection(['DecimalField', ]):
+            value = decimal.Decimal(str(value))
         return value
     elif 'ArrayField' in mro_names:
         if f._choices:
@@ -564,7 +597,12 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
     size = convert_size_to_bytes(size)
-    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png',) and size > 0:
+    if not getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True) and size != 10:  # not default value
+        size_text = '_size_%d_' % size
+        size = 10
+        filename = os.path.splitext(filename)[0][:-len(size_text)] + size_text + os.path.splitext(filename)[1]
+
+    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif', '.svg') and size > 0:
         return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
                                 **kwargs)
     content = get_randname(size)
@@ -605,7 +643,7 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
         extensions = kwargs.get('extensions', ())
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
-    if os.path.splitext(filename)[1] in ('.bmp'):
+    if os.path.splitext(filename)[1] in ('.bmp',):
         content = get_random_bmp_content(size)
     else:
         width = width or random.randint(kwargs.get('min_width', 1),
@@ -614,7 +652,12 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
         height = height or random.randint(kwargs.get('min_height', 1),
                                           max(kwargs.get('max_height', 100),
                                               kwargs.get('min_height', 0) + 100))
-        content = get_random_jpg_content(size, width, height)
+        if os.path.splitext(filename)[1] in ('.gif',):
+            content = get_random_gif_content(size, width, height)
+        elif os.path.splitext(filename)[1] in ('.svg',):
+            content = get_random_svg_content(size, width, height)
+        else:
+            content = get_random_jpg_content(size, width, height)
     if not path and return_opened:
         return ContentFile(content, filename)
     f = open(path, 'ab')
@@ -640,7 +683,7 @@ def get_random_image_contentfile(size=10, width=1, height=1, filename=None):
     return ContentFile(data, filename)
 
 
-def get_random_jpg_content(size=10, width=1, height=1):
+def get_random_img_content(_format, size=10, width=1, height=1):
     try:
         import Image
     except ImportError:
@@ -652,12 +695,20 @@ def get_random_jpg_content(size=10, width=1, height=1):
         output = StringIO()
     else:
         output = io.BytesIO()
-    image.save(output, format='JPEG')
+    image.save(output, format=_format)
     content = output.getvalue()
-    size = size - len(content)
+    size -= len(content)
     if size > 0:
         content += bytearray(size)
     return content
+
+
+def get_random_gif_content(size=10, width=1, height=1):
+    return get_random_img_content('GIF', size, width, height)
+
+
+def get_random_jpg_content(size=10, width=1, height=1):
+    return get_random_img_content('JPEG', size, width, height)
 
 
 def generate_random_bmp_image_with_size(*args, **kwargs):
@@ -690,6 +741,28 @@ def get_random_bmp_content(size=10,):
             x = struct.pack('<B', 0)
             padbytes = padbytes + x
         content += padbytes
+    return content
+
+
+def get_random_svg_content(size=10, width=1, height=1):
+    """
+    generates svg content
+    """
+    from StringIO import StringIO
+    size = convert_size_to_bytes(size)
+    doc = et.Element('svg', width=str(width), height=str(height), version='1.1', xmlns='http://www.w3.org/2000/svg')
+    et.SubElement(doc, 'rect', width=str(width), height=str(height),
+                  fill='rgb(%s, %s, %s)' % (random.randint(1, 255), random.randint(1, 255), random.randint(1, 255)))
+    output = StringIO()
+    header = '<?xml version=\"1.0\" standalone=\"no\"?>\n'\
+             '<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n'
+    output.write(header)
+    output.write(et.tostring(doc))
+    content = output.getvalue()
+    size -= len(content)
+    if size > 0:
+        content += '<!-- %s -->' % ('a' * (size - 9))
+    output.close()
     return content
 
 
@@ -729,10 +802,13 @@ def get_url_for_negative(url, args=()):
         l.append(url[start:])
         while len(l_args) < len(l):
             l_args.append(l_args[-1])
-        return ''.join([item for tup in zip(l, l_args) for item in tup][:-1])
+        return ''.join([item.decode('utf-8') if isinstance(item, str) else item for tup in zip(l, l_args) for item in tup][:-1])
     try:
         res = resolve(url)
-        url = get_url(':'.join([res.namespace, res.url_name]), args=args)
+        if res.url_name:
+            url = get_url(':'.join([res.namespace, res.url_name]), args=args)
+        else:
+            url = repl(url, args)
     except Resolver404:
         try:
             url = get_url(url, args)
@@ -765,7 +841,7 @@ def prepare_custom_file_for_tests(file_path, filename=''):
     if filename:
         copyfile(filename, file_path)
         return
-    elif os.path.splitext(file_path)[1].lower() in ('.jpg', '.jpeg', 'png', '.bmp'):
+    elif os.path.splitext(file_path)[1].lower() in ('.jpg', '.jpeg', 'png', '.bmp', '.gif'):
         get_random_image(path=file_path, return_opened=False)
         return
     else:
@@ -773,12 +849,16 @@ def prepare_custom_file_for_tests(file_path, filename=''):
         return
 
 
-def prepare_file_for_tests(model_name, field, filename=''):
+def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
     mro_names = [m.__name__ for m in model_name._meta.get_field_by_name(field)[0].__class__.__mro__]
     for obj in model_name.objects.all():
         file_from_obj = getattr(obj, field, None)
         if file_from_obj:
             full_path = os.path.join(settings.MEDIA_ROOT, file_from_obj.path)
+            if os.path.exists(full_path):
+                continue
+            if verbosity > 2:
+                print 'Generate file for path %s' % full_path
             directory = os.path.dirname(full_path)
             if not os.path.exists(directory):
                 os.makedirs(directory)
@@ -819,3 +899,14 @@ def use_in_all_tests(decorator):
             decorate(base)
         return cls
     return decorate
+
+
+class FakeSizeMemoryFileUploadHandler(MemoryFileUploadHandler):
+
+    def file_complete(self, file_size):
+        if getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True):
+            return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)
+        re_size = re.match(r'^.*_size_(\d+)_.*', self.file_name, re.I)
+        if re_size:
+            file_size = int(re_size.group(1))
+        return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)
