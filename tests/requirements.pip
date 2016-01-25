@@ -2,3 +2,5 @@ Django==1.6
 lxml
 psycopg2
 chardet
+Pillow
+rstr
