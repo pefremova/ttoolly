@@ -257,7 +257,7 @@ class GlobalTestMixIn(object):
                     d2_value = d2[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
                                            (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) else repr(d2[key])
                     text.append('%s[%s]: %s != %s' %
-                                (parent_key if parent_key else u'',
+                                (parent_key if parent_key else '',
                                  key, d1_value, d2_value))
         res = '\n'.join(text)
         if not isinstance(res, unicode):
