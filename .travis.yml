@@ -14,4 +14,4 @@ install:
 after_script:
   coveralls
 script: 
-  coverage run tests/tests.py
+  coverage run tests/tests.py --source=ttoolly
