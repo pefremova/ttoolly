@@ -179,8 +179,10 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                       ({'qwe': {'a': 1, 'b': 1}}, {'qwe': {'a': 1}}, "[qwe]:\n  Not in second dict: ['b']"),
                                       ({'qwe': {'a': 1, 'b': 2}}, {'qwe': {'a': 2, 'b': 1}}, "[qwe]:\n  [qwe][a]: 1 != 2\n  [qwe][b]: 2 != 1"),
                                       ({'qwe': 'q', 'z': ''}, {'qwe': 1, }, "Not in second dict: ['z']\n[qwe]: 'q' != 1"),
-                                      ({'qwe': u'й'}, {'qwe': u'йцу'}, u"[qwe]: 'й' != 'йцу'"),
-                                      ({'qwe': 'й'}, {'qwe': 'йцу'}, "[qwe]: 'й' != 'йцу'"),
+                                      ({'qwe': u'й'}, {'qwe': u'йцу'}, u"[qwe]: й != йцу"),
+                                      ({'qwe': 'й'}, {'qwe': 'йцу'}, u"[qwe]: й != йцу"),
+                                      ({'qwe': u'й'}, {'qwe': 'йцу'}, u"[qwe]: %s != %s" % (repr(u'й'), repr('йцу'))),
+                                      ({'qwe': 'й'}, {'qwe': u'йцу'}, u"[qwe]: %s != %s" % (repr('й'), repr(u'йцу'))),
                                       ({'qwe': ''}, {}, "Not in second dict: ['qwe']"),
                                       ({}, {'qwe': ''}, "Not in first dict: ['qwe']")):
             with self.assertRaises(AssertionError) as ar:
@@ -202,8 +204,10 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                       ({'qwe': {'a': 1, 'b': 1}}, {'qwe': {'a': 1}}, "[qwe]:\n  Not in second dict: ['b']"),
                                       ({'qwe': {'a': 1, 'b': 2}}, {'qwe': {'a': 2, 'b': 1}}, "[qwe]:\n  [qwe][a]: 1 != 2\n  [qwe][b]: 2 != 1"),
                                       ({'qwe': 'q', 'z': ''}, {'qwe': 1, }, "Not in second dict: ['z']\n[qwe]: 'q' != 1"),
-                                      ({'qwe': u'й'}, {'qwe': u'йцу'}, u"[qwe]: 'й' != 'йцу'"),
-                                      ({'qwe': 'й'}, {'qwe': 'йцу'}, "[qwe]: 'й' != 'йцу'"),
+                                      ({'qwe': u'й'}, {'qwe': u'йцу'}, u"[qwe]: й != йцу"),
+                                      ({'qwe': 'й'}, {'qwe': 'йцу'}, u"[qwe]: й != йцу"),
+                                      ({'qwe': u'й'}, {'qwe': 'йцу'}, u"[qwe]: %s != %s" % (repr(u'й'), repr('йцу'))),
+                                      ({'qwe': 'й'}, {'qwe': u'йцу'}, u"[qwe]: %s != %s" % (repr('й'), repr(u'йцу'))),
                                       ({'qwe': ''}, {}, "Not in second dict: ['qwe']"),
                                       ({}, {'qwe': ''}, "Not in first dict: ['qwe']")):
             with self.assertRaises(AssertionError) as ar:
