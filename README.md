@@ -1,4 +1,6 @@
 # ttoolly
+[![Build Status](https://travis-ci.org/pefremova/ttoolly.svg?branch=tests)](https://travis-ci.org/pefremova/ttoolly) [![Coverage Status](https://coveralls.io/repos/github/pefremova/ttoolly/badge.svg?branch=tests)](https://coveralls.io/github/pefremova/ttoolly?branch=tests)
+
 Django test tools
 
 Наборы стандартных проверок для Django-форм
