@@ -11,4 +11,4 @@ install:
   - pip install -q Django==$DJANGO_VERSION
   - pip install -r tests/requirements.pip
 script: 
-  ve/bin/python tests/tests.py
+  python tests/tests.py
