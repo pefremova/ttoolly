@@ -13,14 +13,15 @@ sys.path.insert(0, os.path.split(os.path.dirname(__file__))[0])
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 from ttoolly.models import GlobalTestMixIn, FormTestMixIn, TEMP_DIR
 from ttoolly.utils import get_fixtures_data, generate_sql, get_random_domain_value, get_random_email_value
+import django
 from django.http import HttpResponse
 from django.db import models
 from django.conf import settings
 from django.core.files.base import File
 from django.test import TestCase
 
-
-
+if django.VERSION >= (1, 7):
+    django.setup()
 
 class SomeModel(models.Model):
     some_text_field = models.TextField(blank=True, null=True)
@@ -965,8 +966,10 @@ class TestFormTestMixInMethods(unittest.TestCase):
     def test_get_object_fields(self):
         some_element = SomeModel()
         other_element = OtherModel()
-        self.assertEqual(self.ftc.get_object_fields(some_element), ['file_field', 'id', 'many_related_field', 'some_text_field', ])
-        self.assertEqual(self.ftc.get_object_fields(other_element), ['id', 'related_name'])
+        self.assertEqual(sorted(self.ftc.get_object_fields(some_element)),
+                         sorted(['file_field', 'id', 'many_related_field', 'some_text_field', ]))
+        self.assertEqual(sorted(self.ftc.get_object_fields(other_element)),
+                         sorted(['id', 'related_name']))
 
     def test_assert_objects_equal(self):
         el_1 = SomeModel(some_text_field='текст')
