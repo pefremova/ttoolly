@@ -13,19 +13,22 @@ sys.path.insert(0, os.path.split(os.path.dirname(__file__))[0])
 os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
 from ttoolly.models import GlobalTestMixIn, FormTestMixIn, TEMP_DIR
 from ttoolly.utils import get_fixtures_data, generate_sql, get_random_domain_value, get_random_email_value
+import django
 from django.http import HttpResponse
 from django.db import models
 from django.conf import settings
 from django.core.files.base import File
 from django.test import TestCase
 
-
+if django.VERSION >= (1, 7):
+    django.setup()
 
 
 class SomeModel(models.Model):
     some_text_field = models.TextField(blank=True, null=True)
     many_related_field = models.ManyToManyField('OtherModel', related_name='related_name')
     file_field = models.FileField(blank=True, null=True)
+
     class Meta:
         app_label = 'testtools'
 
