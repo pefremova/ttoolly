@@ -680,11 +680,11 @@ class GlobalTestMixIn(object):
         else:
             fields = obj._meta.get_fields()
         for field in fields:
-            if field.__class__.__name__ == 'RelatedObject':
+            if field.__class__.__name__ in ('RelatedObject', 'ManyToOneRel', 'ManyToManyRel'):
                 object_fields.append(field.get_accessor_name())
             else:
                 object_fields.append(field.name)
-        return object_fields
+        return sorted(object_fields)
 
     def get_params_according_to_type(self, value, params_value):
         if type(value) == type(params_value):
