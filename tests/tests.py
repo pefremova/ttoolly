@@ -66,7 +66,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
         msg = "Fields ['test1'] not need at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_not_need_2(self):
         fields_list_1 = ['test1', 'test2']
@@ -74,7 +74,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
         msg = "Fields ['test1', 'test2'] not need at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_not_at_form(self):
         fields_list_1 = ['test1']
@@ -82,7 +82,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
         msg = "Fields ['test2'] not at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_not_at_form_2(self):
         fields_list_1 = []
@@ -90,7 +90,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
         msg = "Fields ['test1', 'test2'] not at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_duplicate(self):
         fields_list_1 = ['test1', 'test2', 'test2']
@@ -98,7 +98,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
         msg = "Field 'test2' present at form 2 time(s) (should be 1)"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_not_need_and_not_at_form(self):
         fields_list_1 = ['test1', 'test2']
@@ -106,7 +106,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
         msg = "Fields ['test3'] not at form;\nFields ['test2'] not need at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_positive_with_custom_message(self):
         fields_list_1 = ['test1', 'test2']
@@ -122,7 +122,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, u'тест')
         msg = u"тест:\nFields ['test1'] not need at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_not_need_with_custom_message_2(self):
         fields_list_1 = ['test1', 'test2']
@@ -130,7 +130,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, u'тест')
         msg = u"тест:\nFields ['test1', 'test2'] not need at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_not_at_form_with_custom_message(self):
         fields_list_1 = ['test1']
@@ -138,7 +138,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, u'тест')
         msg = u"тест:\nFields ['test2'] not at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_not_at_form_with_custom_message_2(self):
         fields_list_1 = []
@@ -146,7 +146,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, u'тест')
         msg = u"тест:\nFields ['test1', 'test2'] not at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_duplicate_with_custom_message(self):
         fields_list_1 = ['test1', 'test2', 'test2']
@@ -154,7 +154,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, u'тест')
         msg = u"тест:\nField 'test2' present at form 2 time(s) (should be 1)"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_form_equal_not_need_and_not_at_form_with_custom_message(self):
         fields_list_1 = ['test1', 'test2']
@@ -162,7 +162,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, u'тест')
         msg = u"тест:\nFields ['test3'] not at form;\nFields ['test2'] not need at form"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_dict_equal(self):
         for dict1, dict2, message in (('q', {}, 'First argument is not a dictionary'),
@@ -187,7 +187,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                       ({}, {'qwe': ''}, "Not in first dict: ['qwe']")):
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_dict_equal(dict1, dict2)
-            self.assertEqual(ar.exception.message, message)
+            self.assertEqual(ar.exception.__unicode__(), message)
 
     def test_assert_dict_equal_with_custom_message(self):
         for dict1, dict2, message in (('q', {}, 'First argument is not a dictionary'),
@@ -212,7 +212,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                       ({}, {'qwe': ''}, "Not in first dict: ['qwe']")):
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_dict_equal(dict1, dict2, u'тест')
-            self.assertEqual(ar.exception.message, u'тест:\n' + message)
+            self.assertEqual(ar.exception.__unicode__(), u'тест:\n' + message)
 
     def test_get_random_file(self):
         self.btc.with_files = False
@@ -409,25 +409,25 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_text_equal_by_symbol('qqwerty', 'qwerty')
         msg = "Not equal in position 1: 'qwerty' != 'werty'"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_text_equal_by_symbol_at_end(self):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_text_equal_by_symbol('qwertyy', 'qwerty')
         msg = "Not equal in position 6: 'y' != ''"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_text_equal_by_symbol_at_end_2(self):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_text_equal_by_symbol('qwerty', 'qwertyy')
         msg = "Not equal in position 6: '' != 'y'"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_text_equal_by_symbol_with_count(self):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_text_equal_by_symbol(u'текст для !сравнения', u'текст для сравнения', 3)
         msg = u"Not equal in position 10: '!ср...' != 'сра...'"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_mail_count_positive(self):
         class M():
@@ -445,7 +445,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_mail_count([M(to='test@test.test')], 2)
         msg = u"Sent 1 mails expect of 2. To test@test.test"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_mail_count_many_mails_negative(self):
         class M():
@@ -454,7 +454,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_mail_count([M(to='test@test.test'), M(to='second_test@test.test')], 1)
         msg = u"Sent 2 mails expect of 1. To second_test@test.test, test@test.test"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_get_value_for_field(self):
         res = self.btc.get_value_for_field(15, 'some_field_name')
@@ -507,21 +507,21 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_xpath_count(response, '//a[@href="/qwe"]', 1)
         msg = u"Response status code 404 != 200"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_xpath_count_wrong_status_2(self):
         response = HttpResponse('<html><a href="/qwe">тест</a><a href="test">тест2</a></html>')
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_xpath_count(response, '//a[@href="/qwe"]', 1, 404)
         msg = u"Response status code 200 != 404"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_xpath_count_negative(self):
         response = HttpResponse('<html><a href="/qwe">тест</a><a href="test">тест2</a></html>')
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_xpath_count(response, '//a', 1)
         msg = u"Found 2 instances of '//a' (Should be 1)"
-        self.assertEqual(ar.exception.message, msg)
+        self.assertEqual(ar.exception.__unicode__(), msg)
 
     def test_assert_xpath_count_xml_positive(self):
         response = HttpResponse('<?xml version="1.0"?><content><el><link>qwe</link><text>тест</text></el>'
@@ -552,7 +552,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         el_1 = SomeModel(some_text_field='text')
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_object_fields(el_1, {'some_text_field': 'other text'})
-        self.assertEqual(ar.exception.message, "Values from object != expected values from dict:\n[some_text_field]: 'text' != 'other text'")
+        self.assertEqual(ar.exception.__unicode__(), "Values from object != expected values from dict:\n[some_text_field]: 'text' != 'other text'")
 
     def test_assert_object_fields_with_exclude(self):
         el_1 = SomeModel(some_text_field='текст 1')
@@ -574,14 +574,14 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_object_fields(el_1, {'some_text_field': 'text'},
                                           other_values={'file_field': 'test.test'})
-        self.assertEqual(ar.exception.message, "Values from object != expected values from dict:\n[file_field]: '' != 'test.test'", )
+        self.assertEqual(ar.exception.__unicode__(), "Values from object != expected values from dict:\n[file_field]: '' != 'test.test'", )
 
     def test_assert_object_fields_with_difference_with_other_values_in_class(self):
         el_1 = SomeModel(some_text_field='text')
         self.btc.other_values_for_check = {'file_field': 'test.test'}
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_object_fields(el_1, {'some_text_field': 'text'},)
-        self.assertEqual(ar.exception.message, "Values from object != expected values from dict:\n[file_field]: '' != 'test.test'")
+        self.assertEqual(ar.exception.__unicode__(), "Values from object != expected values from dict:\n[file_field]: '' != 'test.test'")
 
     def test_assert_object_fields_with_not_existing_other_values(self):
         el_1 = SomeModel(some_text_field='текст 1')
@@ -714,14 +714,14 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.errors = ['some error text']
         with self.assertRaises(AssertionError) as ar:
             self.btc.formatted_assert_errors()
-        self.assertEqual(ar.exception.message, '\nsome error text')
+        self.assertEqual(ar.exception.__unicode__(), '\nsome error text')
         self.assertEqual(self.btc.errors, [])
 
     def test_formatted_assert_errors_with_many_errors(self):
         self.btc.errors = ['some error text', 'other error']
         with self.assertRaises(AssertionError) as ar:
             self.btc.formatted_assert_errors()
-        self.assertEqual(ar.exception.message, '\nsome error text\n\nother error')
+        self.assertEqual(ar.exception.__unicode__(), '\nsome error text\n\nother error')
         self.assertEqual(self.btc.errors, [])
 
 
@@ -981,8 +981,8 @@ class TestFormTestMixInMethods(unittest.TestCase):
         el_2 = SomeModel(some_text_field='other text')
         with self.assertRaises(AssertionError) as ar:
             self.ftc.assert_objects_equal(el_1, el_2)
-        self.assertIn('"some_text_field":\n', ar.exception.message)
-        self.assertIn("AssertionError: 'text' != 'other text'", ar.exception.message)
+        self.assertIn('"some_text_field":\n', ar.exception.__unicode__())
+        self.assertIn("AssertionError: 'text' != 'other text'", ar.exception.__unicode__())
 
     def test_assert_objects_equal_with_exclude(self):
         el_1 = SomeModel(some_text_field='текст 1')
