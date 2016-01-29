@@ -33,6 +33,7 @@ def convert_size_to_bytes(size):
 
 
 def fill_all_obj_fields(obj, fields=(), save=True):
+    required_fields = fields
     if not fields:
         fields = [f.name for f in obj.__class__._meta.fields]
     for field_name in fields:
@@ -41,7 +42,7 @@ def fill_all_obj_fields(obj, fields=(), save=True):
         f = obj.__class__._meta.get_field_by_name(field_name)[0]
         if f.auto_created:
             continue
-        if f.null and f.blank:
+        if field_name not in required_fields and f.null and f.blank:
             if random.randint(0, 1):
                 continue
         value = get_value_for_obj_field(f)
