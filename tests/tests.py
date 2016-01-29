@@ -1,38 +1,19 @@
 # -*- coding: utf-8 -*-
-from datetime import date, datetime, time
-from shutil import rmtree
 import os
 import os.path
-import sys
-import unittest
 import re
+import unittest
+from datetime import date, datetime, time
+from shutil import rmtree
 
-
-sys.path.insert(0, os.path.dirname(__file__))
-sys.path.insert(0, os.path.split(os.path.dirname(__file__))[0])
-os.environ['DJANGO_SETTINGS_MODULE'] = 'settings'
-from ttoolly.models import GlobalTestMixIn, FormTestMixIn, TEMP_DIR
-from ttoolly.utils import get_fixtures_data, generate_sql, get_random_domain_value, get_random_email_value
-from django.http import HttpResponse
-from django.db import models
 from django.conf import settings
 from django.core.files.base import File
+from django.http import HttpResponse
 from django.test import TestCase
 
-
-
-
-class SomeModel(models.Model):
-    some_text_field = models.TextField(blank=True, null=True)
-    many_related_field = models.ManyToManyField('OtherModel', related_name='related_name')
-    file_field = models.FileField(blank=True, null=True)
-    class Meta:
-        app_label = 'testtools'
-
-
-class OtherModel(models.Model):
-    class Meta:
-        app_label = 'testtools'
+from models import OtherModel, SomeModel
+from ttoolly.models import TEMP_DIR, FormTestMixIn, GlobalTestMixIn
+from ttoolly.utils import generate_sql, get_fixtures_data, get_random_domain_value, get_random_email_value
 
 
 class TestGlobalTestMixInMethods(unittest.TestCase):
@@ -40,8 +21,10 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
-        class GlobalTestCase(GlobalTestMixIn, TestCase): pass
+        class GlobalTestCase(GlobalTestMixIn, TestCase):
+            pass
         self.btc = GlobalTestCase
+
         def _runTest():
             pass
         self.btc.runTest = _runTest
@@ -542,59 +525,59 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             self.assertTrue(False, 'With raise: %s' % repr(e))
 
     def test_assert_object_fields(self):
-        el_1 = SomeModel(some_text_field='текст 1')
+        el_1 = SomeModel(text_field='текст 1')
         try:
-            self.btc.assert_object_fields(el_1, {'some_text_field': 'текст 1'})
+            self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'})
         except Exception, e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_object_fields_with_difference(self):
-        el_1 = SomeModel(some_text_field='text')
+        el_1 = SomeModel(text_field='text')
         with self.assertRaises(AssertionError) as ar:
-            self.btc.assert_object_fields(el_1, {'some_text_field': 'other text'})
-        self.assertEqual(ar.exception.__unicode__(), "Values from object != expected values from dict:\n[some_text_field]: 'text' != 'other text'")
+            self.btc.assert_object_fields(el_1, {'text_field': 'other text'})
+        self.assertEqual(ar.exception.__unicode__(), "Values from object != expected values from dict:\n[text_field]: 'text' != 'other text'")
 
     def test_assert_object_fields_with_exclude(self):
-        el_1 = SomeModel(some_text_field='текст 1')
+        el_1 = SomeModel(text_field='текст 1')
         try:
-            self.btc.assert_object_fields(el_1, {'some_text_field': 'текст 1'}, exclude=('some_text_field',))
+            self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'}, exclude=('text_field',))
         except Exception, e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_object_fields_with_exclude_in_class(self):
-        el_1 = SomeModel(some_text_field='текст 1')
-        self.btc.exclude_from_check = ('some_text_field',)
+        el_1 = SomeModel(text_field='текст 1')
+        self.btc.exclude_from_check = ('text_field',)
         try:
-            self.btc.assert_object_fields(el_1, {'some_text_field': 'текст 1'})
+            self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'})
         except Exception, e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_object_fields_with_difference_with_other_values(self):
-        el_1 = SomeModel(some_text_field='text')
+        el_1 = SomeModel(text_field='text')
         with self.assertRaises(AssertionError) as ar:
-            self.btc.assert_object_fields(el_1, {'some_text_field': 'text'},
+            self.btc.assert_object_fields(el_1, {'text_field': 'text'},
                                           other_values={'file_field': 'test.test'})
         self.assertEqual(ar.exception.__unicode__(), "Values from object != expected values from dict:\n[file_field]: '' != 'test.test'", )
 
     def test_assert_object_fields_with_difference_with_other_values_in_class(self):
-        el_1 = SomeModel(some_text_field='text')
+        el_1 = SomeModel(text_field='text')
         self.btc.other_values_for_check = {'file_field': 'test.test'}
         with self.assertRaises(AssertionError) as ar:
-            self.btc.assert_object_fields(el_1, {'some_text_field': 'text'},)
+            self.btc.assert_object_fields(el_1, {'text_field': 'text'},)
         self.assertEqual(ar.exception.__unicode__(), "Values from object != expected values from dict:\n[file_field]: '' != 'test.test'")
 
     def test_assert_object_fields_with_not_existing_other_values(self):
-        el_1 = SomeModel(some_text_field='текст 1')
+        el_1 = SomeModel(text_field='текст 1')
         try:
-            self.btc.assert_object_fields(el_1, {'some_text_field': 'текст 1'}, other_values={'qwe': 123})
+            self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'}, other_values={'qwe': 123})
         except Exception, e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_object_fields_with_not_existing_other_values_in_class(self):
-        el_1 = SomeModel(some_text_field='текст 1')
+        el_1 = SomeModel(text_field='текст 1')
         self.btc.other_values_for_check = {'qwe': 123}
         try:
-            self.btc.assert_object_fields(el_1, {'some_text_field': 'текст 1'},)
+            self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'},)
         except Exception, e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
@@ -965,37 +948,39 @@ class TestFormTestMixInMethods(unittest.TestCase):
     def test_get_object_fields(self):
         some_element = SomeModel()
         other_element = OtherModel()
-        self.assertEqual(self.ftc.get_object_fields(some_element), ['file_field', 'id', 'many_related_field', 'some_text_field', ])
-        self.assertEqual(self.ftc.get_object_fields(other_element), ['id', 'related_name'])
+        self.assertEqual(sorted(self.ftc.get_object_fields(some_element)),
+                         ['char_field', 'digital_field', 'email_field', 'file_field', 'id', 'int_field',
+                          'many_related_field', 'text_field', 'unique_int_field'])
+        self.assertEqual(sorted(self.ftc.get_object_fields(other_element)), ['id', 'related_name'])
 
     def test_assert_objects_equal(self):
-        el_1 = SomeModel(some_text_field='текст')
-        el_2 = SomeModel(some_text_field='текст')
+        el_1 = SomeModel(text_field='текст')
+        el_2 = SomeModel(text_field='текст')
         try:
             self.ftc.assert_objects_equal(el_1, el_2)
         except Exception, e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_objects_equal_with_difference(self):
-        el_1 = SomeModel(some_text_field='text')
-        el_2 = SomeModel(some_text_field='other text')
+        el_1 = SomeModel(text_field='text')
+        el_2 = SomeModel(text_field='other text')
         with self.assertRaises(AssertionError) as ar:
             self.ftc.assert_objects_equal(el_1, el_2)
-        self.assertIn('"some_text_field":\n', ar.exception.__unicode__())
+        self.assertIn('"text_field":\n', ar.exception.__unicode__())
         self.assertIn("AssertionError: 'text' != 'other text'", ar.exception.__unicode__())
 
     def test_assert_objects_equal_with_exclude(self):
-        el_1 = SomeModel(some_text_field='текст 1')
-        el_2 = SomeModel(some_text_field='текст 2')
+        el_1 = SomeModel(text_field='текст 1')
+        el_2 = SomeModel(text_field='текст 2')
         try:
-            self.ftc.assert_objects_equal(el_1, el_2, exclude=('some_text_field',))
+            self.ftc.assert_objects_equal(el_1, el_2, exclude=('text_field',))
         except Exception, e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_objects_equal_with_exclude_from_check(self):
-        el_1 = SomeModel(some_text_field='текст 1')
-        el_2 = SomeModel(some_text_field='текст 2')
-        self.ftc.exclude_from_check = ('some_text_field',)
+        el_1 = SomeModel(text_field='текст 1')
+        el_2 = SomeModel(text_field='текст 2')
+        self.ftc.exclude_from_check = ('text_field',)
         try:
             self.ftc.assert_objects_equal(el_1, el_2,)
         except Exception, e:

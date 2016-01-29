@@ -1,9 +1,9 @@
 #!/usr/bin/env python
+import os
 import sys
-from django import VERSION
+
 from django.conf import settings
 from django.core.management import execute_from_command_line
-import os
 
 
 if not settings.configured:
@@ -26,11 +26,12 @@ if not settings.configured:
         ROOT_URLCONF='tests.urls',
         USE_TZ=True,
         SECRET_KEY='foobar',
-        TEMPLATE_DIRS = (PROJECT_PATH + '/tests/templates/'),
-        COLORIZE_TESTS = True,
-        LANGUAGE_CODE = 'ru-RU',
-        **test_runners_args        
+        TEMPLATE_DIRS=(PROJECT_PATH + '/tests/templates/'),
+        COLORIZE_TESTS=True,
+        LANGUAGE_CODE='ru-RU',
+        **test_runners_args
     )
+
 
 def runtests():
     argv = sys.argv[:1] + ['test'] + sys.argv[1:]
