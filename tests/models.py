@@ -10,6 +10,7 @@ class SomeModel(models.Model):
     int_field = models.IntegerField()
     unique_int_field = models.IntegerField(null=True, blank=True, unique=True)
     email_field = models.EmailField(blank=True)
+
     class Meta:
         app_label = 'ttoolly'
 
@@ -17,5 +18,3 @@ class SomeModel(models.Model):
 class OtherModel(models.Model):
     class Meta:
         app_label = 'ttoolly'
-   
-
