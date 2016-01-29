@@ -679,7 +679,7 @@ class GlobalTestMixIn(object):
             fields = [self.get_field_by_name(obj, name)[0] for name in obj._meta.get_all_field_names()]
         else:
             fields = obj._meta.get_fields()
-        for field in fields:
+        for field in set(fields):
             if field.__class__.__name__ == 'RelatedObject':
                 object_fields.append(field.get_accessor_name())
             else:
