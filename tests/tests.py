@@ -8,12 +8,14 @@ from shutil import rmtree
 
 from django.conf import settings
 from django.core.files.base import File
+from django.db.models.fields.files import FieldFile
 from django.http import HttpResponse
 from django.test import TestCase
 
 from models import OtherModel, SomeModel
 from ttoolly.models import TEMP_DIR, FormTestMixIn, GlobalTestMixIn
-from ttoolly.utils import generate_sql, get_fixtures_data, get_random_domain_value, get_random_email_value
+from ttoolly.utils import (generate_sql, get_fixtures_data, get_random_domain_value, get_random_email_value,
+                           fill_all_obj_fields)
 
 
 class TestGlobalTestMixInMethods(unittest.TestCase):
@@ -949,9 +951,9 @@ class TestFormTestMixInMethods(unittest.TestCase):
         some_element = SomeModel()
         other_element = OtherModel()
         self.assertEqual(sorted(self.ftc.get_object_fields(some_element)),
-                         ['char_field', 'digital_field', 'email_field', 'file_field', 'id', 'int_field',
-                          'many_related_field', 'text_field', 'unique_int_field'])
-        self.assertEqual(sorted(self.ftc.get_object_fields(other_element)), ['id', 'related_name'])
+                         sorted(['char_field', 'digital_field', 'email_field', 'file_field', 'foreign_key_field', 'id',
+                                 'int_field', 'many_related_field', 'text_field', 'unique_int_field']))
+        self.assertEqual(sorted(self.ftc.get_object_fields(other_element)), ['id', 'related_name', 'somemodel_set'])
 
     def test_assert_objects_equal(self):
         el_1 = SomeModel(text_field='текст')
@@ -1088,5 +1090,48 @@ class TestUtils(unittest.TestCase):
                 self.assertTrue(email_re.search(res), 'Bad email %s' % res)
 
 
-if __name__ == '__main__':
-    unittest.main()
+class TestUtils(unittest.TestCase):
+
+    def setUp(self):
+        OtherModel.objects.all().delete()
+        SomeModel.objects.all().delete()
+
+    def test_fill_all_obj_fields_wo_fields(self):
+        test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
+        test_obj.int_field = None
+        test_obj.unique_int_field = None
+        new_obj = fill_all_obj_fields(test_obj)
+        self.assertEqual(type(new_obj.int_field), int)
+        self.assertEqual(type(new_obj.unique_int_field), int)
+
+    def test_fill_all_obj_fields(self):
+        test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
+        new_obj = fill_all_obj_fields(test_obj,
+                                      fields=('text_field', 'char_field', 'many_related_field',
+                                              'file_field', 'digital_field', 'email_field', 'foreign_key_field'))
+        self.assertEqual(type(new_obj.text_field), str)
+        self.assertTrue(new_obj.text_field)
+        self.assertEqual(type(new_obj.char_field), str)
+        self.assertTrue(new_obj.char_field)
+        #self.assertTrue(new_obj.many_related_field.all())
+        self.assertEqual(type(new_obj.file_field), FieldFile)
+        self.assertTrue(new_obj.file_field.file)
+        self.assertEqual(type(new_obj.digital_field), float)
+        self.assertTrue(new_obj.digital_field)
+        self.assertEqual(type(new_obj.int_field), int)
+        self.assertEqual(new_obj.int_field, 1)
+        self.assertEqual(type(new_obj.unique_int_field), int)
+        self.assertEqual(new_obj.unique_int_field, 2)
+        self.assertEqual(type(new_obj.email_field), str)
+        self.assertTrue(new_obj.email_field)
+        self.assertIn('@', new_obj.email_field)
+        self.assertEqual(type(new_obj.foreign_key_field), OtherModel)
+        self.assertTrue(new_obj.foreign_key_field)
+        self.assertEqual(SomeModel.objects.get(unique_int_field=2).text_field, test_obj.text_field)
+
+    def test_fill_all_obj_fields_with_save(self):
+        test_obj = SomeModel.objects.create(int_field=1, unique_int_field=3)
+        initial_count = SomeModel.objects.all().count()
+        new_obj = fill_all_obj_fields(test_obj, fields=('text_field', ), save=True)
+        self.assertEqual(SomeModel.objects.get(unique_int_field=3).text_field, new_obj.text_field)
+
