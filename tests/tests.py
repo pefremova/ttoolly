@@ -1099,10 +1099,8 @@ class TestUtils(unittest.TestCase):
     def test_fill_all_obj_fields_wo_fields(self):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
         test_obj.int_field = None
-        test_obj.unique_int_field = None
         new_obj = fill_all_obj_fields(test_obj)
         self.assertEqual(type(new_obj.int_field), int)
-        self.assertEqual(type(new_obj.unique_int_field), int)
 
     def test_fill_all_obj_fields(self):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
