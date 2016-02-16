@@ -1045,19 +1045,22 @@ class TestFormTestMixInMethods(unittest.TestCase):
     def test_get_digital_values_range_int(self):
         self.ftc.obj = SomeModel
         self.assertEqual(self.ftc.get_digital_values_range('int_field'),
-                         {'max_values': set([2147483647]), 'min_values': set([-2147483648])})
+                         {'max_values': set([sys.maxint, 2147483647, ]),
+                          'min_values': set([-sys.maxint - 1, -2147483648, ])})
 
     def test_get_digital_values_range_int_with_min(self):
         self.ftc.obj = SomeModel
         self.ftc.min_fields_length = (('int_field', 100),)
         self.assertEqual(self.ftc.get_digital_values_range('int_field'),
-                         {'max_values': set([2147483647]), 'min_values': set([-2147483648, 100])})
+                         {'max_values': set([sys.maxint, 2147483647,]),
+                          'min_values': set([-sys.maxint - 1, -2147483648, 100])})
 
     def test_get_digital_values_range_int_with_max(self):
         self.ftc.obj = SomeModel
         self.ftc.max_fields_length = (('int_field', 100),)
         self.assertEqual(self.ftc.get_digital_values_range('int_field'),
-                         {'max_values': set([2147483647, 100]), 'min_values': set([-2147483648])})
+                         {'max_values': set([sys.maxint, 2147483647, 100]),
+                          'min_values': set([-sys.maxint - 1, -2147483648,])})
 
     def test_get_digital_values_range_float(self):
         self.ftc.obj = SomeModel
