@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
+import imghdr
+import hashlib
 import os
 import os.path
 import re
 import unittest
 from datetime import date, datetime, time
 from shutil import rmtree
+import xml.etree.cElementTree as et
 
 from django.conf import settings
-from django.core.files.base import File
+from django.core.files.base import File, ContentFile
 from django.db.models.fields.files import FieldFile
 from django.http import HttpResponse
 from django.test import TestCase
 
 from models import OtherModel, SomeModel
 from ttoolly.models import TEMP_DIR, FormTestMixIn, GlobalTestMixIn
-from ttoolly.utils import (generate_sql, get_fixtures_data, get_random_domain_value, get_random_email_value,
-                           fill_all_obj_fields)
+from ttoolly import utils
 
 
 class TestGlobalTestMixInMethods(unittest.TestCase):
@@ -952,7 +954,8 @@ class TestFormTestMixInMethods(unittest.TestCase):
         other_element = OtherModel()
         self.assertEqual(sorted(self.ftc.get_object_fields(some_element)),
                          sorted(['char_field', 'digital_field', 'email_field', 'file_field', 'foreign_key_field', 'id',
-                                 'int_field', 'many_related_field', 'text_field', 'unique_int_field']))
+                                 'int_field', 'many_related_field', 'text_field', 'unique_int_field', 'bool_field',
+                                 'date_field', 'datetime_field', 'image_field']))
         self.assertEqual(sorted(self.ftc.get_object_fields(other_element)), ['id', 'related_name', 'somemodel_set'])
 
     def test_assert_objects_equal(self):
@@ -998,8 +1001,14 @@ class TestFormTestMixInMethods(unittest.TestCase):
 class TestUtils(unittest.TestCase):
 
     def setUp(self):
+        OtherModel.objects.all().delete()
+        SomeModel.objects.all().delete()
         if not os.path.exists(TEMP_DIR):
             os.mkdir(TEMP_DIR)
+        if os.path.exists('/tmp/test'):
+            os.remove('/tmp/test')
+        if os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')):
+            os.remove(os.path.join(settings.MEDIA_ROOT, 'test'))        
 
     def tearDown(self):
         rmtree(TEMP_DIR)
@@ -1017,7 +1026,7 @@ class TestUtils(unittest.TestCase):
                             "field_many": [1, 2, 3]}}
                   ]''')
         f.close()
-        self.assertEqual(get_fixtures_data(os.path.join(TEMP_DIR, 'test.json')),
+        self.assertEqual(utils.get_fixtures_data(os.path.join(TEMP_DIR, 'test.json')),
                          [{'fields': {'field_bool': False,
                                       'field_text': 'text',
                                       'field_int': 2,
@@ -1041,7 +1050,7 @@ class TestUtils(unittest.TestCase):
                     "fields": {"field": 1}}
                   ]''')
         f.close()
-        self.assertEqual(get_fixtures_data(os.path.join(TEMP_DIR, 'test.json')),
+        self.assertEqual(utils.get_fixtures_data(os.path.join(TEMP_DIR, 'test.json')),
                          [{'fields': {'field': 1}, 'id': '1', "model": "testmodel", 'pk': 'id'},
                           {'fields': {'field': 2}, 'id': '2', "model": "testmodel", 'pk': 'id'},
                           {'fields': {'field': 1}, 'id': '1', "model": "testmodel2", 'pk': 'id'}])
@@ -1054,7 +1063,7 @@ class TestUtils(unittest.TestCase):
                            'test_id': '1',
                            "model": "testmodel",
                            'pk': 'test_id'}]
-        self.assertEqual(generate_sql(data),
+        self.assertEqual(utils.generate_sql(data),
                          'INSERT INTO testmodel (test_id, field_bool, field_none, field_text, field_int) ' + \
                          'VALUES (1, False, null, \'text\', \'2\');\n')
 
@@ -1062,7 +1071,7 @@ class TestUtils(unittest.TestCase):
         data = [{'fields': {'field': 1}, 'id': '1', "model": "testmodel", 'pk': 'id'},
                           {'fields': {'field': 2}, 'id': '2', "model": "testmodel", 'pk': 'id'},
                           {'fields': {'field': 1}, 'id': '1', "model": "testmodel2", 'pk': 'id'}]
-        self.assertEqual(generate_sql(data),
+        self.assertEqual(utils.generate_sql(data),
                          'INSERT INTO testmodel (id, field) VALUES (1, \'1\');\n' + \
                          'INSERT INTO testmodel (id, field) VALUES (2, \'2\');\n' + \
                          'INSERT INTO testmodel2 (id, field) VALUES (1, \'1\');\n')
@@ -1072,7 +1081,7 @@ class TestUtils(unittest.TestCase):
 
         for i in xrange(100):
             for n in xrange(200, 3, -1):
-                res = get_random_domain_value(n)
+                res = utils.get_random_domain_value(n)
                 self.assertEqual(len(res), n, 'Wrong length of %s (%s != %s)' % (res, len(res), n))
                 self.assertTrue(domain_re.search(res), 'Bad domain %s' % res)
 
@@ -1085,33 +1094,26 @@ class TestUtils(unittest.TestCase):
             r'|\[(25[0-5]|2[0-4]\d|[0-1]?\d?\d)(\.(25[0-5]|2[0-4]\d|[0-1]?\d?\d)){3}\]$', re.IGNORECASE)
         for i in xrange(100):
             for n in xrange(200, 5, -1):
-                res = get_random_email_value(n)
+                res = utils.get_random_email_value(n)
                 self.assertEqual(len(res), n, 'Wrong length of %s (%s != %s)' % (res, len(res), n))
                 self.assertTrue(email_re.search(res), 'Bad email %s' % res)
-
-
-class TestUtils(unittest.TestCase):
-
-    def setUp(self):
-        OtherModel.objects.all().delete()
-        SomeModel.objects.all().delete()
 
     def test_fill_all_obj_fields_wo_fields(self):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
         test_obj.int_field = None
-        new_obj = fill_all_obj_fields(test_obj)
+        new_obj = utils.fill_all_obj_fields(test_obj)
         self.assertEqual(type(new_obj.int_field), int)
 
     def test_fill_all_obj_fields(self):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
-        new_obj = fill_all_obj_fields(test_obj,
+        new_obj = utils.fill_all_obj_fields(test_obj,
                                       fields=('text_field', 'char_field', 'many_related_field',
                                               'file_field', 'digital_field', 'email_field', 'foreign_key_field'))
         self.assertEqual(type(new_obj.text_field), str)
         self.assertTrue(new_obj.text_field)
         self.assertEqual(type(new_obj.char_field), str)
         self.assertTrue(new_obj.char_field)
-        #self.assertTrue(new_obj.many_related_field.all())
+        #self.assertTrue(new_obj.many_related_field.all())        
         self.assertEqual(type(new_obj.file_field), FieldFile)
         self.assertTrue(new_obj.file_field.file)
         self.assertEqual(type(new_obj.digital_field), float)
@@ -1124,12 +1126,174 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(new_obj.email_field)
         self.assertIn('@', new_obj.email_field)
         self.assertEqual(type(new_obj.foreign_key_field), OtherModel)
+        self.assertEqual(OtherModel.objects.all().count(), 1)
         self.assertTrue(new_obj.foreign_key_field)
         self.assertEqual(SomeModel.objects.get(unique_int_field=2).text_field, test_obj.text_field)
+    
+    def test_fill_all_obj_fields_with_other_model_exists(self):
+        OtherModel.objects.create()
+        initial_other_obj_count = OtherModel.objects.all().count()
+        test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
+        new_obj = utils.fill_all_obj_fields(test_obj,
+                                      fields=('many_related_field','foreign_key_field'))
+        self.assertEqual(OtherModel.objects.all().count(), initial_other_obj_count)
 
     def test_fill_all_obj_fields_with_save(self):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=3)
-        initial_count = SomeModel.objects.all().count()
-        new_obj = fill_all_obj_fields(test_obj, fields=('text_field', ), save=True)
+        new_obj = utils.fill_all_obj_fields(test_obj, fields=('text_field', ), save=True)
         self.assertEqual(SomeModel.objects.get(unique_int_field=3).text_field, new_obj.text_field)
+        
+    def test_generate_random_obj(self):
+        initial_count = SomeModel.objects.all().count()
+        new_obj = utils.generate_random_obj(SomeModel)
+        self.assertEqual(SomeModel.objects.all().count(), initial_count + 1)
+        self.assertEqual(type(new_obj.int_field), int)
+         
+    def test_generate_random_obj_with_additional_params(self):
+        initial_count = SomeModel.objects.all().count()
+        params = {'text_field': u'тест text_field',
+                  'char_field': u'тест char_field',
+                  'digital_field': 543,
+                  'int_field': 321,
+                  'unique_int_field': 100,
+                  'email_field': 'qwe@test.test'}
+        new_obj = utils.generate_random_obj(SomeModel, params)
+        self.assertEqual(SomeModel.objects.all().count(), initial_count + 1)
+        self.assertEqual(new_obj.text_field, params['text_field'])
+        self.assertEqual(new_obj.char_field, params['char_field'])
+        self.assertEqual(new_obj.digital_field, params['digital_field'])
+        self.assertEqual(new_obj.int_field, params['int_field'])
+        self.assertEqual(new_obj.unique_int_field, params['unique_int_field'])
+        self.assertEqual(new_obj.email_field, params['email_field'])
+        
+    def test_get_random_date_value(self):
+        new_date = utils.get_random_date_value()
+        self.assertEqual(type(new_date), date)
+        self.assertEqual(new_date.year, date.today().year)
+        self.assertEqual(new_date.month, date.today().month)
+        
+    def test_get_random_date_value(self):
+        new_date = utils.get_random_date_value(date(2010, 3, 2), date(2011, 4, 2))
+        self.assertEqual(type(new_date), date)
+        self.assertGreaterEqual(new_date, date(2010, 3, 2))
+        self.assertLess(new_date, date(2011, 4, 2))
+        
+    def test_get_random_datetime_value(self):
+        new_date = utils.get_random_datetime_value()
+        self.assertEqual(type(new_date), datetime)
+        self.assertEqual(new_date.year, date.today().year)
+        self.assertEqual(new_date.month, date.today().month)
+        
+    def test_get_random_datetime_value(self):
+        new_date = utils.get_random_datetime_value(datetime(2010, 3, 2, 12, 3, 5), datetime(2011, 4, 2, 1, 2, 4))
+        self.assertEqual(type(new_date), datetime)
+        self.assertGreaterEqual(new_date, datetime(2010, 3, 2, 12, 3, 5))
+        self.assertLess(new_date, datetime(2011, 4, 2, 1, 2, 4))
+        
+    def test_get_random_file(self):
+        new_file = utils.get_random_file()
+        self.assertEqual(type(new_file), ContentFile)
+        self.assertEqual(new_file.size, 10)    
+    
+    def test_get_random_file_with_path(self):
+        new_file = utils.get_random_file(path='/tmp/test', )
+        self.assertEqual(type(new_file), file)
+        self.assertEqual(len(new_file.read()), 10)
+        self.assertEqual(new_file.name, '/tmp/test')
+        self.assertEqual(new_file.closed, False)
+        self.assertEqual(new_file.mode, 'r')
+    
+    def test_get_random_file_with_path_with_rewrite(self):
+        new_file = utils.get_random_file(path='/tmp/test')
+        hasher = hashlib.md5()
+        hasher.update(new_file.read())
+        last_file_hash = hasher.hexdigest()
+        new_file = utils.get_random_file(path='/tmp/test', rewrite=True)
+        hasher = hashlib.md5()
+        hasher.update(new_file.read())
+        self.assertNotEqual(hasher.hexdigest(), last_file_hash)
+        self.assertEqual(type(new_file), file)
+        new_file.seek(0)
+        self.assertEqual(len(new_file.read()), 10)
+        self.assertEqual(new_file.name, '/tmp/test')
+        self.assertEqual(new_file.closed, False)
+        self.assertEqual(new_file.mode, 'r')
+        
+    def test_get_random_file_with_path_without_rewrite(self):
+        new_file = utils.get_random_file(path='/tmp/test')
+        last_change_time = os.stat('/tmp/test').st_mtime
+        new_file = utils.get_random_file(path='/tmp/test', rewrite=False)
+        self.assertEqual(os.stat('/tmp/test').st_mtime, last_change_time)
+        self.assertEqual(type(new_file), file)
+        self.assertEqual(len(new_file.read()), 10)
+        self.assertEqual(new_file.name, '/tmp/test')
+        self.assertEqual(new_file.closed, False)
+        self.assertEqual(new_file.mode, 'r')
+        
+    def test_get_random_file_with_path_return_closed(self):
+        new_file = utils.get_random_file(path='/tmp/test', return_opened=False)
+        self.assertEqual(new_file, None)
+        self.assertTrue(os.path.exists('/tmp/test'))
+        f = open('/tmp/test')
+        self.assertEqual(len(f.read()), 10)
+        
+    def test_get_random_file_with_size(self):
+        new_file = utils.get_random_file(size=100)
+        self.assertEqual(type(new_file), ContentFile)
+        self.assertEqual(len(new_file.read()), 100)
+     
+    def test_get_random_file_with_filename(self):
+        new_file = utils.get_random_file(filename='test.qwe')
+        self.assertEqual(type(new_file), ContentFile)
+        self.assertEqual(new_file.name, 'test.qwe')
+        
+    def test_get_random_file_with_img_filename(self):
+        new_file = utils.get_random_file(filename='test.jpg')
+        self.assertEqual(imghdr.what(new_file.file), 'jpeg')
+        
+        new_file = utils.get_random_file(filename='test.jpeg')
+        self.assertEqual(imghdr.what(new_file.file), 'jpeg')
+        
+        new_file = utils.get_random_file(filename='test.gif')
+        self.assertEqual(imghdr.what(new_file.file), 'gif')
+        
+        new_file = utils.get_random_file(filename='test.bmp')
+        self.assertEqual(imghdr.what(new_file.file), 'bmp')
+        
+        new_file = utils.get_random_file(filename='test.svg')
+        def is_svg(ff):
+            tag = None
+            root = et.fromstring(new_file.file.read())
+            try:
+                for el in root.findall('.'):
+                    tag = el.tag
+                    break
+            except et.ParseError:
+                pass
+            return tag == '{http://www.w3.org/2000/svg}svg'
+        self.assertTrue(is_svg(new_file))
 
+    def test_get_random_file_with_extensions(self):
+        new_file = utils.get_random_file(extensions=('zzz',))
+        self.assertEqual(type(new_file), ContentFile)
+        self.assertEqual(os.path.splitext(new_file.name)[1], '.zzz')
+   
+    def test_get_random_file_fake_size(self):
+        settings.TEST_GENERATE_REAL_SIZE_FILE = False
+        new_file = utils.get_random_file(size=100, filename='test.qwe')
+        settings.TEST_GENERATE_REAL_SIZE_FILE = True
+        self.assertEqual(type(new_file), ContentFile)
+        self.assertEqual(new_file.size, 10)
+        self.assertEqual(new_file.name, '_size_100_.qwe')
+        
+    def test_prepare_file_for_tests(self):
+        sm = SomeModel.objects.create(file_field='test', int_field=1)
+        utils.prepare_file_for_tests(SomeModel, 'file_field')
+        self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')))
+        
+    def test_prepare_image_for_tests(self):
+        sm = SomeModel.objects.create(image_field='test', int_field=1)
+        utils.prepare_file_for_tests(SomeModel, 'image_field')
+        self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')))
+        with open(os.path.join(settings.MEDIA_ROOT, 'test')) as f:
+            self.assertEqual(imghdr.what(f), 'jpeg')
