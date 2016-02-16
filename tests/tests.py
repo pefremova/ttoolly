@@ -4,6 +4,7 @@ import hashlib
 import os
 import os.path
 import re
+import sys
 import unittest
 from datetime import date, datetime, time
 from shutil import rmtree
@@ -171,7 +172,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                       ({'qwe': u'й'}, {'qwe': 'йцу'}, u"[qwe]: %s != %s" % (repr(u'й'), repr('йцу'))),
                                       ({'qwe': 'й'}, {'qwe': u'йцу'}, u"[qwe]: %s != %s" % (repr('й'), repr(u'йцу'))),
                                       ({'qwe': ''}, {}, "Not in second dict: ['qwe']"),
-                                      ({}, {'qwe': ''}, "Not in first dict: ['qwe']")):
+                                      ({}, {'qwe': ''}, "Not in first dict: ['qwe']"),):
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_dict_equal(dict1, dict2)
             self.assertEqual(ar.exception.__unicode__(), message)
@@ -200,6 +201,16 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_dict_equal(dict1, dict2, u'тест')
             self.assertEqual(ar.exception.__unicode__(), u'тест:\n' + message)
+
+    def test_assert_list_equal(self):
+        for list1, list2, message in (('q', [], 'First argument is not a list'),
+                                      ([], 'q', 'Second argument is not a list'),
+                                      ([1,], [1, 2], u'Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
+                                      ([{'q': 1}], [{'w': 1}], u"[line 0]: Not in first dict: ['w']\nNot in second dict: ['q']"),
+                                      ([[], [1, ]], [[], [1, 2]], u'[line 1]:\nTraceback (most recent call last):\n  File "/home/pefremova/work/ttoolly/ttoolly/models.py", line 315, in assert_list_equal\n    self.assert_list_equal(list1[i], el)\n  File "/home/pefremova/work/ttoolly/ttoolly/models.py", line 319, in assert_list_equal\n    self.assertEqual(list1, list2, msg)\n  File "/home/pefremova/work/ttoolly/ttoolly/models.py", line 228, in assertEqual\n    raise e\nAssertionError: Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]\n')):
+            with self.assertRaises(AssertionError) as ar:
+                self.btc.assert_list_equal(list1, list2)
+            self.assertEqual(ar.exception.__unicode__(), message)
 
     def test_get_random_file(self):
         self.btc.with_files = False
@@ -465,6 +476,40 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(type(res), str)
         self.assertEqual(len(res), 5)
         self.assertTrue(int(res))
+
+    def test_get_value_for_choice_field(self):
+        self.btc.choice_fields = ('some_field_name',)
+        self.btc.choice_fields_values = {'some_field_name': ['qwe', 'rty']}
+        res = self.btc.get_value_for_field(5, 'some_field_name')
+        self.assertEqual(type(res), str)
+        self.assertIn(res, ['qwe', 'rty'])
+
+    def test_get_value_for_multiselect_field(self):
+        self.btc.multiselect_fields = ('some_field_name',)
+        self.btc.choice_fields_values = {'some_field_name': ['qwe', 'rty']}
+        res = self.btc.get_value_for_field(5, 'some_field_name')
+        self.assertEqual(type(res), list)
+        self.assertTrue(set(res).intersection(['qwe', 'rty']))
+
+    def test_get_value_for_foreign_field(self):
+        self.btc.obj = SomeModel
+        OtherModel.objects.create()
+        self.btc.digital_fields = ('foreign_key_field',)
+        res = self.btc.get_value_for_field(5, 'foreign_key_field')
+        self.assertEqual(type(res), int)
+        self.assertTrue(OtherModel.objects.filter(pk=res).exists())
+
+    def test_get_value_for_datetime_field(self):
+        self.btc.date_fields = ('some_field_name_0',)
+        settings.DATE_INPUT_FORMATS = ('%Y-%m-%d',)
+        res = self.btc.get_value_for_field(5, 'some_field_name_0')
+        self.assertEqual(re.findall('\d{4}\-\d{2}\-\d{2}', res), [res])
+
+    def test_get_value_for_datetime_field_2(self):
+        self.btc.date_fields = ('some_field_name_1',)
+        settings.DATE_INPUT_FORMATS = ('%Y-%m-%d',)
+        res = self.btc.get_value_for_field(5, 'some_field_name_1')
+        self.assertEqual(re.findall('\d{2}\:\d{2}', res), [res])
 
     def test_set_empty_value_for_field(self):
         from django.db.models.query import ValuesListQuerySet
@@ -997,6 +1042,40 @@ class TestFormTestMixInMethods(unittest.TestCase):
         self.assertEqual(self.ftc._get_all_fields_from_default_params(params),
                          ['field_1', 'pass', 'phptos-0-id', 'qwe'])
 
+    def test_get_digital_values_range_int(self):
+        self.ftc.obj = SomeModel
+        self.assertEqual(self.ftc.get_digital_values_range('int_field'),
+                         {'max_values': set([2147483647]), 'min_values': set([-2147483648])})
+
+    def test_get_digital_values_range_int_with_min(self):
+        self.ftc.obj = SomeModel
+        self.ftc.min_fields_length = (('int_field', 100),)
+        self.assertEqual(self.ftc.get_digital_values_range('int_field'),
+                         {'max_values': set([2147483647]), 'min_values': set([-2147483648, 100])})
+
+    def test_get_digital_values_range_int_with_max(self):
+        self.ftc.obj = SomeModel
+        self.ftc.max_fields_length = (('int_field', 100),)
+        self.assertEqual(self.ftc.get_digital_values_range('int_field'),
+                         {'max_values': set([2147483647, 100]), 'min_values': set([-2147483648])})
+
+    def test_get_digital_values_range_float(self):
+        self.ftc.obj = SomeModel
+        self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
+                         {'max_values': set([sys.float_info.max]), 'min_values': set([-sys.float_info.max])})
+
+    def test_get_digital_values_range_float_with_float(self):
+        self.ftc.obj = SomeModel
+        self.ftc.min_fields_length = (('digital_field', 100),)
+        self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
+                         {'max_values': set([sys.float_info.max]), 'min_values': set([-sys.float_info.max, 100])})
+
+    def test_get_digital_values_range_float_with_float(self):
+        self.ftc.obj = SomeModel
+        self.ftc.max_fields_length = (('digital_field', 100),)
+        self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
+                         {'max_values': set([sys.float_info.max, 100]), 'min_values': set([-sys.float_info.max])})
+
 
 class TestUtils(unittest.TestCase):
 
@@ -1008,7 +1087,7 @@ class TestUtils(unittest.TestCase):
         if os.path.exists('/tmp/test'):
             os.remove('/tmp/test')
         if os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')):
-            os.remove(os.path.join(settings.MEDIA_ROOT, 'test'))        
+            os.remove(os.path.join(settings.MEDIA_ROOT, 'test'))
 
     def tearDown(self):
         rmtree(TEMP_DIR)
@@ -1113,7 +1192,7 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(new_obj.text_field)
         self.assertEqual(type(new_obj.char_field), str)
         self.assertTrue(new_obj.char_field)
-        #self.assertTrue(new_obj.many_related_field.all())        
+        #self.assertTrue(new_obj.many_related_field.all())
         self.assertEqual(type(new_obj.file_field), FieldFile)
         self.assertTrue(new_obj.file_field.file)
         self.assertEqual(type(new_obj.digital_field), float)
@@ -1129,7 +1208,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(OtherModel.objects.all().count(), 1)
         self.assertTrue(new_obj.foreign_key_field)
         self.assertEqual(SomeModel.objects.get(unique_int_field=2).text_field, test_obj.text_field)
-    
+
     def test_fill_all_obj_fields_with_other_model_exists(self):
         OtherModel.objects.create()
         initial_other_obj_count = OtherModel.objects.all().count()
@@ -1142,13 +1221,13 @@ class TestUtils(unittest.TestCase):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=3)
         new_obj = utils.fill_all_obj_fields(test_obj, fields=('text_field', ), save=True)
         self.assertEqual(SomeModel.objects.get(unique_int_field=3).text_field, new_obj.text_field)
-        
+
     def test_generate_random_obj(self):
         initial_count = SomeModel.objects.all().count()
         new_obj = utils.generate_random_obj(SomeModel)
         self.assertEqual(SomeModel.objects.all().count(), initial_count + 1)
         self.assertEqual(type(new_obj.int_field), int)
-         
+
     def test_generate_random_obj_with_additional_params(self):
         initial_count = SomeModel.objects.all().count()
         params = {'text_field': u'тест text_field',
@@ -1165,36 +1244,36 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(new_obj.int_field, params['int_field'])
         self.assertEqual(new_obj.unique_int_field, params['unique_int_field'])
         self.assertEqual(new_obj.email_field, params['email_field'])
-        
+
     def test_get_random_date_value(self):
         new_date = utils.get_random_date_value()
         self.assertEqual(type(new_date), date)
         self.assertEqual(new_date.year, date.today().year)
         self.assertEqual(new_date.month, date.today().month)
-        
+
     def test_get_random_date_value(self):
         new_date = utils.get_random_date_value(date(2010, 3, 2), date(2011, 4, 2))
         self.assertEqual(type(new_date), date)
         self.assertGreaterEqual(new_date, date(2010, 3, 2))
         self.assertLess(new_date, date(2011, 4, 2))
-        
+
     def test_get_random_datetime_value(self):
         new_date = utils.get_random_datetime_value()
         self.assertEqual(type(new_date), datetime)
         self.assertEqual(new_date.year, date.today().year)
         self.assertEqual(new_date.month, date.today().month)
-        
+
     def test_get_random_datetime_value(self):
         new_date = utils.get_random_datetime_value(datetime(2010, 3, 2, 12, 3, 5), datetime(2011, 4, 2, 1, 2, 4))
         self.assertEqual(type(new_date), datetime)
         self.assertGreaterEqual(new_date, datetime(2010, 3, 2, 12, 3, 5))
         self.assertLess(new_date, datetime(2011, 4, 2, 1, 2, 4))
-        
+
     def test_get_random_file(self):
         new_file = utils.get_random_file()
         self.assertEqual(type(new_file), ContentFile)
-        self.assertEqual(new_file.size, 10)    
-    
+        self.assertEqual(new_file.size, 10)
+
     def test_get_random_file_with_path(self):
         new_file = utils.get_random_file(path='/tmp/test', )
         self.assertEqual(type(new_file), file)
@@ -1202,7 +1281,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
         self.assertEqual(new_file.mode, 'r')
-    
+
     def test_get_random_file_with_path_with_rewrite(self):
         new_file = utils.get_random_file(path='/tmp/test')
         hasher = hashlib.md5()
@@ -1218,7 +1297,7 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
         self.assertEqual(new_file.mode, 'r')
-        
+
     def test_get_random_file_with_path_without_rewrite(self):
         new_file = utils.get_random_file(path='/tmp/test')
         last_change_time = os.stat('/tmp/test').st_mtime
@@ -1229,37 +1308,37 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
         self.assertEqual(new_file.mode, 'r')
-        
+
     def test_get_random_file_with_path_return_closed(self):
         new_file = utils.get_random_file(path='/tmp/test', return_opened=False)
         self.assertEqual(new_file, None)
         self.assertTrue(os.path.exists('/tmp/test'))
         f = open('/tmp/test')
         self.assertEqual(len(f.read()), 10)
-        
+
     def test_get_random_file_with_size(self):
         new_file = utils.get_random_file(size=100)
         self.assertEqual(type(new_file), ContentFile)
         self.assertEqual(len(new_file.read()), 100)
-     
+
     def test_get_random_file_with_filename(self):
         new_file = utils.get_random_file(filename='test.qwe')
         self.assertEqual(type(new_file), ContentFile)
         self.assertEqual(new_file.name, 'test.qwe')
-        
+
     def test_get_random_file_with_img_filename(self):
         new_file = utils.get_random_file(filename='test.jpg')
         self.assertEqual(imghdr.what(new_file.file), 'jpeg')
-        
+
         new_file = utils.get_random_file(filename='test.jpeg')
         self.assertEqual(imghdr.what(new_file.file), 'jpeg')
-        
+
         new_file = utils.get_random_file(filename='test.gif')
         self.assertEqual(imghdr.what(new_file.file), 'gif')
-        
+
         new_file = utils.get_random_file(filename='test.bmp')
         self.assertEqual(imghdr.what(new_file.file), 'bmp')
-        
+
         new_file = utils.get_random_file(filename='test.svg')
         def is_svg(ff):
             tag = None
@@ -1277,7 +1356,7 @@ class TestUtils(unittest.TestCase):
         new_file = utils.get_random_file(extensions=('zzz',))
         self.assertEqual(type(new_file), ContentFile)
         self.assertEqual(os.path.splitext(new_file.name)[1], '.zzz')
-   
+
     def test_get_random_file_fake_size(self):
         settings.TEST_GENERATE_REAL_SIZE_FILE = False
         new_file = utils.get_random_file(size=100, filename='test.qwe')
@@ -1285,12 +1364,12 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(type(new_file), ContentFile)
         self.assertEqual(new_file.size, 10)
         self.assertEqual(new_file.name, '_size_100_.qwe')
-        
+
     def test_prepare_file_for_tests(self):
         sm = SomeModel.objects.create(file_field='test', int_field=1)
         utils.prepare_file_for_tests(SomeModel, 'file_field')
         self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')))
-        
+
     def test_prepare_image_for_tests(self):
         sm = SomeModel.objects.create(image_field='test', int_field=1)
         utils.prepare_file_for_tests(SomeModel, 'image_field')
