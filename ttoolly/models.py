@@ -300,18 +300,21 @@ class GlobalTestMixIn(object):
 
     def assert_list_equal(self, list1, list2, msg=None):
         msg = msg + u':\n' if msg else ''
+        self.assertIsInstance(list1, list, msg + 'First argument is not a list')
+        self.assertIsInstance(list2, list, msg + 'Second argument is not a list')
+
         if list1 != list2:
             if all([isinstance(el, dict) for el in list1]) and all([isinstance(el, dict) for el in list2]):
                 errors = []
                 for i, el in enumerate(list2):
-                    errors.append(self._assert_dict_equal(list1[i], el))
+                    errors.append('[line %d]: ' % i + self._assert_dict_equal(list1[i], el))
             elif all([isinstance(el, list) for el in list1]) and all([isinstance(el, list) for el in list2]):
                 errors = []
                 for i, el in enumerate(list2):
                     try:
                         self.assert_list_equal(list1[i], el)
                     except:
-                        self.errors_append(errors)
+                        errors.append('[line %d]:\n' % i + get_error().decode('utf-8'))
             else:
                 self.assertEqual(list1, list2, msg)
             error_message = self._truncateMessage(msg, '\n'.join(errors))
