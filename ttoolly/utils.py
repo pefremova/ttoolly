@@ -603,7 +603,7 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         size = 10
         filename = os.path.splitext(filename)[0][:-len(size_text)] + size_text + os.path.splitext(filename)[1]
 
-    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif', '.svg') and size > 0:
+    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.bmp') and size > 0:
         return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
                                 **kwargs)
     content = get_randname(size)
@@ -615,7 +615,7 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
     f.close()
     if return_opened:
         f = open(path, 'r')
-    return f
+        return f
 
 
 def generate_random_image_with_size(*args, **kwargs):
