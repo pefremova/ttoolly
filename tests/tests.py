@@ -207,7 +207,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                       ([], 'q', 'Second argument is not a list'),
                                       ([1,], [1, 2], u'Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
                                       ([{'q': 1}], [{'w': 1}], u"[line 0]: Not in first dict: ['w']\nNot in second dict: ['q']"),
-                                      ([[], [1, ]], [[], [1, 2]], u'[line 1]:\nTraceback (most recent call last):\n  File "/home/pefremova/work/ttoolly/ttoolly/models.py", line 315, in assert_list_equal\n    self.assert_list_equal(list1[i], el)\n  File "/home/pefremova/work/ttoolly/ttoolly/models.py", line 319, in assert_list_equal\n    self.assertEqual(list1, list2, msg)\n  File "/home/pefremova/work/ttoolly/ttoolly/models.py", line 228, in assertEqual\n    raise e\nAssertionError: Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]\n')):
+                                      ([[], [1, ]], [[], [1, 2]], u'[line 1]: Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]')):
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_list_equal(list1, list2)
             self.assertEqual(ar.exception.__unicode__(), message)
@@ -297,6 +297,12 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         f = open(os.path.join(TEMP_DIR, 'file_for_test.ext'), 'r')
         self.btc.default_params_edit = {'some_test': f}
         self.assertFalse(self.btc.is_file_field('some_test'))
+
+    def test_get_field_by_name(self):
+        self.assertEqual(self.btc.get_field_by_name(SomeModel, 'text_field'),
+                         SomeModel._meta.get_field_by_name('text_field'))
+        self.assertEqual(self.btc.get_field_by_name(SomeModel, 'many_related_field-0-other_text_field'),
+                         OtherModel._meta.get_field_by_name('other_text_field'))
 
     def test_get_params_according_to_type(self):
         el_1 = SomeModel(id=1)
@@ -1001,7 +1007,18 @@ class TestFormTestMixInMethods(unittest.TestCase):
                          sorted(['char_field', 'digital_field', 'email_field', 'file_field', 'foreign_key_field', 'id',
                                  'int_field', 'many_related_field', 'text_field', 'unique_int_field', 'bool_field',
                                  'date_field', 'datetime_field', 'image_field']))
-        self.assertEqual(sorted(self.ftc.get_object_fields(other_element)), ['id', 'related_name', 'somemodel_set'])
+        self.assertEqual(sorted(self.ftc.get_object_fields(other_element)),
+                         ['id', 'other_text_field', 'related_name', 'somemodel_set'])
+
+    def test_fill_all_fields(self):
+        params = {'a': 'test',
+                  'b': '',
+                  'c': None,}
+        self.ftc.fill_all_fields(('a', 'b', 'c', 'd'), params)
+        self.assertEqual(params['a'], 'test')
+        self.assertTrue(params['b'])
+        self.assertTrue(params['c'])
+        self.assertTrue(params['d'])
 
     def test_assert_objects_equal(self):
         el_1 = SomeModel(text_field='текст')

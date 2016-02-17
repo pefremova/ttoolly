@@ -21,5 +21,7 @@ class SomeModel(models.Model):
 
 
 class OtherModel(models.Model):
+
+    other_text_field = models.TextField(blank=True)
     class Meta:
         app_label = 'ttoolly'
