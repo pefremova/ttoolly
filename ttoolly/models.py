@@ -304,21 +304,31 @@ class GlobalTestMixIn(object):
         self.assertIsInstance(list2, list, msg + 'Second argument is not a list')
 
         if list1 != list2:
-            if all([isinstance(el, dict) for el in list1]) and all([isinstance(el, dict) for el in list2]):
-                errors = []
-                for i, el in enumerate(list2):
-                    errors.append('[line %d]: ' % i + self._assert_dict_equal(list1[i], el))
-            elif all([isinstance(el, list) for el in list1]) and all([isinstance(el, list) for el in list2]):
-                errors = []
-                for i, el in enumerate(list2):
-                    try:
-                        self.assert_list_equal(list1[i], el)
-                    except:
-                        errors.append('[line %d]:\n' % i + get_error().decode('utf-8'))
-            else:
-                self.assertEqual(list1, list2, msg)
-            error_message = self._truncateMessage(msg, '\n'.join(errors))
+            diff = self._assert_list_equal(list1, list2)
+            error_message = self._truncateMessage(msg, diff)
             self.fail(self._formatMessage(error_message, None))
+
+    def _assert_list_equal(self, list1, list2):
+        errors = []
+        if all([isinstance(el, dict) for el in list1]) and all([isinstance(el, dict) for el in list2]):
+            for i, el in enumerate(list2):
+                errors.append('[line %d]: ' % i + self._assert_dict_equal(list1[i], el))
+        elif all([isinstance(el, list) for el in list1]) and all([isinstance(el, list) for el in list2]):
+            for i, el in enumerate(list2):
+                res = self._assert_list_equal(list1[i], el)
+                if res:
+                    errors.append('[line %d]: ' % i + res)
+        else:
+            try:
+                self.assertEqual(list1, list2)
+            except:
+                _, v, _ = sys.exc_info()
+                errors.append(v.message)
+
+        res = '\n'.join(errors)
+        if not isinstance(res, unicode):
+            res = res.decode('utf-8')
+        return res
 
     def assert_mail_count(self, mails=None, count=None):
         error = ''
@@ -669,7 +679,7 @@ class GlobalTestMixIn(object):
             field_name = field.split('-')[0]
             field_name = field_name if field_name in all_names else obj_related_objects.get(field_name, field_name)
             related = model._meta.get_field_by_name(field_name)[0]
-            model = getattr(related, 'related_model', related.model)
+            model = getattr(related, 'related_model', related.rel.to)
             field = field.split('-')[-1]
         return model._meta.get_field_by_name(field)
 
