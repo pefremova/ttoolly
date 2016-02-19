@@ -1347,19 +1347,19 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(new_file.name, 'test.qwe')
 
     def test_get_random_file_with_img_filename(self):
-        new_file = utils.get_random_file(filename='test.jpg')
+        new_file = utils.get_random_file(filename='test.jpg', size=100)
         self.assertEqual(imghdr.what(new_file.file), 'jpeg')
 
-        new_file = utils.get_random_file(filename='test.jpeg')
+        new_file = utils.get_random_file(filename='test.jpeg', size=100)
         self.assertEqual(imghdr.what(new_file.file), 'jpeg')
 
-        new_file = utils.get_random_file(filename='test.gif')
+        new_file = utils.get_random_file(filename='test.gif', size=100)
         self.assertEqual(imghdr.what(new_file.file), 'gif')
 
-        new_file = utils.get_random_file(filename='test.bmp')
+        new_file = utils.get_random_file(filename='test.bmp', size=100)
         self.assertEqual(imghdr.what(new_file.file), 'bmp')
 
-        new_file = utils.get_random_file(filename='test.svg')
+        new_file = utils.get_random_file(filename='test.svg', size=100)
         def is_svg(ff):
             tag = None
             root = et.fromstring(new_file.file.read())
@@ -1396,3 +1396,21 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')))
         with open(os.path.join(settings.MEDIA_ROOT, 'test')) as f:
             self.assertEqual(imghdr.what(f), 'jpeg')
+
+    def test_get_random_url_value(self):
+        v = utils.get_random_url_value(100)
+        self.assertEqual(type(v), str)
+        self.assertLessEqual(len(v.split('/')[0]), 62)
+        self.assertEqual(re.findall(r'^[^/]{4,62}/.+$', v), [v])
+
+    def test_get_url_for_negative(self):
+        self.assertEqual(utils.get_url_for_negative('/qwe/3/w/', args=(2,)), '/qwe/2/w/')
+        self.assertEqual(utils.get_url_for_negative('/qwe/3/zzz/4/', args=(2, 5)), '/qwe/2/zzz/5/')
+        self.assertEqual(utils.get_url_for_negative('/qwe/3/w/', args=('a',)), '/qwe/a/w/')
+
+    def test_unicode_to_readable(self):
+        self.assertEqual(utils.unicode_to_readable(''), '')
+        self.assertEqual(utils.unicode_to_readable('qwe u"\u0430"'), 'qwe u"а"')
+        self.assertEqual(utils.unicode_to_readable('qwe u"\u0430\u043"'), 'qwe u"а\u043"')
+        self.assertEqual(utils.unicode_to_readable('qwe u"а"'), 'qwe u"а"')
+
