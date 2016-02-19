@@ -812,7 +812,10 @@ def get_url_for_negative(url, args=()):
             url = repl(url, args)
     except Resolver404:
         try:
+            prev_url = url
             url = get_url(url, args)
+            if url == prev_url:
+                url = repl(url, args)
         except NoReverseMatch:
             url = repl(url, args)
     except NoReverseMatch:
