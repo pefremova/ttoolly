@@ -16,7 +16,7 @@ from django.db.models.fields.files import FieldFile
 from django.http import HttpResponse
 from django.test import TestCase
 
-from models import OtherModel, SomeModel
+from test_project.test_app.models import OtherModel, SomeModel
 from ttoolly.models import TEMP_DIR, FormTestMixIn, GlobalTestMixIn
 from ttoolly import utils
 

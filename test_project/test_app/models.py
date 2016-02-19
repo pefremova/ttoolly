@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 from django.db import models
 
 
@@ -11,17 +14,27 @@ class SomeModel(models.Model):
     int_field = models.IntegerField()
     unique_int_field = models.IntegerField(null=True, blank=True, unique=True)
     email_field = models.EmailField(blank=True)
-    foreign_key_field = models.ForeignKey('OtherModel', null=True)
+    foreign_key_field = models.ForeignKey('OtherModel', blank=True, null=True)
     date_field = models.DateField(blank=True, null=True)
     datetime_field = models.DateTimeField(blank=True, null=True)
     bool_field = models.BooleanField(default=False)
 
     class Meta:
-        app_label = 'ttoolly'
+        verbose_name = 'SomeModel'
+        verbose_name_plural = 'SomeModels'
+        ordering = ['pk']
+
+    def __str__(self):
+        return 'SomeModel: %s' % self.pk
 
 
 class OtherModel(models.Model):
-
     other_text_field = models.TextField(blank=True)
+
     class Meta:
-        app_label = 'ttoolly'
+        verbose_name = 'OtherModel'
+        verbose_name_plural = 'OtherModels'
+        ordering = ['pk']
+
+    def __str__(self):
+        return 'OtherModel: %s' % self.pk
