@@ -12,7 +12,7 @@ class SomeModel(models.Model):
     image_field = models.ImageField(blank=True, null=True, upload_to='tmp/')
     digital_field = models.FloatField(null=True)
     int_field = models.IntegerField()
-    unique_int_field = models.IntegerField(null=True, blank=True, unique=True)
+    unique_int_field = models.IntegerField(null=True, blank=True, unique=True, verbose_name=u'Уникальное поле')
     email_field = models.EmailField(blank=True)
     foreign_key_field = models.ForeignKey('OtherModel', blank=True, null=True)
     date_field = models.DateField(blank=True, null=True)
