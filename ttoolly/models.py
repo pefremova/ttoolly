@@ -692,8 +692,8 @@ class GlobalTestMixIn(object):
             fields = [self.get_field_by_name(obj, name)[0] for name in obj._meta.get_all_field_names()]
         else:
             fields = obj._meta.get_fields()
-        for field in fields:
-            if field.__class__.__name__ == 'RelatedObject':
+        for field in set(fields):
+            if field.__class__.__name__ in ('RelatedObject', 'ManyToOneRel'):
                 object_fields.append(field.get_accessor_name())
             else:
                 object_fields.append(field.name)
@@ -809,7 +809,7 @@ class GlobalTestMixIn(object):
         if not hasattr(obj, field):
             value = None
         elif getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager', 'GenericRelatedObjectManager'):
-            value = u', '.join([str(v) for v in getattr(obj, field).values_list('pk', flat=True).order_by('pk')])
+            value = [v for v in getattr(obj, field).values_list('pk', flat=True).order_by('pk')]
         else:
             value = getattr(obj, field)
             if 'File' in [m.__name__ for m in getattr(obj, field).__class__.__mro__] and not value:
