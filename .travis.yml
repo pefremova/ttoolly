@@ -14,4 +14,7 @@ install:
 after_script:
   coveralls
 script: 
-  coverage run --source=ttoolly manage.py test tests
+  if [[ $DJANGO_VERSION == "1.4.22" ]] || [[ $DJANGO_VERSION == "1.5.12" ]];
+    then echo -e "\nfrom tests_for_project import *\n" >> tests/tests.py && coverage run --source=ttoolly manage.py test tests;
+    else coverage run --source=ttoolly manage.py test tests;
+  fi
