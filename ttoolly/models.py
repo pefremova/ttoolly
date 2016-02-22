@@ -609,7 +609,7 @@ class GlobalTestMixIn(object):
                           'unique': u'{verbose_obj} с таким {verbose_field} уже существует.'.format(**locals()),
                           'delete_not_exists': u'Произошла ошибка. Попробуйте позже.',
                           'recovery_not_exists': u'Произошла ошибка. Попробуйте позже.',
-                          'empty_file': u'Загруженный файл пуст.',
+                          'empty_file': u'Отправленный файл пуст.',
                           'max_count_file': u'Допускается загрузить не более {max_count} файлов.' if
                                     (previous_locals.get('max_count', None) is None)
                                     else u'Допускается загрузить не более {max_count} файлов.'.format(**previous_locals),
@@ -3422,6 +3422,7 @@ class FileTestMixIn(FormTestMixIn):
         super(FileTestMixIn, self).__init__(*args, **kwargs)
         if self.file_fields_params is None:
             self.file_fields_params = {}
+        self.FILE_FIELDS = set(list(self.FILE_FIELDS) + self.file_fields_params.keys())
 
     def humanize_file_size(self, size):
         return filesizeformat(size)
