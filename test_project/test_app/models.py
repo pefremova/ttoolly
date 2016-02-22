@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 
 class SomeModel(models.Model):
@@ -10,9 +11,10 @@ class SomeModel(models.Model):
     many_related_field = models.ManyToManyField('OtherModel', related_name='related_name', blank=True)
     file_field = models.FileField(blank=True, null=True, upload_to='tmp/')
     image_field = models.ImageField(blank=True, null=True, upload_to='tmp/')
-    digital_field = models.FloatField(null=True)
-    int_field = models.IntegerField()
-    unique_int_field = models.IntegerField(null=True, blank=True, unique=True, verbose_name=u'Уникальное поле')
+    digital_field = models.FloatField(null=True, validators=[MinValueValidator(-100.5), MaxValueValidator(250.1)])
+    int_field = models.IntegerField(validators=[MinValueValidator(-5), MaxValueValidator(500)])
+    unique_int_field = models.IntegerField(null=True, blank=True, unique=True, verbose_name=u'Уникальное поле',
+                                           validators=[MinValueValidator(0), MaxValueValidator(9999999)])
     email_field = models.EmailField(blank=True)
     foreign_key_field = models.ForeignKey('OtherModel', blank=True, null=True)
     date_field = models.DateField(blank=True, null=True)
