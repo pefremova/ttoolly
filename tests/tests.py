@@ -303,6 +303,10 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                          SomeModel._meta.get_field_by_name('text_field'))
         self.assertEqual(self.btc.get_field_by_name(SomeModel, 'many_related_field-0-other_text_field'),
                          OtherModel._meta.get_field_by_name('other_text_field'))
+        self.assertEqual(self.btc.get_field_by_name(SomeModel, 'foreign_key_field-0-other_text_field'),
+                         OtherModel._meta.get_field_by_name('other_text_field'))
+        self.assertEqual(self.btc.get_field_by_name(OtherModel, 'related_name-0-text_field'),
+                         SomeModel._meta.get_field_by_name('text_field'))
 
     def test_get_params_according_to_type(self):
         el_1 = SomeModel(id=1)
