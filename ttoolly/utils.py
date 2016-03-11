@@ -66,7 +66,7 @@ def format_errors(errors, space_count=0):
     return (u'\n%s' % joined_errors).encode('utf-8')
 
 
-def generate_random_obj(obj_model, additional_params=None, filename=None):
+def generate_random_obj(obj_model, additional_params=None, filename=None, with_save=True):
     if additional_params is None:
         additional_params = {}
     fields = obj_model._meta.fields
@@ -80,7 +80,10 @@ def generate_random_obj(obj_model, additional_params=None, filename=None):
         params[f.name] = get_value_for_obj_field(f, filename)
 
     params.update(additional_params)
-    return obj_model.objects.create(**params)
+    if with_save:
+        return obj_model.objects.create(**params)
+    else:
+        return obj_model(**params)
 
 
 def generate_sql(data):
