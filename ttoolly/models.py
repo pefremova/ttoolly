@@ -1583,9 +1583,13 @@ class FormAddTestMixIn(FormTestMixIn):
             field = choice(group)
             fields_from_groups = fields_from_groups.difference(prepared_depends_fields[field])
         self.fill_all_fields(fields_from_groups, default_params)
+        new_obj = None
         for group in self.one_of_fields_add:
             params = self.deepcopy(default_params)
             for field in group:
+                """if unique fields"""
+                if new_object:
+                    self.obj.objects.filter(pk=new_object.pk).delete()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 initial_obj_count = self.obj.objects.count()
                 for f in prepared_depends_fields[field]:
@@ -1621,6 +1625,7 @@ class FormAddTestMixIn(FormTestMixIn):
         required_fields = self.required_fields_add + \
                           self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
+        new_object = None
         for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
@@ -1650,6 +1655,9 @@ class FormAddTestMixIn(FormTestMixIn):
             for field in group:
                 self.set_empty_value_for_field(_params, field)
             for field in group:
+                """if unique fields"""
+                if new_object:
+                    self.obj.objects.filter(pk=new_object.pk).delete()
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 params = self.deepcopy(_params)
@@ -4426,8 +4434,9 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
         for el in self.allowed_links:
             self.login()
             url_name, args, custom_message = self._get_values(el)
-            url = self.get_url(url_name, args)
+            url = ''
             try:
+                url = self.get_url(url_name, args)
                 response = self.get_method(url, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
             except:
