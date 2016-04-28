@@ -9,15 +9,30 @@ except:
     class DjRunner(DiscoverRunner):
         pass
 from django.utils import unittest
+from django.conf import settings
 import re
 
 
-class RegexpTestSuiteRunner(DjRunner):
+def get_runner():
+    test_runner_class = getattr(settings, 'TEST_RUNNER_PARENT', None)
+    if not test_runner_class:
+        return DjRunner
 
-    mro_names = [m.__name__ for m in DjRunner.__mro__]
+    test_path = test_runner_class.split('.')
+    test_module = __import__('.'.join(test_path[:-1]), {}, {}, str(test_path[-1]))
+    test_runner = getattr(test_module, test_path[-1])
+    return test_runner
+
+
+ParentRunner = get_runner()
+
+
+class RegexpTestSuiteRunner(ParentRunner):
+
+    mro_names = [m.__name__ for m in ParentRunner.__mro__]
 
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
-        full_suite = DjRunner.build_suite(self, None, extra_tests=None, **kwargs)
+        full_suite = ParentRunner.build_suite(self, None, extra_tests=None, **kwargs)
         my_suite = unittest.TestSuite()
         labels_for_suite = []
         if test_labels:
@@ -53,5 +68,5 @@ class RegexpTestSuiteRunner(DjRunner):
                 if (full_re and re.findall(r'%s' % full_re, full_name)):
                     my_suite.addTest(el)
         if labels_for_suite:
-            my_suite.addTests(DjRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
+            my_suite.addTests(ParentRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
         return reorder_suite(my_suite, (unittest.TestCase,))
