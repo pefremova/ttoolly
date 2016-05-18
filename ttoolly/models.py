@@ -84,6 +84,10 @@ class RequestManager(models.Manager):
     def get_query_set(self):
         return super(RequestManager, self).get_query_set().using(self.db_name)
 
+    # For Django >= 1.8
+    def get_queryset(self):
+        return super(RequestManager, self).get_queryset().using(self.db_name)
+
 
 class CustomModel(models.Model):
 
@@ -4634,13 +4638,12 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
                     data = get_fixtures_data(fixture)
                     sql = generate_sql(data)
                     cursor = connections[db].cursor()
-                    try:
-                        cursor.execute(sql)
-                    except Exception, e:
-                        sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
-                        transaction.rollback_unless_managed(using=db)
-                    else:
-                        transaction.commit_unless_managed(using=db)
+
+                    with transaction.atomic(using=db):
+                        try:
+                            cursor.execute(sql)
+                        except Exception, e:
+                            sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
 
                     for element in data:
                         sequence_sql.append(("SELECT setval(pg_get_serial_sequence('%s','%s'), coalesce(max(%s), 1), " + \
@@ -4661,12 +4664,8 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
                 cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
                 tables = cursor.fetchall()
                 for table in tables:
-                    try:
+                    with transaction.atomic(using=db):
                         cursor.execute("DELETE FROM %s" % table)
-                    except:
-                        transaction.rollback_unless_managed(using=db)
-                    else:
-                        transaction.commit_unless_managed(using=db)
 
     def get_model(self, table_name, db_name=None):
         if not db_name:
