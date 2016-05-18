@@ -85,6 +85,14 @@ class RequestManager(models.Manager):
         return super(RequestManager, self).get_query_set().using(self.db_name)
 
 
+class RequestManagerNew(RequestManager):
+
+    """For Django>=1.8"""
+
+    def get_queryset(self):
+        return super(RequestManager, self).get_queryset().using(self.db_name)
+
+
 class CustomModel(models.Model):
 
     objects = RequestManager()
@@ -1583,9 +1591,13 @@ class FormAddTestMixIn(FormTestMixIn):
             field = choice(group)
             fields_from_groups = fields_from_groups.difference(prepared_depends_fields[field])
         self.fill_all_fields(fields_from_groups, default_params)
+        new_object = None
         for group in self.one_of_fields_add:
             params = self.deepcopy(default_params)
             for field in group:
+                """if unique fields"""
+                if new_object:
+                    self.obj.objects.filter(pk=new_object.pk).delete()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 initial_obj_count = self.obj.objects.count()
                 for f in prepared_depends_fields[field]:
@@ -1621,6 +1633,7 @@ class FormAddTestMixIn(FormTestMixIn):
         required_fields = self.required_fields_add + \
                           self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
+        new_object = None
         for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
@@ -1650,6 +1663,9 @@ class FormAddTestMixIn(FormTestMixIn):
             for field in group:
                 self.set_empty_value_for_field(_params, field)
             for field in group:
+                """if unique fields"""
+                if new_object:
+                    self.obj.objects.filter(pk=new_object.pk).delete()
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 params = self.deepcopy(_params)
@@ -2521,8 +2537,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_obj = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_obj, test_obj)
+                new_object = self.obj.objects.get(pk=test_obj.pk)
+                self.assert_objects_equal(new_object, test_obj)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2545,8 +2561,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_obj = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_obj, test_obj)
+                new_object = self.obj.objects.get(pk=test_obj.pk)
+                self.assert_objects_equal(new_object, test_obj)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2574,8 +2590,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_obj = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_obj, test_obj)
+                new_object = self.obj.objects.get(pk=test_obj.pk)
+                self.assert_objects_equal(new_object, test_obj)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2598,8 +2614,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_obj = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_obj, test_obj)
+                new_object = self.obj.objects.get(pk=test_obj.pk)
+                self.assert_objects_equal(new_object, test_obj)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2699,8 +2715,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field, length)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_obj = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_obj, test_obj)
+                new_object = self.obj.objects.get(pk=test_obj.pk)
+                self.assert_objects_equal(new_object, test_obj)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2731,8 +2747,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field, length)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_obj = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_obj, test_obj)
+                new_object = self.obj.objects.get(pk=test_obj.pk)
+                self.assert_objects_equal(new_object, test_obj)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2764,8 +2780,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     error_message = self.get_error_message(message_type, field, locals=_locals)
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
-                    new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                    self.assert_objects_equal(new_obj, obj_for_edit)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -2794,8 +2810,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     _locals = {'field': field, 'value': value}
                     error_message = self.get_error_message(message_type, field, locals=_locals)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                    self.assert_objects_equal(new_obj, obj_for_edit)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -2832,8 +2848,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_obj, obj_for_edit)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2868,8 +2884,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_obj, obj_for_edit)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2901,8 +2917,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
-                    new_obj = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_obj, test_obj)
+                    new_object = self.obj.objects.get(pk=test_obj.pk)
+                    self.assert_objects_equal(new_object, test_obj)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -2932,8 +2948,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_obj = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_obj, test_obj)
+                    new_object = self.obj.objects.get(pk=test_obj.pk)
+                    self.assert_objects_equal(new_object, test_obj)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -2997,8 +3013,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_obj = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_obj, test_obj)
+                    new_object = self.obj.objects.get(pk=test_obj.pk)
+                    self.assert_objects_equal(new_object, test_obj)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -3062,8 +3078,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_obj = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_obj, test_obj)
+                    new_object = self.obj.objects.get(pk=test_obj.pk)
+                    self.assert_objects_equal(new_object, test_obj)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -3092,9 +3108,9 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_edit,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-                new_obj = self.obj.objects.get(pk=test_obj.pk)
+                new_object = self.obj.objects.get(pk=test_obj.pk)
                 if field not in getattr(self, 'exclude_from_check_edit', []):
-                    self.assertEqual(self.get_value_for_compare(new_obj, field),
+                    self.assertEqual(self.get_value_for_compare(new_object, field),
                                      getattr(self, 'other_values_for_check',
                                              {}).get(field, self.get_value_for_compare(test_obj, field)))
             except:
@@ -3126,8 +3142,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, group)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_obj = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_obj, test_obj)
+                    new_object = self.obj.objects.get(pk=test_obj.pk)
+                    self.assert_objects_equal(new_object, test_obj)
                     self.assertEqual(response.status_code, self.status_code_error,
                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -3960,8 +3976,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_obj, obj_for_edit)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -4034,8 +4050,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_obj, obj_for_edit)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -4076,8 +4092,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_obj, obj_for_edit)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -4196,8 +4212,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                             **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_obj, obj_for_edit)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -4274,8 +4290,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                                 **self.additional_params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                    new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                    self.assert_objects_equal(new_obj, obj_for_edit)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -4349,8 +4365,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                                 **self.additional_params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                    new_obj = self.obj.objects.get(pk=obj_for_edit.pk)
-                    self.assert_objects_equal(new_obj, obj_for_edit)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -4426,8 +4442,9 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
         for el in self.allowed_links:
             self.login()
             url_name, args, custom_message = self._get_values(el)
-            url = self.get_url(url_name, args)
+            url = ''
             try:
+                url = self.get_url(url_name, args)
                 response = self.get_method(url, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
             except:
@@ -4544,6 +4561,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
 class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
 
     multi_db = True
+    request_manager = RequestManager
 
     def __init__(self, *args, **kwargs):
         GlobalTestMixIn.__init__(self,)
@@ -4681,6 +4699,52 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
         params.update(dict([(k, models.Field(primary_key=True, unique=True) if k != 'id'
                              else models.AutoField(primary_key=True,)) for k in pk_names]))
         params.update({'Meta': Meta, '__module__': CustomModel.__module__,
-                       'objects': RequestManager(db_name)})
+                       'objects': self.request_manager(db_name)})
         C = type(table_name, (CustomModel,), params)
         return C
+
+
+class CustomTestCaseNew(CustomTestCase):
+
+    """For Django>=1.8"""
+
+    request_manager = RequestManagerNew
+
+    def custom_fixture_setup(self, **options):
+        verbosity = int(options.get('verbosity', 1))
+        for db in connections:
+            if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
+                fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
+
+                sequence_sql = []
+                for fixture in fixtures:
+                    data = get_fixtures_data(fixture)
+                    sql = generate_sql(data)
+                    cursor = connections[db].cursor()
+                    with transaction.atomic(using=db):
+                        try:
+                            cursor.execute(sql)
+                        except Exception, e:
+                            sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
+
+                    for element in data:
+                        sequence_sql.append(("SELECT setval(pg_get_serial_sequence('%s','%s'), coalesce(max(%s), 1), " + \
+                                             "max(%s) IS NOT null) FROM %s;") % (element['model'], element['pk'],
+                                                                               element['pk'], element['pk'],
+                                                                               element['model']))
+                if sequence_sql:
+                    if verbosity >= 2:
+                        sys.stdout.write("Resetting sequences\n")
+                    for line in sequence_sql:
+                        cursor.execute(line)
+                transaction.commit(using=db)
+
+    def custom_fixture_teardown(self):
+        for db in connections:
+            if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
+                cursor = connections[db].cursor()
+                cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+                tables = cursor.fetchall()
+                for table in tables:
+                    with transaction.atomic(using=db):
+                        cursor.execute("DELETE FROM %s" % table)
