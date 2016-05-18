@@ -85,6 +85,14 @@ class RequestManager(models.Manager):
         return super(RequestManager, self).get_query_set().using(self.db_name)
 
 
+class RequestManagerNew(RequestManager):
+
+    """For Django>=1.8"""
+
+    def get_queryset(self):
+        return super(RequestManager, self).get_queryset().using(self.db_name)
+
+
 class CustomModel(models.Model):
 
     objects = RequestManager()
@@ -4553,6 +4561,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
 class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
 
     multi_db = True
+    request_manager = RequestManager
 
     def __init__(self, *args, **kwargs):
         GlobalTestMixIn.__init__(self,)
@@ -4690,6 +4699,52 @@ class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
         params.update(dict([(k, models.Field(primary_key=True, unique=True) if k != 'id'
                              else models.AutoField(primary_key=True,)) for k in pk_names]))
         params.update({'Meta': Meta, '__module__': CustomModel.__module__,
-                       'objects': RequestManager(db_name)})
+                       'objects': self.request_manager(db_name)})
         C = type(table_name, (CustomModel,), params)
         return C
+
+
+class CustomTestCaseNew(CustomTestCase):
+
+    """For Django>=1.8"""
+
+    request_manager = RequestManagerNew
+
+    def custom_fixture_setup(self, **options):
+        verbosity = int(options.get('verbosity', 1))
+        for db in connections:
+            if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
+                fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
+
+                sequence_sql = []
+                for fixture in fixtures:
+                    data = get_fixtures_data(fixture)
+                    sql = generate_sql(data)
+                    cursor = connections[db].cursor()
+                    with transaction.atomic(using=db):
+                        try:
+                            cursor.execute(sql)
+                        except Exception, e:
+                            sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
+
+                    for element in data:
+                        sequence_sql.append(("SELECT setval(pg_get_serial_sequence('%s','%s'), coalesce(max(%s), 1), " + \
+                                             "max(%s) IS NOT null) FROM %s;") % (element['model'], element['pk'],
+                                                                               element['pk'], element['pk'],
+                                                                               element['model']))
+                if sequence_sql:
+                    if verbosity >= 2:
+                        sys.stdout.write("Resetting sequences\n")
+                    for line in sequence_sql:
+                        cursor.execute(line)
+                transaction.commit(using=db)
+
+    def custom_fixture_teardown(self):
+        for db in connections:
+            if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
+                cursor = connections[db].cursor()
+                cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+                tables = cursor.fetchall()
+                for table in tables:
+                    with transaction.atomic(using=db):
+                        cursor.execute("DELETE FROM %s" % table)
