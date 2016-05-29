@@ -201,16 +201,26 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_dict_equal(dict1, dict2, u'тест')
             self.assertEqual(ar.exception.__unicode__(), u'тест:\n' + message)
+    
+    def test_assert_equal_dicts_equal(self):
+        self.btc.assert_dict_equal({'q': 1, 'w': 2}, {'w':2, 'q': 1})
+        self.btc.assert_dict_equal({'q': 1, 'w': 2}, {'w':2, 'q': 1}, u'Дополнительный текст')
 
     def test_assert_list_equal(self):
         for list1, list2, message in (('q', [], 'First argument is not a list'),
                                       ([], 'q', 'Second argument is not a list'),
                                       ([1,], [1, 2], u'Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
-                                      ([{'q': 1}], [{'w': 1}], u"[line 0]: Not in first dict: ['w']\nNot in second dict: ['q']"),
+                                      ([{'q': 1}, {'z': 2}], [{'w': 1}, {'z': 2}], u"[line 0]: Not in first dict: ['w']\nNot in second dict: ['q']"),
                                       ([[], [1, ]], [[], [1, 2]], u'[line 1]: Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]')):
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_list_equal(list1, list2)
             self.assertEqual(ar.exception.__unicode__(), message)
+    
+    def test_assert_equal_lists_equal(self):
+        self.btc.assert_list_equal([1, 2], [1, 2])
+        self.btc.assert_list_equal([1, 2], [1, 2], u'Дополнительный текст')
+        self.btc.assert_list_equal([{'q': 1}, {'w': 2}], [{'q': 1}, {'w':2}])
+        self.btc.assert_list_equal([{'q': 1}, {'w': 2}], [{'q': 1}, {'w':2}], u'Дополнительный текст')
 
     def test_get_random_file(self):
         self.btc.with_files = False
