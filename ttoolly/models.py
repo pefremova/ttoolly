@@ -320,7 +320,9 @@ class GlobalTestMixIn(object):
         errors = []
         if all([isinstance(el, dict) for el in list1]) and all([isinstance(el, dict) for el in list2]):
             for i, el in enumerate(list2):
-                errors.append('[line %d]: ' % i + self._assert_dict_equal(list1[i], el))
+                res = self._assert_dict_equal(list1[i], el)
+                if res:
+                    errors.append('[line %d]: ' % i + res)
         elif all([isinstance(el, list) for el in list1]) and all([isinstance(el, list) for el in list2]):
             for i, el in enumerate(list2):
                 res = self._assert_list_equal(list1[i], el)
