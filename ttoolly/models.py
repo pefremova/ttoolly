@@ -4558,14 +4558,10 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
 
-class CustomTestCase(TransactionTestCase, GlobalTestMixIn):
+class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
 
     multi_db = True
     request_manager = RequestManager
-
-    def __init__(self, *args, **kwargs):
-        GlobalTestMixIn.__init__(self,)
-        TransactionTestCase.__init__(self, *args, **kwargs)
 
     def _fixture_setup(self):
         if getattr(self, 'multi_db', False):
@@ -4748,3 +4744,4 @@ class CustomTestCaseNew(CustomTestCase):
                 for table in tables:
                     with transaction.atomic(using=db):
                         cursor.execute("DELETE FROM %s" % table)
+
