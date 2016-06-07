@@ -404,7 +404,8 @@ class GlobalTestMixIn(object):
         local_errors = []
         object_fields = obj._meta.get_all_field_names()
         object_related_field_names = [name for name in object_fields if
-                                      obj._meta.get_field_by_name(name)[0].__class__.__name__ == 'RelatedObject']
+                                      obj._meta.get_field_by_name(name)[0].__class__.__name__ in ('RelatedObject',
+                                                                                                  'ManyToOneRel')]
         fields_for_check = set(params.keys()).intersection(object_fields)
         fields_for_check.update([k.split('-')[0] for k in params.keys() if k.split('-')[0]
                                  in object_related_field_names])
@@ -807,7 +808,7 @@ class GlobalTestMixIn(object):
         return f
 
     def get_related_names(self, model):
-        obj_related_objects = dict([(el.get_accessor_name(), getattr(el, 'var_name', '')) for el in
+        obj_related_objects = dict([(el.get_accessor_name(), getattr(el, 'var_name', el.get_accessor_name())) for el in
                                     model._meta.get_all_related_objects()])
         obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
