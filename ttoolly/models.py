@@ -1487,6 +1487,16 @@ class FormTestMixIn(GlobalTestMixIn):
 
 class FormAddTestMixIn(FormTestMixIn):
 
+    def assert_objects_count_on_add(self, is_positive, initial_obj_count=0, additional=1):
+        if is_positive:
+            self.assertEqual(self.obj.objects.count(), initial_obj_count + additional,
+                             u'Objects count after add = %s (expect %s)' %
+                             (self.obj.objects.count(), initial_obj_count + additional))
+        else:
+            self.assertEqual(self.obj.objects.count(), initial_obj_count,
+                             u'Objects count after wrong add = %s (expect %s)' %
+                             (self.obj.objects.count(), initial_obj_count))
+
     def get_existing_obj(self):
         if 'get_obj_for_edit' in dir(self):
             return self.get_obj_for_edit()
@@ -1566,9 +1576,7 @@ class FormAddTestMixIn(FormTestMixIn):
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-            self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                             u'Objects count after add = %s (expect %s)' %
-                             (self.obj.objects.count(), initial_obj_count + 1))
+            self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
@@ -1615,9 +1623,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assert_no_form_errors(response)
                     self.assertEqual(response.status_code, self.status_code_success_add,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                     u'Objects count after add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count + 1))
+                    self.assert_objects_count_on_add(True, initial_obj_count)
                     new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
@@ -1651,9 +1657,7 @@ class FormAddTestMixIn(FormTestMixIn):
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-            self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                             u'Objects count after add = %s (expect %s)' %
-                             (self.obj.objects.count(), initial_obj_count + 1))
+            self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
@@ -1685,9 +1689,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assert_no_form_errors(response)
                     self.assertEqual(response.status_code, self.status_code_success_add,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                     u'Objects count after add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count + 1))
+                    self.assert_objects_count_on_add(True, initial_obj_count)
                     new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                     exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                     self.assert_object_fields(new_object, params, exclude=exclude)
@@ -1715,9 +1717,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params.update(get_captcha_codes())
                 self.set_empty_value_for_field(params, field)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(response.status_code, self.status_code_error,
@@ -1741,9 +1741,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -1770,9 +1768,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params.update(get_captcha_codes())
                 params.pop(field)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(response.status_code, self.status_code_error,
@@ -1796,9 +1792,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -1833,9 +1827,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                 u'Objects count after add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count + 1))
+                self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -1865,9 +1857,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -1897,9 +1887,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -1925,9 +1913,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = value
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                     u'Objects count after wrong add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     _locals = {'field': field,
                                'value': value if field in self.choice_fields_add_with_value_in_error else ''}
                     self.get_all_form_errors(response)
@@ -1957,9 +1943,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = [value, ]
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                     u'Objects count after wrong add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     _locals = {'field': field, 'value': value}
                     self.get_all_form_errors(response)
                     self.assertEqual(self.get_all_form_errors(response),
@@ -1999,9 +1983,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                                        error_field=field)
 
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2035,9 +2017,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -2067,9 +2047,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[field] = value
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                     u'Objects count after wrong add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
@@ -2099,9 +2077,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[field] = value
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                     u'Objects count after wrong add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
@@ -2140,9 +2116,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                 u'Objects count after add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count + 1))
+                self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2172,9 +2146,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[field] = value
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                     u'Objects count after wrong add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
@@ -2213,9 +2185,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                 u'Objects count after add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count + 1))
+                self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2245,9 +2215,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[field] = value
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                     u'Objects count after wrong add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
@@ -2281,9 +2249,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                 u'Objects count after add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count + 1))
+                self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 self.assertNotEqual(self.get_value_for_compare(new_object, field), params[field])
                 exclude = getattr(self, 'exclude_from_check_add', [])
@@ -2314,9 +2280,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.fill_all_fields(filled_group, params)
                     initial_obj_count = self.obj.objects.count()
                     response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                    u'Objects count after wrong add = %s (expect %s)' %
-                                    (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     error_message = self.get_error_message(message_type, group)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
@@ -3522,9 +3486,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.files.append(f)
                 params[field] = [f, ] * (max_count + 1)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
                 self.savepoint_rollback(sp)
@@ -3562,9 +3524,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                 u'Objects count after add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count + 1))
+                self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -3600,9 +3560,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
                 self.savepoint_rollback(sp)
@@ -3640,9 +3598,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     self.files.append(f)
                     params[field].append(f)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
                 self.savepoint_rollback(sp)
@@ -3687,9 +3643,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                 u'Objects count after add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count + 1))
+                self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -3733,9 +3687,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                 u'Objects count after add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count + 1))
+                self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -3768,9 +3720,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                 u'Objects count after wrong add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count))
+                self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except:
                 self.savepoint_rollback(sp)
@@ -3810,9 +3760,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     self.assert_no_form_errors(response)
                     self.assertEqual(response.status_code, self.status_code_success_add,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                     u'Objects count after add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count + 1))
+                    self.assert_objects_count_on_add(True, initial_obj_count)
                     new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
@@ -3850,9 +3798,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 initial_obj_count = self.obj.objects.count()
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                     u'Objects count after wrong add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 except:
                     self.savepoint_rollback(sp)
@@ -3889,9 +3835,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assertEqual(self.obj.objects.count(), initial_obj_count + 1,
-                                 u'Objects count after add = %s (expect %s)' %
-                                 (self.obj.objects.count(), initial_obj_count + 1))
+                self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -3933,9 +3877,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     self.update_params(params)
                     params[field] = [f, ] if is_file_list else f
                     response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                    self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                                     u'Objects count after wrong add = %s (expect %s)' %
-                                     (self.obj.objects.count(), initial_obj_count))
+                    self.assert_objects_count_on_add(False, initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 except:
                     self.savepoint_rollback(sp)
