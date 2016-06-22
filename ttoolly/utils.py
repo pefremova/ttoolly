@@ -513,7 +513,7 @@ def get_value_for_obj_field(f, filename=None):
     if 'EmailField' in mro_names:
         length = random.randint(10, f.max_length)
         return get_random_email_value(length)
-    elif mro_names.intersection(['TextField', 'CharField']) and not f._choices:
+    elif mro_names.intersection(['TextField', 'CharField']) and not (getattr(f, '_choices', None) or f.choices):
         length = random.randint(0 if f.blank else 1, int(f.max_length) if f.max_length else 500)
         if filename:
             return get_randname_from_file(filename, length)
@@ -523,7 +523,8 @@ def get_value_for_obj_field(f, filename=None):
         return datetime.now()
     elif 'DateField' in mro_names:
         return date.today()
-    elif mro_names.intersection(['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']) and not f._choices:
+    elif mro_names.intersection(['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']) and \
+            not (getattr(f, '_choices', None) or f.choices):
         return random.randint(0, 1000)
     elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
         related_model = getattr(f.related, 'parent_model', f.related.model)
@@ -548,13 +549,14 @@ def get_value_for_obj_field(f, filename=None):
             value = decimal.Decimal(str(value))
         return value
     elif 'ArrayField' in mro_names:
-        if f._choices:
-            return [random.choice(f._choices)[0] for _ in xrange(random.randint(0 if f.blank else 1,
-                                                                                len(f._choices)))]
+        if getattr(f, '_choices', None) or f.choices:
+            choices = getattr(f, '_choices', None) or f.choices
+            return [random.choice(choices)[0] for _ in xrange(random.randint(0 if f.blank else 1,
+                                                                                len(choices)))]
         elif 'IntegerArrayField' in mro_names:
             return [random.randint(0, 1000) for _ in xrange(random.randint(0 if f.blank else 1, 10))]
-    elif f._choices:
-        return random.choice(f._choices)[0]
+    elif getattr(f, '_choices', None) or f.choices:
+        return random.choice(getattr(f, '_choices', None) or f.choices)[0]
     elif mro_names.intersection(['FileField', 'ImageField']):
         if 'ImageField' in mro_names:
             content = get_random_jpg_content()

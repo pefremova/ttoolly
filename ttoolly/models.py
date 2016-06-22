@@ -950,7 +950,7 @@ class GlobalTestMixIn(object):
 
     def set_empty_value_for_field(self, params, field):
         mro_names = [m.__name__ for m in params[field].__class__.__mro__]
-        if 'list' in mro_names or 'tuple' in mro_names or 'ValuesListQuerySet' in mro_names:
+        if 'list' in mro_names or 'tuple' in mro_names or 'QuerySet' in mro_names:
             params.pop(field)
         else:
             params[field] = ''

@@ -12,4 +12,4 @@ if getattr(settings, 'COLORIZE_TESTS', False):
     TextTestResult.getDescription = _getDescription
 
 
-settings.FILE_UPLOAD_HANDLERS = ('ttoolly.utils.FakeSizeMemoryFileUploadHandler',) + settings.FILE_UPLOAD_HANDLERS
+settings.FILE_UPLOAD_HANDLERS = ['ttoolly.utils.FakeSizeMemoryFileUploadHandler',] + list(settings.FILE_UPLOAD_HANDLERS)
