@@ -594,9 +594,33 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             self.assertTrue(False, 'With raise: %s' % repr(e))
 
     def test_assert_object_fields(self):
-        el_1 = SomeModel(text_field='текст 1')
+        some_1 = SomeModel(int_field=2)
+        some_1.save()
+        some_2 = SomeModel(int_field=2)
+        some_2.save()
+        other_1 = OtherModel()
+        other_1.save()
+        el_1 = SomeModel(int_field=1,
+                         text_field='текст 1',
+                         one_to_one_field=other_1,
+                         one_to_one_field2=some_2)
+        el_1.save()
         try:
-            self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'})
+            self.btc.assert_object_fields(el_1, {'text_field': 'текст 1',
+                                                 'char_field': '',
+                                                 'many_related_field': [],
+                                                 'file_field': None,
+                                                 'image_field': '',
+                                                 'digital_field': '',
+                                                 'int_field': 1,
+                                                 'unique_int_field': '',
+                                                 'email_field': '',
+                                                 'foreign_key_field': '',
+                                                 'date_field': '',
+                                                 'datetime_field': '',
+                                                 'bool_field': '',
+                                                 'one_to_one_field': other_1.pk,
+                                                 'one_to_one_field2': some_2.pk})
         except Exception, e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
@@ -1020,9 +1044,10 @@ class TestFormTestMixInMethods(unittest.TestCase):
         self.assertEqual(sorted(self.ftc.get_object_fields(some_element)),
                          sorted(['char_field', 'digital_field', 'email_field', 'file_field', 'foreign_key_field', 'id',
                                  'int_field', 'many_related_field', 'text_field', 'unique_int_field', 'bool_field',
-                                 'date_field', 'datetime_field', 'image_field']))
+                                 'date_field', 'datetime_field', 'image_field', 'one_to_one_field', 'one_to_one_field2',]))
         self.assertEqual(sorted(self.ftc.get_object_fields(other_element)),
-                         ['id', 'other_text_field', 'related_name', 'somemodel_set'])
+                         sorted(['id', 'other_text_field', 'related_name', 'somemodel_set', 'somemodel',
+                                 'one_to_one_related_name']))
 
     def test_fill_all_fields(self):
         params = {'a': 'test',
@@ -1365,7 +1390,8 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_file_with_path_return_closed(self):
         new_file = utils.get_random_file(path='/tmp/test', return_opened=False)
-        self.assertEqual(new_file, None)
+        self.assertEqual(type(new_file), file)
+        self.assertTrue(new_file.closed)
         self.assertTrue(os.path.exists('/tmp/test'))
         f = open('/tmp/test')
         self.assertEqual(len(f.read()), 10)

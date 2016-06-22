@@ -20,6 +20,8 @@ class SomeModel(models.Model):
     date_field = models.DateField(blank=True, null=True)
     datetime_field = models.DateTimeField(blank=True, null=True)
     bool_field = models.BooleanField(default=False)
+    one_to_one_field = models.OneToOneField('OtherModel', related_name='one_to_one_related_name', blank=True, null=True)
+    one_to_one_field2 = models.OneToOneField('SomeModel', blank=True, null=True)
 
     class Meta:
         verbose_name = 'SomeModel'
