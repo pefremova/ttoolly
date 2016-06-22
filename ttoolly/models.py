@@ -441,7 +441,7 @@ class GlobalTestMixIn(object):
                         local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, unicode)
                                                               else field) + str(e))
                 for i, el in enumerate(value.all().order_by('pk')
-                                       if value.__class__.__name__ in ('RelatedManager','QuerySet')
+                                       if value.__class__.__name__ in ('RelatedManager', 'QuerySet')
                                        else [value, ]):
                     _params = dict([(k.replace('%s-%d-' % (obj_related_objects.get(field, field), i), ''),
                                      params[k]) for k in params.keys() if
@@ -644,7 +644,7 @@ class GlobalTestMixIn(object):
                                      else u'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals),
                           'max_sum_size_file': u'Суммарный размер изображений не должен превышать {max_size}.' if
                                     previous_locals.get('max_size', None) is None
-                                    else  u'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
+                                    else u'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
                           'one_of': u'Оставьте одно из значений в полях {group}.' if
                                     (previous_locals.get('group', None) is None)
                                     else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals)}
@@ -1810,14 +1810,46 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text='For params without group "%s"' % str(group))
 
     @only_with_obj
+    @only_with('max_fields_length')
     def test_add_object_max_length_values_positive(self):
         """
         @author: Polina Efremova
         @note: Create object: fill all fields with maximum length values
         """
         new_object = None
-        for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
+        fields_for_check = [el for el in self.max_fields_length if el[0] in
+                            self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]
+        max_length_params = self.deepcopy(self.default_params_add)
+        for field, length in fields_for_check:
+            max_length_params[field] = self.get_value_for_field(length, field)
+
+        sp = transaction.savepoint()
+        try:
+            params = self.deepcopy(max_length_params)
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            self.assert_object_fields(new_object, params)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="For max values in all fields\n%s" %
+                                    '\n\n'.join(['  %s with length %d\n(value %s)' %
+                                                   (field, length, max_length_params[field])
+                                                   for field, length in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная проверка"""
+        if not self.errors:
+            return
+
+        for field, length in fields_for_check:
             sp = transaction.savepoint()
             """if unique fields"""
             if new_object:
@@ -1827,11 +1859,10 @@ class FormAddTestMixIn(FormTestMixIn):
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
-
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = self.get_value_for_field(length, field)
+                params[field] = max_length_params[field]
                 value = self.get_value_for_error_message(field, params[field])
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
@@ -1846,6 +1877,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' % (field, length, value))
 
     @only_with_obj
+    @only_with('max_fields_length')
     def test_add_object_values_length_gt_max_negative(self):
         """
         @author: Polina Efremova
@@ -1876,6 +1908,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                    (field, current_length, params[field]))
 
     @only_with_obj
+    @only_with('min_fields_length')
     def test_add_object_values_length_lt_min_negative(self):
         """
         @author: Polina Efremova
@@ -2104,12 +2137,45 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Add obj with value in digital fields == max
         """
         new_object = None
-        for field in [f for f in self.digital_fields_add]:
+        fields_for_check = []
+
+        max_value_params = self.deepcopy(self.default_params_add)
+        for field in self.digital_fields_add:
             max_values = self.get_digital_values_range(field)['max_values']
             if not max_values:
                 continue
-            value = min(max_values)
-            sp = transaction.savepoint()
+            fields_for_check.append(field)
+            max_value_params[field] = min(max_values)
+
+        sp = transaction.savepoint()
+        try:
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            self.assert_object_fields(new_object, params,)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="For max values in all digital fields\n%s" %
+                                    '\n\n'.join(['  %s with value %s' %
+                                                 (field, max_value_params[field])
+                                                 for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная"""
+        if not self.errors:
+            return
+
+        for field in fields_for_check:
+            value = max_value_params[field]
             """if unique fields"""
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
@@ -2173,11 +2239,45 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Add obj with value in digital fields == min
         """
         new_object = None
-        for field in [f for f in self.digital_fields_add]:
+        fields_for_check = []
+
+        min_value_params = self.deepcopy(self.default_params_add)
+        for field in self.digital_fields_add:
             min_values = self.get_digital_values_range(field)['min_values']
             if not min_values:
                 continue
-            value = max(min_values)
+            fields_for_check.append(field)
+            min_value_params[field] = max(min_values)
+
+        sp = transaction.savepoint()
+        try:
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            self.assert_object_fields(new_object, params, )
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="For min values in all digital fields\n%s" %
+                                    '\n\n'.join(['  %s with value %s' %
+                                                 (field, min_value_params[field])
+                                                 for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная"""
+        if not self.errors:
+            return
+
+        for field in fields_for_check:
+            value = min_value_params[field]
             sp = transaction.savepoint()
             """if unique fields"""
             if new_object:
@@ -2616,6 +2716,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.errors_append(text='For value %s error' % value)
 
     @only_with_obj
+    @only_with('max_fields_length')
     def test_edit_object_max_length_values_positive(self):
         """
         @author: Polina Efremova
@@ -2670,6 +2771,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                    (field, length, value))
 
     @only_with_obj
+    @only_with('max_fields_length')
     def test_edit_object_values_length_gt_max_negative(self):
         """
         @author: Polina Efremova
@@ -2702,6 +2804,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                    (field, current_length, params[field]))
 
     @only_with_obj
+    @only_with('min_fields_length')
     def test_edit_object_values_length_lt_min_negative(self):
         """
         @author: Polina Efremova
@@ -2760,7 +2863,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
-                                    'Status code %s != %s' % (response.status_code, self.status_code_error))
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
 
