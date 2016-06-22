@@ -27,7 +27,7 @@ from xml.etree import ElementTree as et
 
 def convert_size_to_bytes(size):
     SYMBOLS = ['', 'K', 'M', ]
-    size, symbol = re.findall(r'([\d\.]+)(\w{0,1})', str(size))[0]
+    size, symbol = re.findall(r'([\d\.]+)(\w?)', str(size))[0]
     size = float(size) * 1024 ** SYMBOLS.index(symbol if symbol in SYMBOLS else '')
     return int(size)
 
@@ -527,6 +527,9 @@ def get_value_for_obj_field(f, filename=None):
         return random.randint(0, 1000)
     elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
         related_model = getattr(f.related, 'parent_model', f.related.model)
+        if related_model == f.model:
+            # fix recursion
+            return None
         objects = related_model.objects.all()
         if objects.count() > 0:
             return objects[random.randint(0, objects.count() - 1)] if objects.count() > 1 else objects[0]
@@ -806,7 +809,8 @@ def get_url_for_negative(url, args=()):
         l.append(url[start:])
         while len(l_args) < len(l):
             l_args.append(l_args[-1])
-        return ''.join([item.decode('utf-8') if isinstance(item, str) else item for tup in zip(l, l_args) for item in tup][:-1])
+        return ''.join([item.decode('utf-8') if isinstance(item, str) else item
+                        for tup in zip(l, l_args) for item in tup][:-1])
     try:
         res = resolve(url)
         if res.url_name:
