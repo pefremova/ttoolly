@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
-from copy import copy, deepcopy
-from datetime import datetime, date, time
-from decimal import Decimal
 import inspect
 import json
-from lxml.html import document_fromstring
-import os
+from copy import copy, deepcopy
+from decimal import Decimal
 from random import choice, randint, uniform
-import re
 from shutil import rmtree
-import sys
-import warnings
+from unittest import SkipTest
 
+import sys
+from datetime import datetime, date, time
+
+import os
+import psycopg2.extensions
+import re
+import warnings
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -25,13 +27,11 @@ from django.db.models.fields import FieldDoesNotExist
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
-from django.utils.unittest import SkipTest
-import psycopg2.extensions
+from lxml.html import document_fromstring
 from utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                    get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                    get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_random_jpg_content,
                    get_all_urls, convert_size_to_bytes, get_random_file)
-
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
