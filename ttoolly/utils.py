@@ -618,7 +618,7 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
     f.close()
     if return_opened:
         f = open(path, 'r')
-        return f
+    return f
 
 
 def generate_random_image_with_size(*args, **kwargs):
