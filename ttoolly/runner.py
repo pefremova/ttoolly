@@ -8,7 +8,7 @@ except:
     from django.test.runner import reorder_suite, DiscoverRunner
     class DjRunner(DiscoverRunner):
         pass
-from django.utils import unittest
+import unittest
 from django.conf import settings
 import re
 
