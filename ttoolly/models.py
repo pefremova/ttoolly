@@ -1845,9 +1845,11 @@ class FormAddTestMixIn(FormTestMixIn):
                                                    (field, length, max_length_params[field])
                                                    for field, length in fields_for_check]))
 
-        """Дальнейшие отдельные проверки только если не прошла совместная проверка"""
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
             return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
 
         for field, length in fields_for_check:
             sp = transaction.savepoint()
@@ -1863,6 +1865,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = max_length_params[field]
+                if self.is_file_field(field):
+                    params[field].seek(0)
                 value = self.get_value_for_error_message(field, params[field])
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
@@ -2156,6 +2160,7 @@ class FormAddTestMixIn(FormTestMixIn):
             if self.with_captcha:
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
                 params.update(get_captcha_codes())
+            params.update(max_value_params)
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2170,9 +2175,11 @@ class FormAddTestMixIn(FormTestMixIn):
                                                  (field, max_value_params[field])
                                                  for field in fields_for_check]))
 
-        """Дальнейшие отдельные проверки только если не прошла совместная"""
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
             return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
 
         for field in fields_for_check:
             value = max_value_params[field]
@@ -2258,6 +2265,7 @@ class FormAddTestMixIn(FormTestMixIn):
             if self.with_captcha:
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
                 params.update(get_captcha_codes())
+            params.update(min_value_params)
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2272,9 +2280,11 @@ class FormAddTestMixIn(FormTestMixIn):
                                                  (field, min_value_params[field])
                                                  for field in fields_for_check]))
 
-        """Дальнейшие отдельные проверки только если не прошла совместная"""
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
             return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
 
         for field in fields_for_check:
             value = min_value_params[field]
@@ -2722,8 +2732,69 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: fill all fields with maximum length values
         """
-        for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+        fields_for_check = [el for el in self.max_fields_length if el[0] in
+                            self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]
+        max_length_params = {}
+        file_fields = []
+        for field, length in fields_for_check:
+            max_length_params[field] = self.get_value_for_field(length, field)
+            if self.is_file_field(field):
+                file_fields.append(field)
+
+        sp = transaction.savepoint()
+        try:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_length_params)
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            self.assert_object_fields(new_object, params, )
+
+            if file_fields:
+                obj_for_edit = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.update_params(params)
+                for ff in file_fields:
+                    params[ff] = ''
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                _errors = []
+                try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                                params, follow=True, **self.additional_params)
+                    self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_edit,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_object_fields(new_object, params,
+                                              other_values={ff: self._get_field_value_by_name(obj_for_edit, ff) for ff
+                                                            in file_fields})
+                except:
+                    self.errors_append(_errors, text='Second save for check max file length')
+                if _errors:
+                    raise Exception(format_errors(_errors))
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="For max values in all fields\n%s" %
+                                    '\n\n'.join(['  %s with length %d\n(value %s)' %
+                                                 (field, length, max_length_params[field])
+                                                 for field, length in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field, length in fields_for_check:
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -2732,7 +2803,9 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = self.get_value_for_field(length, field)
+                params[field] = max_length_params[field]
+                if field in file_fields:
+                    params[field].seek(0)
                 value = self.get_value_for_error_message(field, params[field])
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -3043,11 +3116,46 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: value in digital fields == max
         """
-        for field in [f for f in self.digital_fields_edit]:
+        fields_for_check = []
+        max_value_params = self.deepcopy(self.default_params_edit)
+        for field in self.digital_fields_edit:
             max_values = self.get_digital_values_range(field)['max_values']
             if not max_values:
                 continue
-            value = min(max_values)
+            fields_for_check.append(field)
+            max_value_params[field] = min(max_values)
+
+        sp = transaction.savepoint()
+        obj_for_edit = self.get_obj_for_edit()
+        try:
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_value_params)
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            self.assert_object_fields(new_object, params)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="For max values in all digital fields\n%s" %
+                                    '\n\n'.join(['  %s with value %s' %
+                                                 (field, max_value_params[field])
+                                                 for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field in fields_for_check:
+            value = max_value_params[field]
             sp = transaction.savepoint()
             obj_for_edit = self.get_obj_for_edit()
             try:
@@ -3108,11 +3216,46 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: value in digital fields == min
         """
-        for field in [f for f in self.digital_fields_edit]:
+        fields_for_check = []
+        min_value_params = self.deepcopy(self.default_params_edit)
+        for field in self.digital_fields_edit:
             min_values = self.get_digital_values_range(field)['min_values']
             if not min_values:
                 continue
-            value = max(min_values)
+            fields_for_check.append(field)
+            min_value_params[field] = max(min_values)
+
+        sp = transaction.savepoint()
+        obj_for_edit = self.get_obj_for_edit()
+        try:
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(min_value_params)
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            self.assert_object_fields(new_object, params)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="For min values in all digital fields\n%s" %
+                                    '\n\n'.join(['  %s with value %s' %
+                                                 (field, min_value_params[field])
+                                                 for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field in fields_for_check:
+            value = min_value_params[field]
             sp = transaction.savepoint()
             obj_for_edit = self.get_obj_for_edit()
             try:
@@ -3623,26 +3766,63 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Try create obj with photos count == max files count
         """
         new_object = None
+        fields_for_check = []
+        max_count_params = {}
         for field, field_dict in self.file_fields_params_add.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
+            fields_for_check.append(field)
+            max_count_params[field] = []
+            max_count = field_dict['max_count']
+            for _ in xrange(max_count):
+                f = get_random_file(**field_dict)
+                self.files.append(f)
+                max_count_params[field].append(f)
+
+        sp = transaction.savepoint()
+        try:
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_count_params)
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            self.assert_object_fields(new_object, params)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text='For max count files in all fields\n%s' %
+                                    '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field in fields_for_check:
+            field_dict = self.file_fields_params_add[field]
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                max_count = field_dict['max_count']
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = []
-                for _ in xrange(max_count):
-                    f = get_random_file(**field_dict)
-                    self.files.append(f)
-                    params[field].append(f)
+                params[field] = max_count_params[field]
+                for f in params[field]:
+                    f.seek(0)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3653,7 +3833,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (max_count, field))
+                self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
 
     @only_with_obj
     @only_with_files_params('one_max_size')
@@ -4067,23 +4247,60 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Try edit obj with photos count == max files count
         """
+        fields_for_check = []
+        max_count_params = {}
         for field, field_dict in self.file_fields_params_edit.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
+            fields_for_check.append(field)
+            max_count_params[field] = []
+            max_count = field_dict['max_count']
+            for _ in xrange(max_count):
+                f = get_random_file(**field_dict)
+                self.files.append(f)
+                max_count_params[field].append(f)
+
+        sp = transaction.savepoint()
+        try:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_count_params)
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            self.assert_object_fields(new_object, params)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text='For max count files in all fields\n%s' %
+                                    '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field in fields_for_check:
+            field_dict = self.file_fields_params_edit[field]
+
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
-                max_count = field_dict['max_count']
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = []
-                for _ in xrange(max_count):
-                    f = get_random_file(**field_dict)
-                    self.files.append(f)
-                    params[field].append(f)
+                params[field] = max_count_params[field]
+                for f in params[field]:
+                    f.seek(0)
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
@@ -4094,7 +4311,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (max_count, field))
+                self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
 
     @only_with_obj
     @only_with_files_params('one_max_size')
