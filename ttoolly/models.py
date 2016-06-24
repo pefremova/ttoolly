@@ -424,6 +424,8 @@ class GlobalTestMixIn(object):
                 value = _model.objects.filter(**{cls.related_query_name(): obj})
                 if value:
                     value = value[0]
+                else:
+                    value = None
             else:
                 value = getattr(obj, field)
 
@@ -1837,7 +1839,7 @@ class FormAddTestMixIn(FormTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            exclude = getattr(self, 'exclude_from_check_add', [])
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
@@ -2168,7 +2170,7 @@ class FormAddTestMixIn(FormTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            exclude = getattr(self, 'exclude_from_check_add', [])
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
@@ -2274,7 +2276,7 @@ class FormAddTestMixIn(FormTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            exclude = getattr(self, 'exclude_from_check_add', [])
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
@@ -2778,7 +2780,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(response.status_code, self.status_code_success_edit,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                    exclude = getattr(self, 'exclude_from_check_edit', [])
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
                     self.assert_object_fields(new_object, params, exclude=exclude,
                                               other_values={ff: self._get_field_value_by_name(obj_for_edit, ff) for ff
                                                             in file_fields})
@@ -3145,7 +3147,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            exclude = getattr(self, 'exclude_from_check_edit', [])
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
@@ -3246,7 +3248,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            exclude = getattr(self, 'exclude_from_check_edit', [])
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
@@ -3802,7 +3804,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            exclude = getattr(self, 'exclude_from_check_add', [])
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
@@ -3925,6 +3927,58 @@ class FormAddFileTestMixIn(FileTestMixIn):
         @note: Create obj with file size == max one file size
         """
         new_object = None
+        fields_for_check = self.file_fields_params_add.keys()
+        max_size_params = {}
+        for field in fields_for_check:
+            field_dict = self.file_fields_params_add[field]
+            size = convert_size_to_bytes(field_dict.get('one_max_size', '10M'))
+            if self.is_file_list(field):
+                max_size_params[field] = []
+                for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
+                    f = get_random_file(size=size, **field_dict)
+                    self.files.append(f)
+                    max_size_params[field].append(f)
+            else:
+                f = get_random_file(size=size, **field_dict)
+                self.files.append(f)
+                max_size_params[field] = f
+
+        sp = transaction.savepoint()
+        try:
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_size_params)
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text='For max size files in all fields\n%s' %
+                                    '\n'.join(['%s: %s (%s)' %
+                                               (field,
+                                                convert_size_to_bytes(
+                                                    self.file_fields_params_add[field].get('one_max_size', '10M')),
+                                                self.humanize_file_size(
+                                                    convert_size_to_bytes(
+                                                        self.file_fields_params_add[field].get('one_max_size', '10M'))))
+                                               for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
         for field, field_dict in self.file_fields_params_add.iteritems():
             sp = transaction.savepoint()
             if new_object:
@@ -3940,23 +3994,19 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     params.update(get_captcha_codes())
                 size = convert_size_to_bytes(one_max_size)
                 max_size = self.humanize_file_size(size)
+                params[field] = max_size_params[field]
                 if self.is_file_list(field):
-                    params[field] = []
-                    for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
-                        f = get_random_file(size=size, **field_dict)
-                        self.files.append(f)
-                        params[field].append(f)
+                    for f in params[field]:
+                        f.seek(0)
                 else:
-                    f = get_random_file(size=size, **field_dict)
-                    self.files.append(f)
-                    params[field] = f
+                    f.seek(0)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-                exclude = getattr(self, 'exclude_from_check_add', [])
+                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field,])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
@@ -4283,7 +4333,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            exclude = getattr(self, 'exclude_from_check_edit', [])
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
@@ -4411,6 +4461,59 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @author: Polina Efremova
         @note: Edit obj with file size == max one file size
         """
+        fields_for_check = self.file_fields_params_edit.keys()
+        max_size_params = {}
+        for field in fields_for_check:
+            field_dict = self.file_fields_params_edit[field]
+            one_max_size = field_dict.get('one_max_size', '10M')
+            size = convert_size_to_bytes(one_max_size)
+            if self.is_file_list(field):
+                max_size_params[field] = []
+                for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
+                    f = get_random_file(size=size, **field_dict)
+                    self.files.append(f)
+                    max_size_params[field].append(f)
+            else:
+                f = get_random_file(size=size, **field_dict)
+                self.files.append(f)
+                max_size_params[field] = f
+
+        sp = transaction.savepoint()
+        one_max_size = field_dict.get('one_max_size', '10M')
+        try:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_size_params)
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text='For max size files in all fields\n%s' %
+                                    '\n'.join(['%s: %s (%s)' %
+                                               (field,
+                                                convert_size_to_bytes(
+                                                    self.file_fields_params_add[field].get('one_max_size', '10M')),
+                                                self.humanize_file_size(
+                                                    convert_size_to_bytes(
+                                                        self.file_fields_params_add[field].get('one_max_size', '10M'))))
+                                               for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
         for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             one_max_size = field_dict.get('one_max_size', '10M')
@@ -4423,16 +4526,12 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     params.update(get_captcha_codes())
                 size = convert_size_to_bytes(one_max_size)
                 max_size = self.humanize_file_size(size)
+                params[field] = max_size_params[field]
                 if self.is_file_list(field):
-                    params[field] = []
-                    for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
-                        f = get_random_file(size=size, **field_dict)
-                        self.files.append(f)
-                        params[field].append(f)
+                    for f in params[field]:
+                        f.seek(0)
                 else:
-                    f = get_random_file(size=size, **field_dict)
-                    self.files.append(f)
-                    params[field] = f
+                    f.seek(0)
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
