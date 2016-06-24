@@ -70,3 +70,14 @@ class RegexpTestSuiteRunner(ParentRunner):
         if labels_for_suite:
             my_suite.addTests(ParentRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
         return reorder_suite(my_suite, (unittest.TestCase,))
+
+    def run_suite(self, *args, **kwargs):
+        result = super(RegexpTestSuiteRunner, self).run_suite(*args, **kwargs)
+        if self.verbosity > 2 and (result.errors or result.failures):
+            st = unittest.runner._WritelnDecorator(sys.stderr)
+            st.write('\n' + '*' * 29 + ' Run failed ' + '*' * 29 + '\n\n')
+            st.write('python manage.py test %s' % ' '.join(
+                ['.'.join([test.__class__.__module__, test.__class__.__name__, test._testMethodName]) for test, _ in
+                 result.errors + result.failures]) + '\n\n')
+            st.write('*' * 70 + '\n\n')
+        return result
