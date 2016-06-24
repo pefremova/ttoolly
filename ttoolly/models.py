@@ -424,6 +424,8 @@ class GlobalTestMixIn(object):
                 value = _model.objects.filter(**{cls.related_query_name(): obj})
                 if value:
                     value = value[0]
+                else:
+                    value = None
             else:
                 value = getattr(obj, field)
 
