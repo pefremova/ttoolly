@@ -1837,7 +1837,8 @@ class FormAddTestMixIn(FormTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            self.assert_object_fields(new_object, params)
+            exclude = getattr(self, 'exclude_from_check_add', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all fields\n%s" %
@@ -2167,7 +2168,8 @@ class FormAddTestMixIn(FormTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            self.assert_object_fields(new_object, params,)
+            exclude = getattr(self, 'exclude_from_check_add', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all digital fields\n%s" %
@@ -2272,7 +2274,8 @@ class FormAddTestMixIn(FormTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            self.assert_object_fields(new_object, params, )
+            exclude = getattr(self, 'exclude_from_check_add', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
             self.errors_append(text="For min values in all digital fields\n%s" %
@@ -2756,7 +2759,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            self.assert_object_fields(new_object, params, )
+            exclude = getattr(self, 'exclude_from_check_edit', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
 
             if file_fields:
                 obj_for_edit = self.obj.objects.get(pk=obj_for_edit.pk)
@@ -2774,7 +2778,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(response.status_code, self.status_code_success_edit,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                    self.assert_object_fields(new_object, params,
+                    exclude = getattr(self, 'exclude_from_check_edit', [])
+                    self.assert_object_fields(new_object, params, exclude=exclude,
                                               other_values={ff: self._get_field_value_by_name(obj_for_edit, ff) for ff
                                                             in file_fields})
                 except:
@@ -3140,7 +3145,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            self.assert_object_fields(new_object, params)
+            exclude = getattr(self, 'exclude_from_check_edit', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all digital fields\n%s" %
@@ -3240,7 +3246,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            self.assert_object_fields(new_object, params)
+            exclude = getattr(self, 'exclude_from_check_edit', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
             self.errors_append(text="For min values in all digital fields\n%s" %
@@ -3795,7 +3802,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            self.assert_object_fields(new_object, params)
+            exclude = getattr(self, 'exclude_from_check_add', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
             self.errors_append(text='For max count files in all fields\n%s' %
@@ -4275,7 +4283,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            self.assert_object_fields(new_object, params)
+            exclude = getattr(self, 'exclude_from_check_edit', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
             self.errors_append(text='For max count files in all fields\n%s' %
