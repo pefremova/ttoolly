@@ -11,6 +11,7 @@ except:
 import unittest
 from django.conf import settings
 import re
+import sys
 
 
 def get_runner():
