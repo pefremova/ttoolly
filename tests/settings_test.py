@@ -8,4 +8,5 @@ DATABASES = {
     },
 }
 
+TEST_RUNNER = 'ttoolly.runner.RegexpTestSuiteRunner'
 COLORIZE_TESTS = True
