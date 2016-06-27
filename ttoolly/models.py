@@ -2157,7 +2157,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
         sp = transaction.savepoint()
         try:
-            initial_obj_count = self.deepcopy(self.default_params_add)
+            initial_obj_count = self.obj.objects.count()
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
