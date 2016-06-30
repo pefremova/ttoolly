@@ -119,6 +119,9 @@ def generate_sql(data):
 
 def get_all_form_errors(response):
 
+    if not response.context:
+        return None
+
     def get_errors(form):
         errors = form._errors
         if not errors:
@@ -131,8 +134,21 @@ def get_all_form_errors(response):
             else:
                 errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
         return errors
-    if not response.context:
-        return None
+
+    def get_formset_errors(formset):
+        formset_errors = {}
+        non_form_errors = formset._non_form_errors
+        if non_form_errors:
+            formset_errors.update({'%s-__all__' % formset.prefix: non_form_errors})
+        for form in getattr(formset, 'forms', formset):
+            if not form:
+                continue
+            errors = form._errors
+            if errors:
+                for key, value in errors.iteritems():
+                    formset_errors.update({'%s-%s' % (form.prefix, key): value})
+        return formset_errors
+
     form_errors = {}
     forms = []
     try:
@@ -175,37 +191,18 @@ def get_all_form_errors(response):
     except KeyError:
         pass
 
-    all_keys = []
-
     for subcontext in response.context:
-        all_keys.extend(get_keys_from_context(subcontext))
-    all_keys = set(all_keys)
-    fs_keys = []
-    for key in all_keys:
-        value = response.context[key]
-        mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
-        if 'BaseFormSet' in mro_names:
-            fs_keys.append(key)
-        elif 'BaseForm' in mro_names:
-            forms.append(value)
-
+        for key in get_keys_from_context(subcontext):
+            value = response.context[key]
+            mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
+            if 'BaseFormSet' in mro_names:
+                form_errors.update(get_formset_errors(value))
+            elif 'BaseForm' in mro_names:
+                forms.append(value)
     for form in set(forms):
         if form:
             form_errors.update(get_errors(form))
-    for fs_key in fs_keys:
-        formset = response.context[fs_key]
-        if not formset:
-            continue
-        non_form_errors = formset._non_form_errors
-        if non_form_errors:
-            form_errors.update({'%s-__all__' % formset.prefix: non_form_errors})
-        for form in getattr(formset, 'forms', formset):
-            if not form:
-                continue
-            errors = form._errors
-            if errors:
-                for key, value in errors.iteritems():
-                    form_errors.update({'%s-%s' % (form.prefix, key): value})
+
     return form_errors
 
 
@@ -279,7 +276,10 @@ def get_error(tr_limit=getattr(settings, 'TEST_TRACEBACK_LIMIT', None)):
     return result
 
 
-def get_fields_list_from_response(response):
+def get_fields_list_from_response(response, only_success=True):
+    if only_success and response.status_code != 200:
+        raise Exception('Response status code %s (expect 200 for getting fields list)' % response.status_code)
+
     def get_form_fields(form):
         fields = form.fields.keys()
         visible_fields = set(fields).intersection([f.name for f in form.visible_fields()])
@@ -337,23 +337,16 @@ def get_fields_list_from_response(response):
     except KeyError:
         pass
 
-    all_keys = []
     for subcontext in response.context:
-        all_keys.extend(get_keys_from_context(subcontext))
-    all_keys = set(all_keys)
-    fs_keys = []
-    for key in all_keys:
-        value = response.context[key]
-        mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
-        if 'BaseFormSet' in mro_names:
-            fs_keys.append(key)
-        elif 'BaseForm' in mro_names:
-            forms.append(value)
-
-    for fs_key in fs_keys:
-        formset = response.context[fs_key]
-        for form in getattr(formset, 'forms', formset):
-            forms.append(form)
+        for key in get_keys_from_context(subcontext):
+            value = subcontext[key]
+            mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
+            if 'BaseFormSet' in mro_names:
+                formset = value
+                for form in getattr(formset, 'forms', formset):
+                    forms.append(form)
+            elif 'BaseForm' in mro_names:
+                forms.append(value)
 
     forms = list(set(forms))
     n = 0
