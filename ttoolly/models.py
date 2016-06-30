@@ -4000,7 +4000,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     for f in params[field]:
                         f.seek(0)
                 else:
-                    f.seek(0)
+                    params[field].seek(0)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -4532,7 +4532,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                     for f in params[field]:
                         f.seek(0)
                 else:
-                    f.seek(0)
+                    params[field].seek(0)
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
