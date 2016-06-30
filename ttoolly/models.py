@@ -1821,18 +1821,19 @@ class FormAddTestMixIn(FormTestMixIn):
         new_object = None
         fields_for_check = [el for el in self.max_fields_length if el[0] in
                             self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]
-        max_length_params = self.deepcopy(self.default_params_add)
+        max_length_params = {}
         for field, length in fields_for_check:
             max_length_params[field] = self.get_value_for_field(length, field)
 
         sp = transaction.savepoint()
         try:
-            params = self.deepcopy(max_length_params)
+            params = self.deepcopy(self.default_params_add)
             initial_obj_count = self.obj.objects.count()
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
             if self.with_captcha:
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
                 params.update(get_captcha_codes())
+            params.update(max_length_params)
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2146,7 +2147,7 @@ class FormAddTestMixIn(FormTestMixIn):
         new_object = None
         fields_for_check = []
 
-        max_value_params = self.deepcopy(self.default_params_add)
+        max_value_params = {}
         for field in self.digital_fields_add:
             max_values = self.get_digital_values_range(field)['max_values']
             if not max_values:
@@ -2252,7 +2253,7 @@ class FormAddTestMixIn(FormTestMixIn):
         new_object = None
         fields_for_check = []
 
-        min_value_params = self.deepcopy(self.default_params_add)
+        min_value_params = {}
         for field in self.digital_fields_add:
             min_values = self.get_digital_values_range(field)['min_values']
             if not min_values:
@@ -3124,7 +3125,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Edit object: value in digital fields == max
         """
         fields_for_check = []
-        max_value_params = self.deepcopy(self.default_params_edit)
+        max_value_params = {}
         for field in self.digital_fields_edit:
             max_values = self.get_digital_values_range(field)['max_values']
             if not max_values:
@@ -3225,7 +3226,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Edit object: value in digital fields == min
         """
         fields_for_check = []
-        min_value_params = self.deepcopy(self.default_params_edit)
+        min_value_params = {}
         for field in self.digital_fields_edit:
             min_values = self.get_digital_values_range(field)['min_values']
             if not min_values:
