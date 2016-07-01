@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
+from django.forms.forms import NON_FIELD_ERRORS
 from django.template.context import Context
 from django.test import Client
 from shutil import copyfile, rmtree
@@ -123,30 +124,40 @@ def get_all_form_errors(response):
         return None
 
     def get_errors(form):
+        errors = {}
+        """form with formsets"""
+        form_formsets = getattr(form, 'formsets', {})
+        if form_formsets:
+            non_fields_errors = form._errors.get(NON_FIELD_ERRORS, None)
+            if non_fields_errors:
+                errors['-'.join(filter(None, [form.prefix, NON_FIELD_ERRORS]))] = non_fields_errors
+            for _, fs in form_formsets.iteritems():
+                errors.update(get_formset_errors(fs))
+            return errors
+
+        """simple form"""
         errors = form._errors
         if not errors:
-            errors = {}
+            return {}
         if form.prefix:
             if isinstance(errors, list):
-                errors = {}
+                _errors = {}
                 for n, el in enumerate(errors):
-                    errors.update({'%s-%s-%s' % (form.prefix, n, k): v for k, v in el.iteritems()})
+                    _errors.update({'%s-%s-%s' % (form.prefix, n, k): v for k, v in el.iteritems()})
             else:
-                errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
+                _errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
+            return _errors
         return errors
 
     def get_formset_errors(formset):
         formset_errors = {}
         non_form_errors = formset._non_form_errors
         if non_form_errors:
-            formset_errors.update({'%s-__all__' % formset.prefix: non_form_errors})
+            formset_errors.update({'-'.join([formset.prefix, NON_FIELD_ERRORS]): non_form_errors})
         for form in getattr(formset, 'forms', formset):
             if not form:
                 continue
-            errors = form._errors
-            if errors:
-                for key, value in errors.iteritems():
-                    formset_errors.update({'%s-%s' % (form.prefix, key): value})
+            formset_errors.update(get_errors(form))
         return formset_errors
 
     form_errors = {}
@@ -172,7 +183,7 @@ def get_all_form_errors(response):
         for fs in response.context['form_set']:
             non_form_errors = fs._non_field_errors()
             if non_form_errors:
-                form_errors.update({'%s-__all__' % re.sub(r'-(\d+)$', '', fs.prefix): non_form_errors})
+                form_errors.update({'-'.join([re.sub(r'-(\d+)$', '', fs.prefix), NON_FIELD_ERRORS]): non_form_errors})
             errors = fs._errors
             if errors:
                 form_errors.update({'%s-%s' % (fs.prefix, key): value for key, value in errors.iteritems()})
@@ -182,7 +193,7 @@ def get_all_form_errors(response):
         for fs in response.context['inline_admin_formsets']:
             non_form_errors = fs.formset._non_form_errors
             if non_form_errors:
-                form_errors.update({'%s-__all__' % fs.formset.prefix: non_form_errors})
+                form_errors.update({'-'.join([fs.formset.prefix, NON_FIELD_ERRORS]): non_form_errors})
             errors = fs.formset._errors
             if errors:
                 for n, el in enumerate(errors):
@@ -199,6 +210,7 @@ def get_all_form_errors(response):
                 form_errors.update(get_formset_errors(value))
             elif 'BaseForm' in mro_names:
                 forms.append(value)
+
     for form in set(forms):
         if form:
             form_errors.update(get_errors(form))
