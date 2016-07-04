@@ -124,16 +124,6 @@ def get_all_form_errors(response):
         return None
 
     def get_errors(form):
-        errors = {}
-        """form with formsets"""
-        form_formsets = getattr(form, 'formsets', {})
-        if form_formsets:
-            non_fields_errors = form._errors.get(NON_FIELD_ERRORS, None)
-            if non_fields_errors:
-                errors['-'.join(filter(None, [form.prefix, NON_FIELD_ERRORS]))] = non_fields_errors
-            for _, fs in form_formsets.iteritems():
-                errors.update(get_formset_errors(fs))
-            return errors
 
         """simple form"""
         errors = form._errors
@@ -146,7 +136,15 @@ def get_all_form_errors(response):
                     _errors.update({'%s-%s-%s' % (form.prefix, n, k): v for k, v in el.iteritems()})
             else:
                 _errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
-            return _errors
+            errors = _errors
+
+        """form with formsets"""
+        form_formsets = getattr(form, 'formsets', {})
+        if form_formsets:
+            for fs_name, fs in form_formsets.iteritems():
+                errors.pop('-'.join(filter(None, [form.prefix, fs_name])), None)
+                errors.update(get_formset_errors(fs))
+
         return errors
 
     def get_formset_errors(formset):
