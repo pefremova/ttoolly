@@ -1550,7 +1550,8 @@ class FormAddTestMixIn(FormTestMixIn):
         response = self.client.get(self.get_url(self.url_add), **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
-            self.assert_form_equal(form_fields['visible_fields'], self.all_fields_add)
+            self.assert_form_equal(form_fields['visible_fields'],
+                                   list(set(self.all_fields_add).difference(self.hidden_fields_add or ())))
         except:
             self.errors_append(text='For visible fields')
         if self.disabled_fields_add is not None:
@@ -2378,8 +2379,9 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 self.assertNotEqual(self.get_value_for_compare(new_object, field), params[field])
+                params[field] = ''
                 exclude = getattr(self, 'exclude_from_check_add', [])
-                self.assert_object_fields(new_object, {field: ''}, exclude=exclude)
+                self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
@@ -2464,7 +2466,8 @@ class FormEditTestMixIn(FormTestMixIn):
         response = self.client.get(self.get_url(self.url_edit, (obj_pk,)), **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
-            self.assert_form_equal(form_fields['visible_fields'], self.all_fields_edit)
+            self.assert_form_equal(form_fields['visible_fields'],
+                                   list(set(self.all_fields_edit).difference(self.hidden_fields_edit or ())))
         except:
             self.errors_append(text='For visible fields')
         if self.disabled_fields_edit is not None:
