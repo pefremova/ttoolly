@@ -2378,8 +2378,9 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 self.assertNotEqual(self.get_value_for_compare(new_object, field), params[field])
+                params[field] = ''
                 exclude = getattr(self, 'exclude_from_check_add', [])
-                self.assert_object_fields(new_object, {field: ''}, exclude=exclude)
+                self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
