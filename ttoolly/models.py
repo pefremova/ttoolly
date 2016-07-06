@@ -317,15 +317,29 @@ class GlobalTestMixIn(object):
     def _assert_list_equal(self, list1, list2):
         errors = []
         if all([isinstance(el, dict) for el in list1]) and all([isinstance(el, dict) for el in list2]):
+            i = -1
             for i, el in enumerate(list2):
-                res = self._assert_dict_equal(list1[i], el)
-                if res:
-                    errors.append('[line %d]: ' % i + res)
+                if i >= len(list1):
+                    errors.append('[line %d]: Not in first list' % i)
+                else:
+                    res = self._assert_dict_equal(list1[i], el)
+                    if res:
+                        errors.append('[line %d]: ' % i + res)
+            for j in xrange(i + 1, len(list1)):
+                errors.append('[line %d]: Not in second list' % j)
+
         elif all([isinstance(el, list) for el in list1]) and all([isinstance(el, list) for el in list2]):
+            i = -1
             for i, el in enumerate(list2):
-                res = self._assert_list_equal(list1[i], el)
-                if res:
-                    errors.append('[line %d]: ' % i + res)
+                if i >= len(list1):
+                    errors.append('[line %d]: ' % i + 'Not in first list')
+                else:
+                    res = self._assert_list_equal(list1[i], el)
+                    if res:
+                        errors.append('[line %d]: ' % i + res)
+            for j in xrange(i + 1, len(list1)):
+                errors.append('[line %d]: Not in second list' % j)
+
         else:
             try:
                 self.assertEqual(list1, list2)
