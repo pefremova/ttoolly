@@ -2,8 +2,6 @@ language: python
 python:
   - "2.7"
 env:
-  - DJANGO_VERSION=1.4.22
-  - DJANGO_VERSION=1.5.12
   - DJANGO_VERSION=1.6.11
   - DJANGO_VERSION=1.7.11
   - DJANGO_VERSION=1.8.13
@@ -15,7 +13,5 @@ install:
 after_script:
   coveralls
 script: 
-  if [[ $DJANGO_VERSION == "1.4.22" ]] || [[ $DJANGO_VERSION == "1.5.12" ]];
-    then echo -e "\nfrom tests_for_project import *\n" >> tests/tests.py && coverage run --source=ttoolly manage.py test tests -v 3;
-    else coverage run --source=ttoolly manage.py test tests -v 3;
-  fi
+  coverage run --source=ttoolly manage.py test tests;
+
