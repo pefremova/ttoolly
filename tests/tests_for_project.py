@@ -11,7 +11,7 @@ class TestSomeModel(FormAddTestMixIn, FormAddFileTestMixIn, FormEditTestMixIn, F
     all_fields = ('foreign_key_field', 'unique_int_field', 'int_field', 'email_field', 'char_field', 'file_field',
                   'datetime_field', 'date_field', 'text_field', 'digital_field', 'many_related_field', 'image_field',
                   'bool_field', 'one_to_one_field', 'one_to_one_field2')
-    choice_fields = ('foreign_key_field',)
+    choice_fields = ('foreign_key_field', 'one_to_one_field', 'one_to_one_field2')
     custom_error_messages = {'image_field': {'wrong_extension': [u'Загрузите правильное изображение. Файл, который вы загрузили, поврежден или не является изображением.']}}
     default_params = {'digital_field': 1.56,
                       'int_field': 34,
@@ -42,5 +42,6 @@ class TestSomeModel(FormAddTestMixIn, FormAddFileTestMixIn, FormEditTestMixIn, F
                                      'many_related_field': other_model_pks,
                                      'one_to_one_field': other_model_pks,
                                      'one_to_one_field2': self.obj.objects.all().values_list('pk', flat=True)}
+
     
     
