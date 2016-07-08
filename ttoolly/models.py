@@ -1834,8 +1834,9 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: fill all fields with maximum length values
         """
         new_object = None
+        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
         fields_for_check = [el for el in self.max_fields_length if el[0] in
-                            self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]
+                            self.all_fields_add and el[0] not in other_fields]
         max_length_params = {}
         for field, length in fields_for_check:
             max_length_params[field] = self.get_value_for_field(length, field)
@@ -1907,8 +1908,9 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: values length > maximum
         """
         message_type = 'max_length'
+        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in other_fields]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -1938,8 +1940,9 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: values length < minimum
         """
         message_type = 'min_length'
+        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in other_fields]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -2755,8 +2758,9 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: fill all fields with maximum length values
         """
+        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         fields_for_check = [el for el in self.max_fields_length if el[0] in
-                            self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]
+                            self.all_fields_edit and el[0] not in other_fields]
         max_length_params = {}
         file_fields = []
         for field, length in fields_for_check:
@@ -2876,8 +2880,9 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Try edit object: values length > maximum
         """
         message_type = 'max_length'
+        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in other_fields]:
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -2909,8 +2914,9 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Try edit object: values length < minimum
         """
         message_type = 'min_length'
+        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in other_fields]:
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
