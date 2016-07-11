@@ -203,11 +203,13 @@ def get_all_form_errors(response):
     for subcontext in response.context:
         for key in get_keys_from_context(subcontext):
             value = response.context[key]
-            mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
-            if 'BaseFormSet' in mro_names:
-                form_errors.update(get_formset_errors(value))
-            elif 'BaseForm' in mro_names:
-                forms.append(value)
+            value = value if isinstance(value, list) else [value]
+            for v in value:
+                mro_names = [cn.__name__ for cn in getattr(v.__class__, '__mro__', [])]
+                if 'BaseFormSet' in mro_names:
+                    form_errors.update(get_formset_errors(v))
+                elif 'BaseForm' in mro_names:
+                    forms.append(v)
 
     for form in set(forms):
         if form:
