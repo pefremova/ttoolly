@@ -4526,10 +4526,10 @@ class FormEditFileTestMixIn(FileTestMixIn):
                                     '\n'.join(['%s: %s (%s)' %
                                                (field,
                                                 convert_size_to_bytes(
-                                                    self.file_fields_params_add[field].get('one_max_size', '10M')),
+                                                    self.file_fields_params_edit[field].get('one_max_size', '10M')),
                                                 self.humanize_file_size(
                                                     convert_size_to_bytes(
-                                                        self.file_fields_params_add[field].get('one_max_size', '10M'))))
+                                                        self.file_fields_params_edit[field].get('one_max_size', '10M'))))
                                                for field in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
