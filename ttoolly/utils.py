@@ -203,11 +203,13 @@ def get_all_form_errors(response):
     for subcontext in response.context:
         for key in get_keys_from_context(subcontext):
             value = response.context[key]
-            mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
-            if 'BaseFormSet' in mro_names:
-                form_errors.update(get_formset_errors(value))
-            elif 'BaseForm' in mro_names:
-                forms.append(value)
+            value = value if isinstance(value, list) else [value]
+            for v in value:
+                mro_names = [cn.__name__ for cn in getattr(v.__class__, '__mro__', [])]
+                if 'BaseFormSet' in mro_names:
+                    form_errors.update(get_formset_errors(v))
+                elif 'BaseForm' in mro_names:
+                    forms.append(v)
 
     for form in set(forms):
         if form:
@@ -223,14 +225,21 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
         url = prefix + entry.regex.pattern.strip('^$')
         if hasattr(entry, 'url_patterns'):
             get_all_urls(entry.url_patterns, depth + 1,
-                         prefix=(prefix if type(entry).__class__.__name__ == 'RegexURLResolver' else '') + url,
+                         prefix=url,
                          result=result)
         else:
             if not url.startswith('/'):
                 url = '/' + url
-            # TODO: переписать регулярку. Должны находиться значения и с вложенными скобками "(/(\w+)/)" и без
-            fres = re.findall(r'\(.+?\)+', url)
+            # Значения и с вложенными скобками "(/(\w+)/)", и без
+            regexp = '((\([^\(\)]*?)?' \
+                     '\([^\(\)]+\)' \
+                     '(?(2)[^\(\)]*\)|))'
+            # открывающая скобка и текст без скобок
+            # значение в скобках. Например (?P<pk>\d+)
+            # если есть первая открывающая скобка, нужно взять строку до закрывающей
+            fres = re.findall(regexp, url)
             for fr in fres:
+                fr = fr[0]
                 value_for_replace = '123'
                 if (re.findall('>(.+?)\)', fr) and
                     not set(re.findall('>(.+?)\)', fr)).intersection(['.*', '\d+', '.+', '[^/.]+'])):
