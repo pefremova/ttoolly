@@ -202,7 +202,7 @@ def get_all_form_errors(response):
 
     for subcontext in response.context:
         for key in get_keys_from_context(subcontext):
-            value = response.context[key]
+            value = subcontext[key]
             value = value if isinstance(value, list) else [value]
             for v in value:
                 mro_names = [cn.__name__ for cn in getattr(v.__class__, '__mro__', [])]
@@ -359,23 +359,30 @@ def get_fields_list_from_response(response, only_success=True):
     for subcontext in response.context:
         for key in get_keys_from_context(subcontext):
             value = subcontext[key]
-            mro_names = [cn.__name__ for cn in getattr(value.__class__, '__mro__', [])]
-            if 'BaseFormSet' in mro_names:
-                formset = value
-                for form in getattr(formset, 'forms', formset):
-                    forms.append(form)
-            elif 'BaseForm' in mro_names:
-                forms.append(value)
+            value = value if isinstance(value, list) else [value]
+            for v in value:
+                mro_names = [cn.__name__ for cn in getattr(v.__class__, '__mro__', [])]
+                if 'BaseFormSet' in mro_names:
+                    formset = v
+                    for form in getattr(formset, 'forms', formset):
+                        forms.append(form)
+                elif 'BaseForm' in mro_names:
+                    forms.append(v)
 
     forms = list(set(forms))
     n = 0
     while n < len(forms):
         _forms = getattr(forms[n], 'forms', [])
+        _formsets = getattr(forms[n], 'formsets', {})
+        if _formsets:
+            for fs_name, fs in _formsets.iteritems():
+                forms.extend(getattr(fs, 'forms', fs))
         if _forms:
             forms.pop(n)
             forms.extend(_forms)
         else:
             n += 1
+
     for form in set(forms):
         _fields = get_form_fields(form)
         fields.extend(_fields['fields'])
