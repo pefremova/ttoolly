@@ -416,7 +416,7 @@ class GlobalTestMixIn(object):
         local_errors = []
         object_fields = obj._meta.get_all_field_names()
         object_related_field_names = [name for name in object_fields if
-                                      obj._meta.get_field_by_name(name)[0].__class__.__name__ in ('RelatedObject',
+                                      self.get_field_by_name(obj, name)[0].__class__.__name__ in ('RelatedObject',
                                                                                                   'ManyToOneRel',
                                                                                                   'OneToOneField',
                                                                                                   'ManyToManyField')]
@@ -426,14 +426,14 @@ class GlobalTestMixIn(object):
         fields_for_check = fields_for_check.difference(exclude)
         obj_related_objects = self.get_related_names(obj)
         one_to_one_fields = [name for name in object_related_field_names if
-                             obj._meta.get_field_by_name(name)[0].__class__.__name__ == 'OneToOneField' or
-                             getattr(obj._meta.get_field_by_name(name)[0], 'field', None) and
-                             obj._meta.get_field_by_name(name)[0].field.__class__.__name__ == 'OneToOneField']
+                             self.get_field_by_name(obj, name)[0].__class__.__name__ == 'OneToOneField' or
+                             getattr(self.get_field_by_name(obj, name)[0], 'field', None) and
+                             self.get_field_by_name(obj, name)[0].field.__class__.__name__ == 'OneToOneField']
 
         for field in fields_for_check:
             # TODO: refactor me
             if field in one_to_one_fields:
-                cls = obj._meta.get_field_by_name(field)[0]
+                cls = self.get_field_by_name(obj, field)[0]
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
                 value = _model.objects.filter(**{cls.related_query_name(): obj})
                 if value:
@@ -604,7 +604,7 @@ class GlobalTestMixIn(object):
         verbose_obj = self.obj._meta.verbose_name if getattr(self, 'obj', None) else u'Объект'
         if isinstance(verbose_obj, str):
             verbose_obj = verbose_obj.decode('utf-8')
-        verbose_field = getattr(self.obj._meta.get_field_by_name(field)[0], 'verbose_name', field) if \
+        verbose_field = getattr(self.get_field_by_name(self.obj, field)[0], 'verbose_name', field) if \
             (getattr(self, 'obj', None) and field in self.obj._meta.get_all_field_names()) else field
         if isinstance(verbose_field, str):
             verbose_field = verbose_field.decode('utf-8')
@@ -873,7 +873,7 @@ class GlobalTestMixIn(object):
                 try:
                     if 'ForeignKey' in [b.__name__ for b in
                                         self.get_field_by_name(self.obj, field_name)[0].__class__.__mro__]:
-                        return choice(self.obj._meta.get_field_by_name(field_name)[0].rel.to.objects.all()).pk
+                        return choice(self.get_field_by_name(self.obj, field_name)[0].rel.to.objects.all()).pk
                 except FieldDoesNotExist:
                     pass
             if 'get_digital_values_range' not in dir(self):
@@ -1327,7 +1327,7 @@ class FormTestMixIn(GlobalTestMixIn):
             if field not in self.all_fields_edit:
                 """only if user can change this field"""
                 continue
-            field_class = obj._meta.get_field_by_name(field)[0]
+            field_class = self.get_field_by_name(obj, field)[0]
             value = self._get_field_value_by_name(obj_for_edit, field)
             n = 0
             if value:
@@ -1348,7 +1348,7 @@ class FormTestMixIn(GlobalTestMixIn):
             for value in values:
                 params = {}
                 for f_name in self.get_object_fields(value):
-                    f = value._meta.get_field_by_name(value, f_name)[0]
+                    f = self.get_field_by_name(value, f_name)[0]
                     mro_names = set([m.__name__ for m in f.__class__.__mro__])
                     if 'AutoField' in mro_names:
                         continue
@@ -1451,7 +1451,7 @@ class FormTestMixIn(GlobalTestMixIn):
         next_obj = self.obj
         existing_values = None
         for i, name in enumerate(filter_name.split('__')):
-            field = next_obj._meta.get_field_by_name(name)[0]
+            field = self.get_field_by_name(next_obj, name)[0]
             field_class_name = field.__class__.__name__
             if field_class_name == 'ForeignKey':
                 next_obj = field.rel.to
@@ -1834,8 +1834,9 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: fill all fields with maximum length values
         """
         new_object = None
+        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
         fields_for_check = [el for el in self.max_fields_length if el[0] in
-                            self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]
+                            self.all_fields_add and el[0] not in other_fields]
         max_length_params = {}
         for field, length in fields_for_check:
             max_length_params[field] = self.get_value_for_field(length, field)
@@ -1907,8 +1908,9 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: values length > maximum
         """
         message_type = 'max_length'
+        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in other_fields]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -1938,8 +1940,9 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create object: values length < minimum
         """
         message_type = 'min_length'
+        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.all_fields_add and el[0] not in getattr(self, 'digital_fields_add', ())]:
+                              self.all_fields_add and el[0] not in other_fields]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -2465,10 +2468,11 @@ class FormEditTestMixIn(FormTestMixIn):
                         .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
                     filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.obj.objects.filter(filters)
+
         if qs.exists():
             return qs[0]
         else:
-            return self.create_copy(other_obj)
+            return self.create_copy(other_obj, param_names)
 
     @only_with_obj
     def test_edit_page_fields_list_positive(self):
@@ -2755,8 +2759,9 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: fill all fields with maximum length values
         """
+        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         fields_for_check = [el for el in self.max_fields_length if el[0] in
-                            self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]
+                            self.all_fields_edit and el[0] not in other_fields]
         max_length_params = {}
         file_fields = []
         for field, length in fields_for_check:
@@ -2876,8 +2881,9 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Try edit object: values length > maximum
         """
         message_type = 'max_length'
+        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in other_fields]:
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -2909,8 +2915,9 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Try edit object: values length < minimum
         """
         message_type = 'min_length'
+        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.all_fields_edit and el[0] not in getattr(self, 'digital_fields_edit', ())]:
+                              self.all_fields_edit and el[0] not in other_fields]:
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -4520,10 +4527,10 @@ class FormEditFileTestMixIn(FileTestMixIn):
                                     '\n'.join(['%s: %s (%s)' %
                                                (field,
                                                 convert_size_to_bytes(
-                                                    self.file_fields_params_add[field].get('one_max_size', '10M')),
+                                                    self.file_fields_params_edit[field].get('one_max_size', '10M')),
                                                 self.humanize_file_size(
                                                     convert_size_to_bytes(
-                                                        self.file_fields_params_add[field].get('one_max_size', '10M'))))
+                                                        self.file_fields_params_edit[field].get('one_max_size', '10M'))))
                                                for field in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
