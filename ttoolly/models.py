@@ -1844,6 +1844,7 @@ class FormAddTestMixIn(FormTestMixIn):
         sp = transaction.savepoint()
         try:
             params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
             initial_obj_count = self.obj.objects.count()
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
             if self.with_captcha:
