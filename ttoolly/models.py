@@ -38,7 +38,7 @@ TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
 def get_dirs_for_move():
     DIRS_FOR_MOVE = getattr(settings, 'DIRS_FOR_MOVE', [])
-    DIRS_FOR_MOVE.extend([el for el in [getattr(settings, 'MEDIA_ROOT', ''), getattr(settings, 'STATIC_ROOT', '')] if
+    DIRS_FOR_MOVE.extend([el for el in [getattr(settings, 'MEDIA_ROOT', ''), ] if
                           el and not any([el.startswith(d) for d in DIRS_FOR_MOVE])])
     return set(DIRS_FOR_MOVE)
 
