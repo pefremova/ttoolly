@@ -2540,20 +2540,18 @@ class FormEditTestMixIn(FormTestMixIn):
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_edit)
         only_independent_fields = set(self.all_fields_edit).difference(prepared_depends_fields.keys())
         self.get_obj_for_edit()
-        default_params = self.deepcopy(self.default_params_edit)
-        self.fill_all_fields(only_independent_fields, default_params)
-        for field in prepared_depends_fields.keys():
-            self.set_empty_value_for_field(default_params, field)
 
         fields_from_groups = set(prepared_depends_fields.keys())
         for group in self.one_of_fields_edit:
             field = choice(group)
             fields_from_groups = fields_from_groups.difference(prepared_depends_fields[field])
-        self.fill_all_fields(fields_from_groups, default_params)
+
         for group in self.one_of_fields_edit:
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(default_params)
+                params = self.deepcopy(self.default_params_edit)
+                self.fill_all_fields(only_independent_fields, params)
+                self.fill_all_fields(fields_from_groups, params)
                 for f in prepared_depends_fields[field]:
                     self.set_empty_value_for_field(params, f)
                 self.fill_all_fields((field,), params)
