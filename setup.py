@@ -5,4 +5,5 @@ setup(name='ttoolly',
       version='0.10.20',
       description="Django test tools",
       include_package_data=True,
+      packages=['ttoolly'],
       install_requires=['django', 'psycopg2', 'lxml', 'chardet', 'Pillow', 'rstr'])
