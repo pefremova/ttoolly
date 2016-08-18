@@ -3,6 +3,13 @@ from django.core.management.base import BaseCommand
 from django.db import models
 from optparse import make_option
 from ttoolly.utils import prepare_file_for_tests
+import django
+
+if django.get_version() < '1.7':
+    from django.db.models import get_models
+else:
+    from django.apps import apps
+    get_models = apps.get_models
 
 
 class Command(BaseCommand):
@@ -15,7 +22,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         verbosity = int(kwargs.get('verbosity'))
-        all_models = models.get_models(include_auto_created=True)
+        all_models = get_models(include_auto_created=True)
         models_with_files = {}
         if verbosity: print 'Found %s models' % len(all_models)
         for model in all_models:
@@ -35,4 +42,3 @@ class Command(BaseCommand):
             for field in models_with_files[model]:
                 if verbosity > 1: print '  Generate files for field %s (%s)' % (field.name, field.verbose_name)
                 prepare_file_for_tests(model, field.name, verbosity=verbosity)
-

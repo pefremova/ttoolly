@@ -38,7 +38,7 @@ TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
 def get_dirs_for_move():
     DIRS_FOR_MOVE = getattr(settings, 'DIRS_FOR_MOVE', [])
-    DIRS_FOR_MOVE.extend([el for el in [getattr(settings, 'MEDIA_ROOT', ''), getattr(settings, 'STATIC_ROOT', '')] if
+    DIRS_FOR_MOVE.extend([el for el in [getattr(settings, 'MEDIA_ROOT', ''), ] if
                           el and not any([el.startswith(d) for d in DIRS_FOR_MOVE])])
     return set(DIRS_FOR_MOVE)
 
@@ -1844,6 +1844,7 @@ class FormAddTestMixIn(FormTestMixIn):
         sp = transaction.savepoint()
         try:
             params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
             initial_obj_count = self.obj.objects.count()
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
             if self.with_captcha:
@@ -2539,20 +2540,18 @@ class FormEditTestMixIn(FormTestMixIn):
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_edit)
         only_independent_fields = set(self.all_fields_edit).difference(prepared_depends_fields.keys())
         self.get_obj_for_edit()
-        default_params = self.deepcopy(self.default_params_edit)
-        self.fill_all_fields(only_independent_fields, default_params)
-        for field in prepared_depends_fields.keys():
-            self.set_empty_value_for_field(default_params, field)
 
         fields_from_groups = set(prepared_depends_fields.keys())
         for group in self.one_of_fields_edit:
             field = choice(group)
             fields_from_groups = fields_from_groups.difference(prepared_depends_fields[field])
-        self.fill_all_fields(fields_from_groups, default_params)
+
         for group in self.one_of_fields_edit:
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(default_params)
+                params = self.deepcopy(self.default_params_edit)
+                self.fill_all_fields(only_independent_fields, params)
+                self.fill_all_fields(fields_from_groups, params)
                 for f in prepared_depends_fields[field]:
                     self.set_empty_value_for_field(params, f)
                 self.fill_all_fields((field,), params)
@@ -5037,7 +5036,6 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
     def _post_teardown(self):
         self.custom_fixture_teardown()
         super(CustomTestCase, self)._post_teardown()
-        self.for_post_tear_down()
 
     def _pre_setup(self):
         if getattr(settings, 'TEST_CASE_NAME', '') != self.__class__.__name__:
@@ -5046,7 +5044,6 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         ContentType.objects.clear_cache()
         self.custom_fixture_setup()
         super(CustomTestCase, self)._pre_setup()
-        self.for_pre_setup()
 
     def custom_fixture_setup(self, **options):
         verbosity = int(options.get('verbosity', 1))
