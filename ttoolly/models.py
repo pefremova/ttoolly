@@ -5036,7 +5036,6 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
     def _post_teardown(self):
         self.custom_fixture_teardown()
         super(CustomTestCase, self)._post_teardown()
-        self.for_post_tear_down()
 
     def _pre_setup(self):
         if getattr(settings, 'TEST_CASE_NAME', '') != self.__class__.__name__:
@@ -5045,7 +5044,6 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         ContentType.objects.clear_cache()
         self.custom_fixture_setup()
         super(CustomTestCase, self)._pre_setup()
-        self.for_pre_setup()
 
     def custom_fixture_setup(self, **options):
         verbosity = int(options.get('verbosity', 1))
