@@ -119,7 +119,6 @@ def generate_sql(data):
 
 
 def get_all_form_errors(response):
-
     if not response.context:
         return None
 
@@ -242,7 +241,7 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
                 fr = fr[0]
                 value_for_replace = '123'
                 if (re.findall('>(.+?)\)', fr) and
-                    not set(re.findall('>(.+?)\)', fr)).intersection(['.*', '\d+', '.+', '[^/.]+'])):
+                        not set(re.findall('>(.+?)\)', fr)).intersection(['.*', '\d+', '.+', '[^/.]+'])):
                     value_for_replace = rstr.xeger(fr)
                 url = url.replace(fr, value_for_replace)
             result.append(url)
@@ -314,11 +313,11 @@ def get_fields_list_from_response(response, only_success=True):
                     visible_fields=visible_fields,
                     hidden_fields=hidden_fields,
                     disabled_fields=disabled_fields)
+
     fields = []
     visible_fields = []
     hidden_fields = []
     disabled_fields = []
-
     forms = []
     try:
         forms.append(response.context['wizard']['form'])
@@ -383,7 +382,7 @@ def get_fields_list_from_response(response, only_success=True):
         else:
             n += 1
 
-    for form in set(forms):
+    for form in filter(None, set(forms)):
         _fields = get_form_fields(form)
         fields.extend(_fields['fields'])
         visible_fields.extend(_fields['visible_fields'])
@@ -571,7 +570,7 @@ def get_value_for_obj_field(f, filename=None):
         if getattr(f, '_choices', None) or f.choices:
             choices = getattr(f, '_choices', None) or f.choices
             return [random.choice(choices)[0] for _ in xrange(random.randint(0 if f.blank else 1,
-                                                                                len(choices)))]
+                                                                             len(choices)))]
         elif 'IntegerArrayField' in mro_names:
             return [random.randint(0, 1000) for _ in xrange(random.randint(0 if f.blank else 1, 10))]
     elif getattr(f, '_choices', None) or f.choices:
@@ -743,7 +742,7 @@ def generate_random_bmp_image_with_size(*args, **kwargs):
     raise DeprecationWarning('use get_random_bmp_content or get_random_image')
 
 
-def get_random_bmp_content(size=10,):
+def get_random_bmp_content(size=10, ):
     """
     generate bmp content
     """
@@ -782,7 +781,7 @@ def get_random_svg_content(size=10, width=1, height=1):
     et.SubElement(doc, 'rect', width=str(width), height=str(height),
                   fill='rgb(%s, %s, %s)' % (random.randint(1, 255), random.randint(1, 255), random.randint(1, 255)))
     output = StringIO()
-    header = '<?xml version=\"1.0\" standalone=\"no\"?>\n'\
+    header = '<?xml version=\"1.0\" standalone=\"no\"?>\n' \
              '<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n'
     output.write(header)
     output.write(et.tostring(doc))
@@ -832,6 +831,7 @@ def get_url_for_negative(url, args=()):
             l_args.append(l_args[-1])
         return ''.join([item.decode('utf-8') if isinstance(item, str) else item
                         for tup in zip(l, l_args) for item in tup][:-1])
+
     try:
         res = resolve(url)
         if res.url_name:
@@ -930,11 +930,11 @@ def use_in_all_tests(decorator):
         for base in bases:
             decorate(base)
         return cls
+
     return decorate
 
 
 class FakeSizeMemoryFileUploadHandler(MemoryFileUploadHandler):
-
     def file_complete(self, file_size):
         if getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True):
             return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)
