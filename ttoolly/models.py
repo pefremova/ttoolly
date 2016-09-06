@@ -996,8 +996,8 @@ class GlobalTestMixIn(object):
                 return True
             return False
         return field not in getattr(self, 'not_file', []) and \
-                 any([field in self.file_fields_params_add.keys(),
-                      field in self.file_fields_params_edit.keys(),
+                 any([field in getattr(self, 'file_fields_params_add', {}).keys(),
+                      field in getattr(self, 'file_fields_params_edit', {}).keys(),
                       re.findall(r'(^|[^a-zA-Z])(file)', field),
                       check_by_params_name('default_params'),
                       check_by_params_name('default_params_add'),
