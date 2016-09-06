@@ -259,9 +259,11 @@ class GlobalTestMixIn(object):
                                                      key, '\n'.join(errors)))
                 else:
                     d1_value = d1[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
-                                           (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) else repr(d1[key])
+                                           (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) \
+                        else repr(d1[key])
                     d2_value = d2[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
-                                           (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) else repr(d2[key])
+                                           (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) \
+                        else repr(d2[key])
                     text.append('%s[%s]: %s != %s' %
                                 (parent_key if parent_key else '',
                                  key, d1_value, d2_value))
@@ -503,9 +505,10 @@ class GlobalTestMixIn(object):
                              second[n:n + 1],
                              ('Not equal in position %d: ' % n +
                               "'%s%s' != '%s%s'" % (first[n: n + additional],
-                              '...' if (n + additional < first_length) else '',
-                              second[n: n + additional],
-                              '...' if (n + additional < second_length) else '')) + full_error_text)
+                                                    '...' if (n + additional < first_length) else '',
+                                                    second[n: n + additional],
+                                                   '...' if (n + additional < second_length) else '')) +
+                             full_error_text)
 
     def assert_xpath_count(self, response, path, count=1, status_code=200):
         self.assertEqual(response.status_code, status_code, "Response status code %s != %s" %
@@ -612,13 +615,13 @@ class GlobalTestMixIn(object):
                           'max_length': u'Убедитесь, что это значение содержит не ' + \
                                         u'более {length} символов (сейчас {current_length}).' if
                                                                 (previous_locals.get('length', None) is None or
-                                                                not isinstance(previous_locals.get('length'), int)) \
+                                                                 not isinstance(previous_locals.get('length'), int)) \
                                         else u'Убедитесь, что это значение содержит не ' + \
                                         u'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
                           'max_length_file': u'Убедитесь, что это имя файла содержит не ' + \
                                         u'более {length} символов (сейчас {current_length}).' if
                                                                 (previous_locals.get('length', None) is None or
-                                                                not isinstance(previous_locals.get('length'), int)) \
+                                                                 not isinstance(previous_locals.get('length'), int)) \
                                         else u'Убедитесь, что это имя файла содержит не ' + \
                                         u'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
                           'max_length_digital': u'Убедитесь, что это значение меньше либо равно {max_value}.' if
@@ -627,14 +630,15 @@ class GlobalTestMixIn(object):
                           'min_length': u'Убедитесь, что это значение содержит не ' + \
                                         u'менее {length} символов (сейчас {current_length}).' if
                                                                 (previous_locals.get('length', None) is None or
-                                                                not isinstance(previous_locals.get('length'), int)) \
+                                                                 not isinstance(previous_locals.get('length'), int)) \
                                         else u'Убедитесь, что это значение содержит не ' + \
                                         u'менее {length} символов (сейчас {current_length}).'.format(**previous_locals),
                           'min_length_digital': u'Убедитесь, что это значение больше либо равно {min_value}.' if
                                                                     (previous_locals.get('min_value', None) is None) \
                                         else u'Убедитесь, что это значение больше либо равно {min_value}.'.format(**previous_locals),
                           'wrong_value': u'Выберите корректный вариант. Вашего ' +
-                                         u'варианта нет среди допустимых значений.' if previous_locals.get('value', '') == '' \
+                                         u'варианта нет среди допустимых значений.' if
+                                         previous_locals.get('value', '') == '' \
                                          else u'Выберите корректный вариант. {value} '.format(**previous_locals) +
                                          u'нет среди допустимых значений.',
                           'wrong_value_int': u'Введите целое число.',
@@ -703,8 +707,8 @@ class GlobalTestMixIn(object):
             error_message = self.deepcopy(error_message)
 
         for k, v in error_message.iteritems():
-            error_message[k] = [el.format(**previous_locals) for el in v] if \
-                                isinstance(v, list) else [v.format(**previous_locals)]
+            error_message[k] = [el.format(**previous_locals) for el in v] if isinstance(v, list) \
+                else [v.format(**previous_locals)]
         return error_message
 
     def get_field_by_name(self, model, field):
@@ -927,9 +931,9 @@ class GlobalTestMixIn(object):
         return ([getattr(self, 'email_fields', None),
                  getattr(self, 'email_fields_add', None),
                  getattr(self, 'email_fields_edit', None)] == [None, None, None] and 'email' in field) \
-                or any([field in (getattr(self, 'email_fields', ()) or ()),
-                        field in (getattr(self, 'email_fields_add', ()) or ()),
-                        field in (getattr(self, 'email_fields_edit', ()) or ()), ])
+                 or any([field in (getattr(self, 'email_fields', ()) or ()),
+                         field in (getattr(self, 'email_fields_add', ()) or ()),
+                         field in (getattr(self, 'email_fields_edit', ()) or ()), ])
 
     def is_int_field(self, field):
         return any([field in (getattr(self, 'int_fields', ()) or ()),
@@ -2425,7 +2429,8 @@ class FormAddTestMixIn(FormTestMixIn):
                         params.update(get_captcha_codes())
                     self.fill_all_fields(filled_group, params)
                     initial_obj_count = self.obj.objects.count()
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
                     error_message = self.get_error_message(message_type, group)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2560,7 +2565,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_edit), **self.additional_params)
                     params.update(get_captcha_codes())
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True, **self.additional_params)
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
+                                                **self.additional_params)
                     self.assert_no_form_errors(response)
                     self.assertEqual(response.status_code, self.status_code_success_edit,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
@@ -3593,7 +3599,8 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_id = obj_for_test.id
         params = self.deepcopy(self.default_params_edit)
         try:
-            response = self.client.post(self.get_url_for_negative(self.url_edit, (obj_id,)), params, follow=True, **self.additional_params)
+            response = self.client.post(self.get_url_for_negative(self.url_edit, (obj_id,)), params, follow=True,
+                                        **self.additional_params)
             self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
         except:
             self.errors_append()
@@ -3842,7 +3849,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
             self.formatted_assert_errors()
 
         for field in fields_for_check:
-            field_dict = self.file_fields_params_add[field]
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
@@ -4030,7 +4036,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_add))
                 self.assert_objects_count_on_add(True, initial_obj_count)
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field,])
+                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
@@ -4186,7 +4192,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 params[field] = [f, ] if self.is_file_list(field) else f
                 initial_obj_count = self.obj.objects.count()
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 except:
@@ -4268,7 +4275,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     params[field] = [f, ] if is_file_list else f
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     new_objects = self.obj.objects.exclude(pk__in=old_pks)
@@ -4371,8 +4379,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
             self.formatted_assert_errors()
 
         for field in fields_for_check:
-            field_dict = self.file_fields_params_edit[field]
-
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -4503,7 +4509,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 max_size_params[field] = f
 
         sp = transaction.savepoint()
-        one_max_size = field_dict.get('one_max_size', '10M')
         try:
             obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
@@ -5031,7 +5036,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             cursor = conn.cursor()
             conn.connection.rollback()
             conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            cursor.execute('DROP DATABASE "%s"' % (db_name))
+            cursor.execute('DROP DATABASE "%s"', [db_name])
 
     def _post_teardown(self):
         self.custom_fixture_teardown()
@@ -5084,7 +5089,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                 tables = cursor.fetchall()
                 for table in tables:
                     try:
-                        cursor.execute("DELETE FROM %s" % table)
+                        cursor.execute("DELETE FROM %s", [table])
                     except:
                         transaction.rollback_unless_managed(using=db)
                     else:
@@ -5160,5 +5165,5 @@ class CustomTestCaseNew(CustomTestCase):
                 tables = cursor.fetchall()
                 for table in tables:
                     with transaction.atomic(using=db):
-                        cursor.execute("DELETE FROM %s" % table)
+                        cursor.execute("DELETE FROM %s", [table])
 
