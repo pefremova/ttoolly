@@ -71,6 +71,52 @@ def only_with(param_names=None):
     return decorator
 
 
+def only_with_files_params(param_names=None):
+    if not isinstance(param_names, (tuple, list)):
+        param_names = [param_names, ]
+
+    def decorator(fn):
+        def tmp(self):
+            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in fn.__name__ else '_edit')
+
+            def check_params(field_dict, param_names):
+                return all([param_name in field_dict.keys() for param_name in param_names])
+            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
+                if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
+                    warnings.warn('%s not set for all fields' % str(param_names))
+                return fn(self)
+            else:
+                raise SkipTest("Need all these params: %s" % repr(param_names))
+
+        tmp.__name__ = fn.__name__
+        return tmp
+
+    return decorator
+
+
+def only_with_any_files_params(param_names=None):
+    if not isinstance(param_names, (tuple, list)):
+        param_names = [param_names, ]
+
+    def decorator(fn):
+        def tmp(self):
+            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in fn.__name__ else '_edit')
+
+            def check_params(field_dict, param_names):
+                return any([param_name in field_dict.keys() for param_name in param_names])
+            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
+                if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
+                    warnings.warn('%s not set for all fields' % str(param_names))
+                return fn(self)
+            else:
+                raise SkipTest("Need all these params: %s" % repr(param_names))
+
+        tmp.__name__ = fn.__name__
+        return tmp
+
+    return decorator
+
+
 class RequestManager(models.Manager):
 
     def __init__(self, db_name=None):
@@ -162,9 +208,7 @@ class GlobalTestMixIn(object):
     all_unique = None
     choice_fields_values = None
     errors = []
-    FILE_FIELDS = ('file', 'filename', 'image', 'preview')
     files = []
-    IMAGE_FIELDS = ('image', 'preview', 'photo')
     maxDiff = None
     non_field_error_key = '__all__'
     unique_fields = None
@@ -186,7 +230,6 @@ class GlobalTestMixIn(object):
                 self.all_unique[tuple(key)] = el[0]
             else:
                 self.all_unique[(el,)] = el
-        self.FILE_FIELDS = set(tuple(self.FILE_FIELDS) + tuple(self.IMAGE_FIELDS))
         super(GlobalTestMixIn, self).__init__(*args, **kwargs)
 
     def _fixture_setup(self):
@@ -823,7 +866,7 @@ class GlobalTestMixIn(object):
             default_file.seek(0)
             text_for_file = default_file.read()
         else:
-            if field in self.IMAGE_FIELDS or os.path.splitext(filename)[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
+            if os.path.splitext(filename)[1] in ('.tiff', '.jpg', '.jpeg', '.png',):
                 if not os.path.splitext(filename)[1]:
                     filename = filename[:-4] + ".jpg"
                 text_for_file = get_random_jpg_content()
@@ -953,7 +996,8 @@ class GlobalTestMixIn(object):
                 return True
             return False
         return field not in getattr(self, 'not_file', []) and \
-                 any([field in self.FILE_FIELDS,
+                 any([field in self.file_fields_params_add.keys(),
+                      field in self.file_fields_params_edit.keys(),
                       re.findall(r'(^|[^a-zA-Z])(file)', field),
                       check_by_params_name('default_params'),
                       check_by_params_name('default_params_add'),
@@ -1056,6 +1100,13 @@ class FormTestMixIn(GlobalTestMixIn):
     email_fields_edit = None
     exclude_from_check = []
     filter_params = None
+    file_fields_params = None
+    """{'field_name': {'extensions': ('jpg', 'txt'),
+        'max_count': 3,
+        'one_max_size': '3Mb',
+        'sum_max_size': '9Mb'}}"""
+    file_fields_params_add = None
+    file_fields_params_edit = None
     hidden_fields = None
     hidden_fields_add = None
     hidden_fields_edit = None
@@ -1118,6 +1169,7 @@ class FormTestMixIn(GlobalTestMixIn):
         self.unique_fields_edit = [el for el in self.all_unique.keys() if
                                    any([field in self.all_fields_edit for field in el])]
 
+        self._prepare_file_fields_params()
         super(FormTestMixIn, self).__init__(*args, **kwargs)
 
     def _divide_common_and_related_fields(self, fields_list):
@@ -1276,6 +1328,28 @@ class FormTestMixIn(GlobalTestMixIn):
             else:
                 _filter_params[param] = None
         self.filter_params = self.deepcopy(_filter_params)
+
+    def _prepare_file_fields_params(self):
+        if self.file_fields_params is None:
+            self.file_fields_params = {k: {} for k in getattr(self, 'FILE_FIELDS', [])}
+        if self.file_fields_params_add is None:
+            self.file_fields_params_add = self.deepcopy(self.file_fields_params)
+            if not self.file_fields_params_add:
+                self.file_fields_params_add = {k: {} for k in set(self.default_params_add.keys())
+                    .intersection(('file', 'filename', 'image', 'preview')).difference(getattr(self, 'not_file', []))}
+                self.file_fields_params_add.update({k: {'extensions': ('jpg', 'jpeg', 'png')} for k in
+                                                    set(self.default_params_add.keys())
+                    .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
+        if self.file_fields_params_edit is None:
+            self.file_fields_params_edit = self.deepcopy(self.file_fields_params)
+            if not self.file_fields_params_edit:
+                self.file_fields_params_edit = {k: {} for k in set(self.default_params_edit.keys())
+                    .intersection(('file', 'filename', 'image', 'preview')).difference(getattr(self, 'not_file', []))}
+                self.file_fields_params_edit.update({k: {'extensions': ('jpg', 'jpeg', 'png')} for k in
+                                                    set(self.default_params_edit.keys())
+                    .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
+        if self.file_fields_params_add or self.file_fields_params_edit:
+            self.with_files = True
 
     def _prepare_hidden_fields(self):
         if self.hidden_fields_add is None:
@@ -1446,6 +1520,9 @@ class FormTestMixIn(GlobalTestMixIn):
 
     def get_lt_min_list(self, field, values_list):
         return [value for value in [self.get_lt_min(field, v) for v in values_list] if value]
+
+    def humanize_file_size(self, size):
+        return filesizeformat(size)
 
     def check_and_create_objects_for_filter(self, filter_name):
         if filter_name.endswith('exact'):
@@ -2440,6 +2517,545 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.savepoint_rollback(sp)
                     self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
 
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_files_params('max_count')
+    def test_add_object_many_files_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with files count > max files count
+        """
+        new_objects = None
+        message_type = 'max_count_file'
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            if field_dict.get('max_count', 1) <= 1:
+                continue
+            max_count = field_dict['max_count']
+            sp = transaction.savepoint()
+            if new_objects:
+                new_objects.delete()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                filename = '.'.join([s for s in [get_randname(10, 'wrd '),
+                                                 choice(field_dict.get('extensions', ('',)))] if s])
+                f = get_random_file(filename=filename, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] * (max_count + 1)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_objects_count_on_add(False, initial_obj_count)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_object = self.obj.objects.exclude(pk__in=old_pks)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_files_params('max_count')
+    def test_add_object_many_files_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with photos count == max files count
+        """
+        new_object = None
+        fields_for_check = []
+        max_count_params = {}
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            if field_dict.get('max_count', 1) <= 1:
+                continue
+            fields_for_check.append(field)
+            max_count_params[field] = []
+            max_count = field_dict['max_count']
+            for _ in xrange(max_count):
+                f = get_random_file(**field_dict)
+                self.files.append(f)
+                max_count_params[field].append(f)
+
+        sp = transaction.savepoint()
+        try:
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_count_params)
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text='For max count files in all fields\n%s' %
+                                    '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field in fields_for_check:
+            sp = transaction.savepoint()
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = max_count_params[field]
+                for f in params[field]:
+                    f.seek(0)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_files_params('one_max_size')
+    def test_add_object_big_file_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with file size > max one file size
+        """
+        message_type = 'max_size_file'
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            sp = transaction.savepoint()
+            one_max_size = field_dict.get('one_max_size', None)
+            if not one_max_size:
+                continue
+            size = convert_size_to_bytes(one_max_size)
+            max_size = self.humanize_file_size(size)
+            current_size = size + 100
+            try:
+                initial_obj_count = self.obj.objects.count()
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
+                f = get_random_file(filename=filename, size=current_size, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_objects_count_on_add(False, initial_obj_count)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
+                                                                               current_size, field))
+            finally:
+                self.del_files()
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_files_params('sum_max_size')
+    def test_add_object_big_summary_file_size_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with summary files size > max summary files size
+        """
+        message_type = 'max_sum_size_file'
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            sp = transaction.savepoint()
+            sum_max_size = field_dict.get('sum_max_size', None)
+            if not sum_max_size:
+                continue
+            size = convert_size_to_bytes(sum_max_size)
+            current_size = size + 100
+            max_size = self.humanize_file_size(size)
+            one_size = current_size / field_dict['max_count']
+            try:
+                initial_obj_count = self.obj.objects.count()
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = []
+                for _ in xrange(field_dict['max_count']):
+                    f = get_random_file(size=one_size, **field_dict)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_objects_count_on_add(False, initial_obj_count)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
+                                        (self.humanize_file_size(current_size), current_size, one_size,
+                                         field_dict['max_count'], field))
+            finally:
+                self.del_files()
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    def test_add_object_big_file_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with file size == max one file size
+        """
+        new_object = None
+        fields_for_check = self.file_fields_params_add.keys()
+        max_size_params = {}
+        for field in fields_for_check:
+            field_dict = self.file_fields_params_add[field]
+            size = convert_size_to_bytes(field_dict.get('one_max_size', '10M'))
+            if self.is_file_list(field):
+                max_size_params[field] = []
+                for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
+                    f = get_random_file(size=size, **field_dict)
+                    self.files.append(f)
+                    max_size_params[field].append(f)
+            else:
+                f = get_random_file(size=size, **field_dict)
+                self.files.append(f)
+                max_size_params[field] = f
+
+        sp = transaction.savepoint()
+        try:
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_size_params)
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text='For max size files in all fields\n%s' %
+                                    '\n'.join(['%s: %s (%s)' %
+                                               (field,
+                                                convert_size_to_bytes(
+                                                    self.file_fields_params_add[field].get('one_max_size', '10M')),
+                                                self.humanize_file_size(
+                                                    convert_size_to_bytes(
+                                                        self.file_fields_params_add[field].get('one_max_size', '10M'))))
+                                               for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            sp = transaction.savepoint()
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            one_max_size = field_dict.get('one_max_size', '10M')
+            size = convert_size_to_bytes(one_max_size)
+            max_size = self.humanize_file_size(size)
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = max_size_params[field]
+                if self.is_file_list(field):
+                    for f in params[field]:
+                        f.seek(0)
+                else:
+                    params[field].seek(0)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
+            finally:
+                self.del_files()
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_files_params('sum_max_size')
+    def test_add_object_big_summary_file_size_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with summary files size == max summary files size
+        """
+        new_object = None
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            sp = transaction.savepoint()
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            sum_max_size = field_dict.get('sum_max_size', None)
+            if not sum_max_size:
+                continue
+            size = convert_size_to_bytes(sum_max_size)
+            max_size = self.humanize_file_size(size)
+            one_size = size / field_dict['max_count']
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = []
+                for _ in xrange(field_dict['max_count']):
+                    f = get_random_file(size=one_size, **field_dict)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
+                                        (
+                                        max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
+                                        field))
+            finally:
+                self.del_files()
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    def test_add_object_empty_file_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try create obj with file size = 0M
+        """
+        new_objects = None
+        message_type = 'empty_file'
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            sp = transaction.savepoint()
+            if new_objects:
+                new_objects.delete()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
+                f = ContentFile('', filename)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_objects_count_on_add(False, initial_obj_count)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_objects = self.obj.objects.exclude(pk__in=old_pks)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For empty file in field %s' % field)
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    def test_add_object_some_file_extensions_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with some available extensions
+        """
+        new_object = None
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            extensions = copy(field_dict.get('extensions', ()))
+            if not extensions:
+                extensions = (get_randname(3, 'wd'), '')
+            extensions += tuple([e.upper() for e in extensions if e])
+            is_file_list = self.is_file_list(field)
+            for ext in extensions:
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                sp = transaction.savepoint()
+                if new_object:
+                    self.obj.objects.filter(pk=new_object.pk).delete()
+                filename = '.'.join([el for el in ['test', ext] if el])
+                f = get_random_file(filename=filename, **field_dict)
+                self.files.append(f)
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = [f, ] if is_file_list else f
+                initial_obj_count = self.obj.objects.count()
+                try:
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
+                    self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_add,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                    self.assert_objects_count_on_add(True, initial_obj_count)
+                    new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                    exclude = getattr(self, 'exclude_from_check_add', [])
+                    self.assert_object_fields(new_object, params, exclude=exclude)
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_files_params('extensions')
+    def test_add_object_wrong_file_extensions_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with wrong extensions
+        """
+        message_type = 'wrong_extension'
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            extensions = copy(field_dict.get('extensions', ()))
+            if not extensions:
+                continue
+            ext = get_randname(3, 'wd')
+            while ext in extensions:
+                ext = get_randname(3, 'wd')
+            wrong_extensions = tuple(field_dict.get('wrong_extensions', ())) + ('', ext)
+            for ext in wrong_extensions:
+                filename = '.'.join([el for el in ['test', ext] if el])
+                sp = transaction.savepoint()
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                f = get_random_file(filename=filename, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                initial_obj_count = self.obj.objects.count()
+                try:
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
+                    self.assert_objects_count_on_add(False, initial_obj_count)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_any_files_params(['min_width', 'min_height'])
+    def test_add_object_min_image_dimensions_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with minimum image file dimensions
+        """
+        new_object = None
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            width = field_dict.get('min_width', 1)
+            height = field_dict.get('min_height', 1)
+            sp = transaction.savepoint()
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_add), **self.additional_params)
+                    params.update(get_captcha_codes())
+                f = get_random_file(width=width, height=height, **field_dict)
+                self.files.append(f)
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_any_files_params(['min_width', 'min_height'])
+    def test_add_object_image_dimensions_lt_min_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Create obj with image file dimensions < minimum
+        """
+        new_objects = None
+        message_type = 'min_dimensions'
+        for field, field_dict in self.file_fields_params_add.iteritems():
+            if new_objects:
+                new_objects.delete()
+            is_file_list = self.is_file_list(field)
+            values = ()
+            min_width = field_dict.get('min_width', None)
+            if min_width:
+                values += ((min_width - 1, field_dict.get('min_height', 1)),)
+            min_height = field_dict.get('min_height', None)
+            if min_height:
+                values += ((field_dict.get('min_width', 1), min_height - 1),)
+
+            for width, height in values:
+                sp = transaction.savepoint()
+                try:
+                    initial_obj_count = self.obj.objects.count()
+                    old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                    params = self.deepcopy(self.default_params_add)
+                    self.update_params(params)
+                    if self.with_captcha:
+                        self.client.get(self.get_url(self.url_add), **self.additional_params)
+                        params.update(get_captcha_codes())
+                    f = get_random_file(width=width, height=height, **field_dict)
+                    self.files.append(f)
+                    params = self.deepcopy(self.default_params_add)
+                    self.update_params(params)
+                    params[field] = [f, ] if is_file_list else f
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
+                    self.assert_objects_count_on_add(False, initial_obj_count)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    new_objects = self.obj.objects.exclude(pk__in=old_pks)
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+
 
 class FormEditTestMixIn(FormTestMixIn):
 
@@ -3412,6 +4028,526 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.savepoint_rollback(sp)
                     self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
 
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_files_params('max_count')
+    def test_edit_object_many_files_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with files count > max files count
+        """
+        message_type = 'max_count_file'
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            if field_dict.get('max_count', 1) <= 1:
+                continue
+            max_count = field_dict['max_count']
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                filename = '.'.join([s for s in [get_randname(10, 'wrd '),
+                                                 choice(field_dict.get('extensions', ('',)))] if s])
+                f = get_random_file(filename=filename, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] * (max_count + 1)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_files_params('max_count')
+    def test_edit_object_many_files_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with photos count == max files count
+        """
+        fields_for_check = []
+        max_count_params = {}
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            if field_dict.get('max_count', 1) <= 1:
+                continue
+            fields_for_check.append(field)
+            max_count_params[field] = []
+            max_count = field_dict['max_count']
+            for _ in xrange(max_count):
+                f = get_random_file(**field_dict)
+                self.files.append(f)
+                max_count_params[field].append(f)
+
+        sp = transaction.savepoint()
+        try:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_count_params)
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text='For max count files in all fields\n%s' %
+                                    '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field in fields_for_check:
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = max_count_params[field]
+                for f in params[field]:
+                    f.seek(0)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_files_params('one_max_size')
+    def test_edit_object_big_file_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with file size > max one file size
+        """
+        message_type = 'max_size_file'
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            sp = transaction.savepoint()
+            one_max_size = field_dict.get('one_max_size', None)
+            if not one_max_size:
+                continue
+            size = convert_size_to_bytes(one_max_size)
+            max_size = self.humanize_file_size(size)
+            current_size = size + 100
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
+                f = get_random_file(filename=filename, size=current_size, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
+                                                                               current_size, field))
+            finally:
+                self.del_files()
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_files_params('sum_max_size')
+    def test_edit_object_big_summary_file_size_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with summary files size > max summary file size
+        """
+        message_type = 'max_sum_size_file'
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            sp = transaction.savepoint()
+            sum_max_size = field_dict.get('sum_max_size', None)
+            if not sum_max_size:
+                continue
+            size = convert_size_to_bytes(sum_max_size)
+            current_size = size + 100
+            max_size = self.humanize_file_size(size)
+            one_size = current_size / field_dict['max_count']
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = []
+                for _ in xrange(field_dict['max_count']):
+                    f = get_random_file(size=one_size, **field_dict)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
+                                   (self.humanize_file_size(current_size), current_size, one_size,
+                                    field_dict['max_count'], field))
+            finally:
+                self.del_files()
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    def test_edit_object_big_file_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with file size == max one file size
+        """
+        fields_for_check = self.file_fields_params_edit.keys()
+        max_size_params = {}
+        for field in fields_for_check:
+            field_dict = self.file_fields_params_edit[field]
+            one_max_size = field_dict.get('one_max_size', '10M')
+            size = convert_size_to_bytes(one_max_size)
+            if self.is_file_list(field):
+                max_size_params[field] = []
+                for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
+                    f = get_random_file(size=size, **field_dict)
+                    self.files.append(f)
+                    max_size_params[field].append(f)
+            else:
+                f = get_random_file(size=size, **field_dict)
+                self.files.append(f)
+                max_size_params[field] = f
+
+        sp = transaction.savepoint()
+        try:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update(max_size_params)
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text='For max size files in all fields\n%s' %
+                                    '\n'.join(['%s: %s (%s)' %
+                                               (field,
+                                                convert_size_to_bytes(
+                                                    self.file_fields_params_edit[field].get('one_max_size', '10M')),
+                                                self.humanize_file_size(
+                                                    convert_size_to_bytes(
+                                                        self.file_fields_params_edit[field].get('one_max_size', '10M'))))
+                                               for field in fields_for_check]))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            sp = transaction.savepoint()
+            one_max_size = field_dict.get('one_max_size', '10M')
+            size = convert_size_to_bytes(one_max_size)
+            max_size = self.humanize_file_size(size)
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = max_size_params[field]
+                if self.is_file_list(field):
+                    for f in params[field]:
+                        f.seek(0)
+                else:
+                    params[field].seek(0)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
+            finally:
+                self.del_files()
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_files_params('sum_max_size')
+    def test_edit_object_big_summary_file_size_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with summary files size == max summary files size
+        """
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            sp = transaction.savepoint()
+            sum_max_size = field_dict.get('sum_max_size', None)
+            if not sum_max_size:
+                continue
+            size = convert_size_to_bytes(sum_max_size)
+            max_size = self.humanize_file_size(size)
+            one_size = size / field_dict['max_count']
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = []
+                for _ in xrange(field_dict['max_count']):
+                    f = get_random_file(size=one_size, **field_dict)
+                    self.files.append(f)
+                    params[field].append(f)
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
+                                   (max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
+                                    field))
+            finally:
+                self.del_files()
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    def test_edit_object_empty_file_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Try edit obj with file size = 0M
+        """
+        message_type = 'empty_file'
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
+                f = ContentFile('', filename)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
+                                            **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For empty file in field %s' % field)
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    def test_edit_object_some_file_extensions_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with some available extensions
+        """
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            extensions = copy(field_dict.get('extensions', ()))
+            if not extensions:
+                extensions = (get_randname(3, 'wd'), '')
+            extensions += tuple([e.upper() for e in extensions if e])
+            is_file_list = self.is_file_list(field)
+            for ext in extensions:
+                sp = transaction.savepoint()
+                filename = '.'.join([el for el in ['test', ext] if el])
+                f = get_random_file(filename=filename, **field_dict)
+                self.files.append(f)
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params[field] = [f, ] if is_file_list else f
+                try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                                params, follow=True, **self.additional_params)
+                    self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_edit,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                    self.assert_object_fields(new_object, params, exclude=exclude)
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_files_params('extensions')
+    def test_edit_object_wrong_file_extensions_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with wrong extensions
+        """
+        message_type = 'wrong_extension'
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            extensions = copy(field_dict.get('extensions', ()))
+            if not extensions:
+                continue
+            ext = get_randname(3, 'wd')
+            while ext in extensions:
+                ext = get_randname(3, 'wd')
+            wrong_extensions = tuple(field_dict.get('wrong_extensions', ())) + ('', ext)
+            for ext in wrong_extensions:
+                filename = '.'.join([el for el in ['test', ext] if el])
+                sp = transaction.savepoint()
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                f = get_random_file(filename=filename, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
+                                                **self.additional_params)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_any_files_params(['min_width', 'min_height'])
+    def test_edit_object_min_image_dimensions_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with minimum image file dimensions
+        """
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            width = field_dict.get('min_width', 1)
+            height = field_dict.get('min_height', 1)
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                f = get_random_file(width=width, height=height, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] if self.is_file_list(field) else f
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_any_files_params(['min_width', 'min_height'])
+    def test_edit_object_image_dimensions_lt_min_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Edit obj with image file dimensions < minimum
+        """
+        message_type = 'min_dimensions'
+        for field, field_dict in self.file_fields_params_edit.iteritems():
+            is_file_list = self.is_file_list(field)
+            values = ()
+            min_width = field_dict.get('min_width', None)
+            if min_width:
+                values += ((min_width - 1, field_dict.get('min_height', 1)),)
+            min_height = field_dict.get('min_height', None)
+            if min_height:
+                values += ((field_dict.get('min_width', 1), min_height - 1),)
+
+            for width, height in values:
+                sp = transaction.savepoint()
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                f = get_random_file(width=width, height=height, **field_dict)
+                self.files.append(f)
+                params[field] = [f, ] if is_file_list else f
+                try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
+                                                **self.additional_params)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+
+
 
 class FormDeleteTestMixIn(FormTestMixIn):
 
@@ -3687,1116 +4823,14 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.errors_append()
 
 
-class FileTestMixIn(FormTestMixIn):
-
-    file_fields_params = None
-    """{'field_name': {'extensions': ('jpg', 'txt'),
-                       'max_count': 3,
-                       'one_max_size': '3Mb',
-                       'sum_max_size': '9Mb'}}"""
-    with_files = True
-
-    def __init__(self, *args, **kwargs):
-        super(FileTestMixIn, self).__init__(*args, **kwargs)
-        if self.file_fields_params is None:
-            self.file_fields_params = {}
-        self.FILE_FIELDS = set(list(self.FILE_FIELDS) + self.file_fields_params.keys())
-
-    def humanize_file_size(self, size):
-        return filesizeformat(size)
+class FormAddFileTestMixIn(object):
+    '''Может наследоваться в тестах, поэтому оставлено'''
+    pass
 
 
-def only_with_files_params(param_names=None):
-    if not isinstance(param_names, (tuple, list)):
-        param_names = [param_names, ]
-
-    def decorator(fn):
-        def tmp(self):
-            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in fn.__name__ else '_edit')
-
-            def check_params(field_dict, param_names):
-                return all([param_name in field_dict.keys() for param_name in param_names])
-            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                    warnings.warn('%s not set for all fields' % str(param_names))
-                return fn(self)
-            else:
-                raise SkipTest("Need all these params: %s" % repr(param_names))
-
-        tmp.__name__ = fn.__name__
-        return tmp
-
-    return decorator
-
-
-def only_with_any_files_params(param_names=None):
-    if not isinstance(param_names, (tuple, list)):
-        param_names = [param_names, ]
-
-    def decorator(fn):
-        def tmp(self):
-            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in fn.__name__ else '_edit')
-
-            def check_params(field_dict, param_names):
-                return any([param_name in field_dict.keys() for param_name in param_names])
-            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                    warnings.warn('%s not set for all fields' % str(param_names))
-                return fn(self)
-            else:
-                raise SkipTest("Need all these params: %s" % repr(param_names))
-
-        tmp.__name__ = fn.__name__
-        return tmp
-
-    return decorator
-
-
-class FormAddFileTestMixIn(FileTestMixIn):
-
-    file_fields_params_add = None
-
-    def __init__(self, *args, **kwargs):
-        super(FormAddFileTestMixIn, self).__init__(*args, **kwargs)
-        if self.file_fields_params_add is None:
-            self.file_fields_params_add = self.deepcopy(self.file_fields_params)
-
-    @only_with_obj
-    @only_with_files_params('max_count')
-    def test_add_object_many_files_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Try create obj with files count > max files count
-        """
-        new_objects = None
-        message_type = 'max_count_file'
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            if field_dict.get('max_count', 1) <= 1:
-                continue
-            max_count = field_dict['max_count']
-            sp = transaction.savepoint()
-            if new_objects:
-                new_objects.delete()
-            try:
-                initial_obj_count = self.obj.objects.count()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                filename = '.'.join([s for s in [get_randname(10, 'wrd '),
-                                                 choice(field_dict.get('extensions', ('',)))] if s])
-                f = get_random_file(filename=filename, **field_dict)
-                self.files.append(f)
-                params[field] = [f, ] * (max_count + 1)
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assert_objects_count_on_add(False, initial_obj_count)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_object = self.obj.objects.exclude(pk__in=old_pks)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
-
-    @only_with_obj
-    @only_with_files_params('max_count')
-    def test_add_object_many_files_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Try create obj with photos count == max files count
-        """
-        new_object = None
-        fields_for_check = []
-        max_count_params = {}
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            if field_dict.get('max_count', 1) <= 1:
-                continue
-            fields_for_check.append(field)
-            max_count_params[field] = []
-            max_count = field_dict['max_count']
-            for _ in xrange(max_count):
-                f = get_random_file(**field_dict)
-                self.files.append(f)
-                max_count_params[field].append(f)
-
-        sp = transaction.savepoint()
-        try:
-            initial_obj_count = self.obj.objects.count()
-            old_pks = list(self.obj.objects.values_list('pk', flat=True))
-            params = self.deepcopy(self.default_params_add)
-            self.update_params(params)
-            if self.with_captcha:
-                self.client.get(self.get_url(self.url_add), **self.additional_params)
-                params.update(get_captcha_codes())
-            params.update(max_count_params)
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-            self.assert_no_form_errors(response)
-            self.assertEqual(response.status_code, self.status_code_success_add,
-                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-            self.assert_objects_count_on_add(True, initial_obj_count)
-            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
-            self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
-            self.savepoint_rollback(sp)
-            self.errors_append(text='For max count files in all fields\n%s' %
-                                    '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
-
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
-            return
-        if len(fields_for_check) == 1:
-            self.formatted_assert_errors()
-
-        for field in fields_for_check:
-            sp = transaction.savepoint()
-            if new_object:
-                self.obj.objects.filter(pk=new_object.pk).delete()
-            try:
-                initial_obj_count = self.obj.objects.count()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = max_count_params[field]
-                for f in params[field]:
-                    f.seek(0)
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assert_no_form_errors(response)
-                self.assertEqual(response.status_code, self.status_code_success_add,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assert_objects_count_on_add(True, initial_obj_count)
-                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-                exclude = getattr(self, 'exclude_from_check_add', [])
-                self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
-
-    @only_with_obj
-    @only_with_files_params('one_max_size')
-    def test_add_object_big_file_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Try create obj with file size > max one file size
-        """
-        message_type = 'max_size_file'
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            sp = transaction.savepoint()
-            one_max_size = field_dict.get('one_max_size', None)
-            if not one_max_size:
-                continue
-            size = convert_size_to_bytes(one_max_size)
-            max_size = self.humanize_file_size(size)
-            current_size = size + 100
-            try:
-                initial_obj_count = self.obj.objects.count()
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = get_random_file(filename=filename, size=current_size, **field_dict)
-                self.files.append(f)
-                params[field] = [f, ] if self.is_file_list(field) else f
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assert_objects_count_on_add(False, initial_obj_count)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
-                                                                               current_size, field))
-            self.del_files()
-
-    @only_with_obj
-    @only_with_files_params('sum_max_size')
-    def test_add_object_big_summary_file_size_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Try create obj with summary files size > max summary files size
-        """
-        message_type = 'max_sum_size_file'
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            sp = transaction.savepoint()
-            sum_max_size = field_dict.get('sum_max_size', None)
-            if not sum_max_size:
-                continue
-            size = convert_size_to_bytes(sum_max_size)
-            current_size = size + 100
-            max_size = self.humanize_file_size(size)
-            one_size = current_size / field_dict['max_count']
-            try:
-                initial_obj_count = self.obj.objects.count()
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = []
-                for _ in xrange(field_dict['max_count']):
-                    f = get_random_file(size=one_size, **field_dict)
-                    self.files.append(f)
-                    params[field].append(f)
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assert_objects_count_on_add(False, initial_obj_count)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
-                                   (self.humanize_file_size(current_size), current_size, one_size,
-                                    field_dict['max_count'], field))
-            self.del_files()
-
-    @only_with_obj
-    def test_add_object_big_file_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Create obj with file size == max one file size
-        """
-        new_object = None
-        fields_for_check = self.file_fields_params_add.keys()
-        max_size_params = {}
-        for field in fields_for_check:
-            field_dict = self.file_fields_params_add[field]
-            size = convert_size_to_bytes(field_dict.get('one_max_size', '10M'))
-            if self.is_file_list(field):
-                max_size_params[field] = []
-                for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
-                    f = get_random_file(size=size, **field_dict)
-                    self.files.append(f)
-                    max_size_params[field].append(f)
-            else:
-                f = get_random_file(size=size, **field_dict)
-                self.files.append(f)
-                max_size_params[field] = f
-
-        sp = transaction.savepoint()
-        try:
-            initial_obj_count = self.obj.objects.count()
-            old_pks = list(self.obj.objects.values_list('pk', flat=True))
-            params = self.deepcopy(self.default_params_add)
-            self.update_params(params)
-            if self.with_captcha:
-                self.client.get(self.get_url(self.url_add), **self.additional_params)
-                params.update(get_captcha_codes())
-            params.update(max_size_params)
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-            self.assert_no_form_errors(response)
-            self.assertEqual(response.status_code, self.status_code_success_add,
-                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-            self.assert_objects_count_on_add(True, initial_obj_count)
-            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
-            self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
-            self.savepoint_rollback(sp)
-            self.errors_append(text='For max size files in all fields\n%s' %
-                                    '\n'.join(['%s: %s (%s)' %
-                                               (field,
-                                                convert_size_to_bytes(
-                                                    self.file_fields_params_add[field].get('one_max_size', '10M')),
-                                                self.humanize_file_size(
-                                                    convert_size_to_bytes(
-                                                        self.file_fields_params_add[field].get('one_max_size', '10M'))))
-                                               for field in fields_for_check]))
-
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
-            return
-        if len(fields_for_check) == 1:
-            self.formatted_assert_errors()
-
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            sp = transaction.savepoint()
-            if new_object:
-                self.obj.objects.filter(pk=new_object.pk).delete()
-            one_max_size = field_dict.get('one_max_size', '10M')
-            size = convert_size_to_bytes(one_max_size)
-            max_size = self.humanize_file_size(size)
-            try:
-                initial_obj_count = self.obj.objects.count()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = max_size_params[field]
-                if self.is_file_list(field):
-                    for f in params[field]:
-                        f.seek(0)
-                else:
-                    params[field].seek(0)
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assert_no_form_errors(response)
-                self.assertEqual(response.status_code, self.status_code_success_add,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assert_objects_count_on_add(True, initial_obj_count)
-                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
-                self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
-            self.del_files()
-
-    @only_with_obj
-    @only_with_files_params('sum_max_size')
-    def test_add_object_big_summary_file_size_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Create obj with summary files size == max summary files size
-        """
-        new_object = None
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            sp = transaction.savepoint()
-            if new_object:
-                self.obj.objects.filter(pk=new_object.pk).delete()
-            sum_max_size = field_dict.get('sum_max_size', None)
-            if not sum_max_size:
-                continue
-            size = convert_size_to_bytes(sum_max_size)
-            max_size = self.humanize_file_size(size)
-            one_size = size / field_dict['max_count']
-            try:
-                initial_obj_count = self.obj.objects.count()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = []
-                for _ in xrange(field_dict['max_count']):
-                    f = get_random_file(size=one_size, **field_dict)
-                    self.files.append(f)
-                    params[field].append(f)
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assert_no_form_errors(response)
-                self.assertEqual(response.status_code, self.status_code_success_add,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assert_objects_count_on_add(True, initial_obj_count)
-                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-                exclude = getattr(self, 'exclude_from_check_add', [])
-                self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
-                                   (max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
-                                    field))
-            self.del_files()
-
-    @only_with_obj
-    def test_add_object_empty_file_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Try create obj with file size = 0M
-        """
-        new_objects = None
-        message_type = 'empty_file'
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            sp = transaction.savepoint()
-            if new_objects:
-                new_objects.delete()
-            try:
-                initial_obj_count = self.obj.objects.count()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile('', filename)
-                self.files.append(f)
-                params[field] = [f, ] if self.is_file_list(field) else f
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assert_objects_count_on_add(False, initial_obj_count)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_objects = self.obj.objects.exclude(pk__in=old_pks)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For empty file in field %s' % field)
-
-    @only_with_obj
-    def test_add_object_some_file_extensions_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Create obj with some available extensions
-        """
-        new_object = None
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            extensions = copy(field_dict.get('extensions', ()))
-            if not extensions:
-                extensions = (get_randname(3, 'wd'), '')
-            extensions += tuple([e.upper() for e in extensions if e])
-            is_file_list = self.is_file_list(field)
-            for ext in extensions:
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                sp = transaction.savepoint()
-                if new_object:
-                    self.obj.objects.filter(pk=new_object.pk).delete()
-                filename = '.'.join([el for el in ['test', ext] if el])
-                f = get_random_file(filename=filename, **field_dict)
-                self.files.append(f)
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = [f, ] if is_file_list else f
-                initial_obj_count = self.obj.objects.count()
-                try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
-                    self.assert_no_form_errors(response)
-                    self.assertEqual(response.status_code, self.status_code_success_add,
-                                     'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                    self.assert_objects_count_on_add(True, initial_obj_count)
-                    new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-                    exclude = getattr(self, 'exclude_from_check_add', [])
-                    self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
-                    self.savepoint_rollback(sp)
-                    self.errors_append(text='For field %s filename %s' % (field, filename))
-
-    @only_with_obj
-    @only_with_files_params('extensions')
-    def test_add_object_wrong_file_extensions_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Create obj with wrong extensions
-        """
-        message_type = 'wrong_extension'
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            extensions = copy(field_dict.get('extensions', ()))
-            if not extensions:
-                continue
-            ext = get_randname(3, 'wd')
-            while ext in extensions:
-                ext = get_randname(3, 'wd')
-            wrong_extensions = tuple(field_dict.get('wrong_extensions', ())) + ('', ext)
-            for ext in wrong_extensions:
-                filename = '.'.join([el for el in ['test', ext] if el])
-                sp = transaction.savepoint()
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                f = get_random_file(filename=filename, **field_dict)
-                self.files.append(f)
-                params[field] = [f, ] if self.is_file_list(field) else f
-                initial_obj_count = self.obj.objects.count()
-                try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
-                    self.assert_objects_count_on_add(False, initial_obj_count)
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                except:
-                    self.savepoint_rollback(sp)
-                    self.errors_append(text='For field %s filename %s' % (field, filename))
-
-    @only_with_obj
-    @only_with_any_files_params(['min_width', 'min_height'])
-    def test_add_object_min_image_dimensions_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Create obj with minimum image file dimensions
-        """
-        new_object = None
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            width = field_dict.get('min_width', 1)
-            height = field_dict.get('min_height', 1)
-            sp = transaction.savepoint()
-            if new_object:
-                self.obj.objects.filter(pk=new_object.pk).delete()
-            try:
-                initial_obj_count = self.obj.objects.count()
-                old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_add), **self.additional_params)
-                    params.update(get_captcha_codes())
-                f = get_random_file(width=width, height=height, **field_dict)
-                self.files.append(f)
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
-                params[field] = [f, ] if self.is_file_list(field) else f
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
-                self.assert_no_form_errors(response)
-                self.assertEqual(response.status_code, self.status_code_success_add,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
-                self.assert_objects_count_on_add(True, initial_obj_count)
-                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-                exclude = getattr(self, 'exclude_from_check_add', [])
-                self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-
-    @only_with_obj
-    @only_with_any_files_params(['min_width', 'min_height'])
-    def test_add_object_image_dimensions_lt_min_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Create obj with image file dimensions < minimum
-        """
-        new_objects = None
-        message_type = 'min_dimensions'
-        for field, field_dict in self.file_fields_params_add.iteritems():
-            if new_objects:
-                new_objects.delete()
-            is_file_list = self.is_file_list(field)
-            values = ()
-            min_width = field_dict.get('min_width', None)
-            if min_width:
-                values += ((min_width - 1, field_dict.get('min_height', 1)),)
-            min_height = field_dict.get('min_height', None)
-            if min_height:
-                values += ((field_dict.get('min_width', 1), min_height - 1),)
-
-            for width, height in values:
-                sp = transaction.savepoint()
-                try:
-                    initial_obj_count = self.obj.objects.count()
-                    old_pks = list(self.obj.objects.values_list('pk', flat=True))
-                    params = self.deepcopy(self.default_params_add)
-                    self.update_params(params)
-                    if self.with_captcha:
-                        self.client.get(self.get_url(self.url_add), **self.additional_params)
-                        params.update(get_captcha_codes())
-                    f = get_random_file(width=width, height=height, **field_dict)
-                    self.files.append(f)
-                    params = self.deepcopy(self.default_params_add)
-                    self.update_params(params)
-                    params[field] = [f, ] if is_file_list else f
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
-                    self.assert_objects_count_on_add(False, initial_obj_count)
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                    new_objects = self.obj.objects.exclude(pk__in=old_pks)
-                except:
-                    self.savepoint_rollback(sp)
-                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-
-
-class FormEditFileTestMixIn(FileTestMixIn):
-
-    file_fields_params_edit = None
-
-    def __init__(self, *args, **kwargs):
-        super(FormEditFileTestMixIn, self).__init__(*args, **kwargs)
-        if self.file_fields_params_edit is None:
-            self.file_fields_params_edit = self.deepcopy(self.file_fields_params)
-
-    @only_with_obj
-    @only_with_files_params('max_count')
-    def test_edit_object_many_files_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Try edit obj with files count > max files count
-        """
-        message_type = 'max_count_file'
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            if field_dict.get('max_count', 1) <= 1:
-                continue
-            max_count = field_dict['max_count']
-            sp = transaction.savepoint()
-            try:
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                filename = '.'.join([s for s in [get_randname(10, 'wrd '),
-                                                 choice(field_dict.get('extensions', ('',)))] if s])
-                f = get_random_file(filename=filename, **field_dict)
-                self.files.append(f)
-                params[field] = [f, ] * (max_count + 1)
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_object, obj_for_edit)
-                self.assertEqual(response.status_code, self.status_code_error,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
-
-    @only_with_obj
-    @only_with_files_params('max_count')
-    def test_edit_object_many_files_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Try edit obj with photos count == max files count
-        """
-        fields_for_check = []
-        max_count_params = {}
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            if field_dict.get('max_count', 1) <= 1:
-                continue
-            fields_for_check.append(field)
-            max_count_params[field] = []
-            max_count = field_dict['max_count']
-            for _ in xrange(max_count):
-                f = get_random_file(**field_dict)
-                self.files.append(f)
-                max_count_params[field].append(f)
-
-        sp = transaction.savepoint()
-        try:
-            obj_for_edit = self.get_obj_for_edit()
-            params = self.deepcopy(self.default_params_edit)
-            self.update_params(params)
-            if self.with_captcha:
-                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                params.update(get_captcha_codes())
-            params.update(max_count_params)
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
-            self.assert_no_form_errors(response)
-            self.assertEqual(response.status_code, self.status_code_success_edit,
-                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
-            self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
-            self.savepoint_rollback(sp)
-            self.errors_append(text='For max count files in all fields\n%s' %
-                                    '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
-
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
-            return
-        if len(fields_for_check) == 1:
-            self.formatted_assert_errors()
-
-        for field in fields_for_check:
-            sp = transaction.savepoint()
-            try:
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = max_count_params[field]
-                for f in params[field]:
-                    f.seek(0)
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
-                self.assert_no_form_errors(response)
-                self.assertEqual(response.status_code, self.status_code_success_edit,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
-                self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
-
-    @only_with_obj
-    @only_with_files_params('one_max_size')
-    def test_edit_object_big_file_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Try edit obj with file size > max one file size
-        """
-        message_type = 'max_size_file'
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            sp = transaction.savepoint()
-            one_max_size = field_dict.get('one_max_size', None)
-            if not one_max_size:
-                continue
-            size = convert_size_to_bytes(one_max_size)
-            max_size = self.humanize_file_size(size)
-            current_size = size + 100
-            try:
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = get_random_file(filename=filename, size=current_size, **field_dict)
-                self.files.append(f)
-                params[field] = [f, ] if self.is_file_list(field) else f
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_object, obj_for_edit)
-                self.assertEqual(response.status_code, self.status_code_error,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
-                                                                               current_size, field))
-            self.del_files()
-
-    @only_with_obj
-    @only_with_files_params('sum_max_size')
-    def test_edit_object_big_summary_file_size_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Try edit obj with summary files size > max summary file size
-        """
-        message_type = 'max_sum_size_file'
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            sp = transaction.savepoint()
-            sum_max_size = field_dict.get('sum_max_size', None)
-            if not sum_max_size:
-                continue
-            size = convert_size_to_bytes(sum_max_size)
-            current_size = size + 100
-            max_size = self.humanize_file_size(size)
-            one_size = current_size / field_dict['max_count']
-            try:
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = []
-                for _ in xrange(field_dict['max_count']):
-                    f = get_random_file(size=one_size, **field_dict)
-                    self.files.append(f)
-                    params[field].append(f)
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_object, obj_for_edit)
-                self.assertEqual(response.status_code, self.status_code_error,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
-                                   (self.humanize_file_size(current_size), current_size, one_size,
-                                    field_dict['max_count'], field))
-            self.del_files()
-
-    @only_with_obj
-    def test_edit_object_big_file_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Edit obj with file size == max one file size
-        """
-        fields_for_check = self.file_fields_params_edit.keys()
-        max_size_params = {}
-        for field in fields_for_check:
-            field_dict = self.file_fields_params_edit[field]
-            one_max_size = field_dict.get('one_max_size', '10M')
-            size = convert_size_to_bytes(one_max_size)
-            if self.is_file_list(field):
-                max_size_params[field] = []
-                for _ in xrange(1 if field_dict.get('sum_max_size', None) else field_dict['max_count']):
-                    f = get_random_file(size=size, **field_dict)
-                    self.files.append(f)
-                    max_size_params[field].append(f)
-            else:
-                f = get_random_file(size=size, **field_dict)
-                self.files.append(f)
-                max_size_params[field] = f
-
-        sp = transaction.savepoint()
-        try:
-            obj_for_edit = self.get_obj_for_edit()
-            params = self.deepcopy(self.default_params_edit)
-            self.update_params(params)
-            if self.with_captcha:
-                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                params.update(get_captcha_codes())
-            params.update(max_size_params)
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
-            self.assert_no_form_errors(response)
-            self.assertEqual(response.status_code, self.status_code_success_edit,
-                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
-            self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
-            self.savepoint_rollback(sp)
-            self.errors_append(text='For max size files in all fields\n%s' %
-                                    '\n'.join(['%s: %s (%s)' %
-                                               (field,
-                                                convert_size_to_bytes(
-                                                    self.file_fields_params_edit[field].get('one_max_size', '10M')),
-                                                self.humanize_file_size(
-                                                    convert_size_to_bytes(
-                                                        self.file_fields_params_edit[field].get('one_max_size', '10M'))))
-                                               for field in fields_for_check]))
-
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
-            return
-        if len(fields_for_check) == 1:
-            self.formatted_assert_errors()
-
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            sp = transaction.savepoint()
-            one_max_size = field_dict.get('one_max_size', '10M')
-            size = convert_size_to_bytes(one_max_size)
-            max_size = self.humanize_file_size(size)
-            try:
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = max_size_params[field]
-                if self.is_file_list(field):
-                    for f in params[field]:
-                        f.seek(0)
-                else:
-                    params[field].seek(0)
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
-                self.assert_no_form_errors(response)
-                self.assertEqual(response.status_code, self.status_code_success_edit,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
-                self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
-            self.del_files()
-
-    @only_with_obj
-    @only_with_files_params('sum_max_size')
-    def test_edit_object_big_summary_file_size_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Edit obj with summary files size == max summary files size
-        """
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            sp = transaction.savepoint()
-            sum_max_size = field_dict.get('sum_max_size', None)
-            if not sum_max_size:
-                continue
-            size = convert_size_to_bytes(sum_max_size)
-            max_size = self.humanize_file_size(size)
-            one_size = size / field_dict['max_count']
-            try:
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = []
-                for _ in xrange(field_dict['max_count']):
-                    f = get_random_file(size=one_size, **field_dict)
-                    self.files.append(f)
-                    params[field].append(f)
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
-                self.assert_no_form_errors(response)
-                self.assertEqual(response.status_code, self.status_code_success_edit,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
-                self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
-                                   (max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
-                                    field))
-            self.del_files()
-
-    @only_with_obj
-    def test_edit_object_empty_file_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Try edit obj with file size = 0M
-        """
-        message_type = 'empty_file'
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            sp = transaction.savepoint()
-            try:
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile('', filename)
-                self.files.append(f)
-                params[field] = [f, ] if self.is_file_list(field) else f
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
-                                            **self.additional_params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                self.assert_objects_equal(new_object, obj_for_edit)
-                self.assertEqual(response.status_code, self.status_code_error,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For empty file in field %s' % field)
-
-    @only_with_obj
-    def test_edit_object_some_file_extensions_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Edit obj with some available extensions
-        """
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            extensions = copy(field_dict.get('extensions', ()))
-            if not extensions:
-                extensions = (get_randname(3, 'wd'), '')
-            extensions += tuple([e.upper() for e in extensions if e])
-            is_file_list = self.is_file_list(field)
-            for ext in extensions:
-                sp = transaction.savepoint()
-                filename = '.'.join([el for el in ['test', ext] if el])
-                f = get_random_file(filename=filename, **field_dict)
-                self.files.append(f)
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                params[field] = [f, ] if is_file_list else f
-                try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
-                    self.assert_no_form_errors(response)
-                    self.assertEqual(response.status_code, self.status_code_success_edit,
-                                     'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
-                    self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
-                    self.savepoint_rollback(sp)
-                    self.errors_append(text='For field %s filename %s' % (field, filename))
-
-    @only_with_obj
-    @only_with_files_params('extensions')
-    def test_edit_object_wrong_file_extensions_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Edit obj with wrong extensions
-        """
-        message_type = 'wrong_extension'
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            extensions = copy(field_dict.get('extensions', ()))
-            if not extensions:
-                continue
-            ext = get_randname(3, 'wd')
-            while ext in extensions:
-                ext = get_randname(3, 'wd')
-            wrong_extensions = tuple(field_dict.get('wrong_extensions', ())) + ('', ext)
-            for ext in wrong_extensions:
-                filename = '.'.join([el for el in ['test', ext] if el])
-                sp = transaction.savepoint()
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                f = get_random_file(filename=filename, **field_dict)
-                self.files.append(f)
-                params[field] = [f, ] if self.is_file_list(field) else f
-                try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
-                                                **self.additional_params)
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                    self.assert_objects_equal(new_object, obj_for_edit)
-                    self.assertEqual(response.status_code, self.status_code_error,
-                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
-                    self.savepoint_rollback(sp)
-                    self.errors_append(text='For field %s filename %s' % (field, filename))
-
-    @only_with_obj
-    @only_with_any_files_params(['min_width', 'min_height'])
-    def test_edit_object_min_image_dimensions_positive(self):
-        """
-        @author: Polina Efremova
-        @note: Edit obj with minimum image file dimensions
-        """
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            width = field_dict.get('min_width', 1)
-            height = field_dict.get('min_height', 1)
-            sp = transaction.savepoint()
-            try:
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                f = get_random_file(width=width, height=height, **field_dict)
-                self.files.append(f)
-                params[field] = [f, ] if self.is_file_list(field) else f
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
-                self.assert_no_form_errors(response)
-                self.assertEqual(response.status_code, self.status_code_success_edit,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
-                self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
-                self.savepoint_rollback(sp)
-                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
-
-    @only_with_obj
-    @only_with_any_files_params(['min_width', 'min_height'])
-    def test_edit_object_image_dimensions_lt_min_negative(self):
-        """
-        @author: Polina Efremova
-        @note: Edit obj with image file dimensions < minimum
-        """
-        message_type = 'min_dimensions'
-        for field, field_dict in self.file_fields_params_edit.iteritems():
-            is_file_list = self.is_file_list(field)
-            values = ()
-            min_width = field_dict.get('min_width', None)
-            if min_width:
-                values += ((min_width - 1, field_dict.get('min_height', 1)),)
-            min_height = field_dict.get('min_height', None)
-            if min_height:
-                values += ((field_dict.get('min_width', 1), min_height - 1),)
-
-            for width, height in values:
-                sp = transaction.savepoint()
-                obj_for_edit = self.get_obj_for_edit()
-                params = self.deepcopy(self.default_params_edit)
-                self.update_params(params)
-                if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
-                    params.update(get_captcha_codes())
-                f = get_random_file(width=width, height=height, **field_dict)
-                self.files.append(f)
-                params[field] = [f, ] if is_file_list else f
-                try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
-                                                **self.additional_params)
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                    self.assert_objects_equal(new_object, obj_for_edit)
-                    self.assertEqual(response.status_code, self.status_code_error,
-                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
-                    self.savepoint_rollback(sp)
-                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+class FormEditFileTestMixIn(object):
+    '''Может наследоваться в тестах, поэтому оставлено'''
+    pass
 
 
 class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):

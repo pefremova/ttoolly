@@ -13,9 +13,7 @@ __GlobalTestMixIn__
 |choice_fields_values| {} | варианты значений для select, multiselect полей | choice_fields_values = {'field1': (value1, value2)}|
 |custom_error_messages|{}| Кастомные сообщения для определенных полей| custom_error_messages = {'field1': {message_type: u"Текст сообщения об ошибке."}} |
 |errors | [] | не переопределять (хранит значения ошибок для текущего теста) | |
-|FILE_FIELDS| ('file', 'filename', 'image', 'preview') | названия файловых полей | |
 |files | [] | список файлов в текущем тесте (используется для закрытия файлов в конце каждого теста) | f = open(filename); self.fields.append(f) |
-|IMAGE_FIELDS | ('image', 'preview', 'photo') | названия полей изображений | |
 |maxDiff|None| unittest.TestCase.maxDiff||
 |non_field_error_key| '\__all\__' | поле, в котором возвращаются общие (не привязанные к конкретному полю) для формы ошибки ||
 |unique_fields| None | список уникальных полей | unique_fields = ('field1', ('field2', 'field3'), 'field4')|
@@ -52,7 +50,10 @@ __FormTestMixIn(GlobalTestMixIn)__
 | exclude_from_check | []| Названия полей, которые нужно исключить из проверки значений во всех тестах. Актуально, например, для полей, содержащих дату обновления объекта | exclude_from_check = ('field1', 'field2')||
 | exclude_from_check_add |  exclude_from_check | Названия полей, которые нужно исключить из проверки значений в тестах создания объекта | exclude_from_check_add = ('field1', 'field2')||
 | exclude_from_check_edit |  exclude_from_check | Названия полей, которые нужно исключить из проверки значений в тестах редактирования объекта| exclude_from_check_edit = ('field1', 'field2')||
-|filter_params | None | Названия параметров для фильтрации списка объектов | filter_params = ('filter_name1', ('filter_name2', 'any_valid_value'), ) | Для тестов должен быть задан также url_list. Проверка с пустым, либо указанным в параметрах значением. Проверка со случайными значениями. В любом случае ожидается ответ 200 |
+| file_fields_params | {} | Параметры файловых полей |file_fields_params = {'field\_name': {'extensions': ('jpg', 'txt'),<br>'max\_count': 3,<br>'one\_max\_size': '3Mb',<br>'wrong\_extensions': ('rar', 'zip'),<br>'min\_width': 200,<br>'min_height': 100}}||
+| file_fields_params_add | file_fields_params | Параметры файловых полей на форме создания ||
+| file_fields_params_edit | file_fields_params | Параметры файловых полей на форме редактирования ||
+| filter_params | None | Названия параметров для фильтрации списка объектов | filter_params = ('filter_name1', ('filter_name2', 'any_valid_value'), ) | Для тестов должен быть задан также url_list. Проверка с пустым, либо указанным в параметрах значением. Проверка со случайными значениями. В любом случае ожидается ответ 200 |
 | hidden_fields | None | Названия полей, выводящихся на форме в скрытом виде | hidden_fields = ('field1', 'field2') |Проверка наличия полей на форме |
 | hidden_fields_add | hidden_fields | Названия полей, выводящихся на форме создания в скрытом виде | hidden_fields_add = ('field1', 'field2') ||
 | hidden_fields_edit | hidden_fields | Названия полей, выводящихся на форме редактирования в скрытом виде | hidden_fields_edit = ('field1', 'field2') ||
@@ -75,6 +76,17 @@ __FormTestMixIn(GlobalTestMixIn)__
 |unique_fields_edit | unique_fields (учитывается наличие в all_fields_edit)| Cписок уникальных полей на форме редактирования | unique_fields_edit = ('field1', ('field2', 'field3'), 'field4')| |
 | url_list | | URL, на котором находится список объектов, например, в админке. Включает все тесты, связанные со списком | url_list = 'modelname:url_name' или url_list = '/path/to/list/'| |
 | with_captcha | Наличие поля 'captcha' в all_fields или в all_fields_add или в all_fields_edit | Используется ли капча на форме. Если True, во всех тестах отправляемые параметры дополняются полями капчи | | |
+
+_file\_fields\_params_
+
+| название поля | описание | включает проверки |
+|---|---|---|
+|extensions| разрешенные расширения | Все валидные расширения. Невалидные расширения. |
+| wrong_extensions| дополнительные невалидные расширения|Добавляет значения для проверки в тесте невалидных расширений|
+|max_count | максимальное количество файлов (для полей с множественным выбором файлов) | Максимальное число файлов. Число файлов больше максимального|
+|one_max_size| максимальный размер файла (одного файла для полей с множественным выбором файлов)| Максимальный размер файла. Размер файла больше максимального |
+|min_width| минимальная ширина изображения| Изображение с минимальной шириной. Изображение с шириной меньше минимальной |
+|min_height| минимальная высота изображения| Изображение с минимальной высотой. Изображение с высотой меньше минимальной|
 
 __FormAddTestMixIn(FormTestMixIn)__
 
@@ -106,22 +118,4 @@ __FormRemoveTestMixIn(FormTestMixIn)__
 | url_delete | '' | URL, по которому удаляются объекты | url_delete = 'modelname:url_name_remove' или url_delete = '/path/to/remove/1/' |
 | url_recovery | '' | URL, по которому выполняется восстановление объекта | url_recovery = 'modelname:url_name_recovery' или url_recovery = '/path/to/recovery/1/' |
 | url_edit_in_trash | '' | URL, по которому открывается страница редактирования объекта в корзине | url_edit_in_trash = 'modelname:url_name_trash_edit' или url_edit_in_trash = '/path/to/trash/edit/1/' |
-
-
-__FileTestMixIn(FormTestMixIn)__
-
-| название поля | значение по умолчанию | описание | пример использования |
-| --- | --- | --- | --- |
-| file_fields_params | {} | Параметры файловых полей |file_fields_params = {'field\_name': {'extensions': ('jpg', 'txt'),<br>'max\_count': 3,<br>'one\_max\_size': '3Mb',<br>'wrong\_extensions': ('rar', 'zip'),<br>'min\_width': 200,<br>'min_height': 100}}|
-
-_file\_fields\_params_
-
-| название поля | описание | включает проверки |
-|---|---|---|
-|extensions| разрешенные расширения | Все валидные расширения. Невалидные расширения. |
-| wrong_extensions| дополнительные невалидные расширения|Добавляет значения для проверки в тесте невалидных расширений|
-|max_count | максимальное количество файлов (для полей с множественным выбором файлов) | Максимальное число файлов. Число файлов больше максимального|
-|one_max_size| максимальный размер файла (одного файла для полей с множественным выбором файлов)| Максимальный размер файла. Размер файла больше максимального | 
-|min_width| минимальная ширина изображения| Изображение с минимальной шириной. Изображение с шириной меньше минимальной |
-|min_height| минимальная высота изображения| Изображение с минимальной высотой. Изображение с высотой меньше минимальной|
 
