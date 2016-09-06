@@ -249,7 +249,8 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         IMAGE_FIELDS
         """
         self.btc.with_files = False
-        self.btc.IMAGE_FIELDS = ['test', 'some_image_field']
+        self.btc.file_fields_params = {'test': {'extensions': ('jpg',)},
+                                       'some_image_field': {'extensions': ('jpg',)}}
         res = self.btc.get_random_file('some_image_field', 20)
         self.assertTrue(isinstance(res, File))
         self.assertEqual(len(os.path.basename(res.name)), 20)
@@ -259,8 +260,10 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
     def test_is_file_field(self):
         self.assertFalse(self.btc.is_file_field('some_test'))
         self.assertTrue(self.btc.is_file_field('some_file'))
-        self.btc.FILE_FIELDS = ['some_test', 'other']
+        self.btc.file_fields_params_add = {'some_test': {}, 'other': {}}
         self.assertTrue(self.btc.is_file_field('some_test'))
+        self.btc.file_fields_params_edit = {'some_test1': {}, 'other': {}}
+        self.assertTrue(self.btc.is_file_field('some_test1'))
 
     def test_is_file_field_with_default_params(self):
         f = open(os.path.join(TEMP_DIR, 'file_for_test.ext'), 'a')
@@ -284,10 +287,12 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertTrue(self.btc.is_file_field('some_test'))
 
     def test_is_file_field_with_not_file_param(self):
-        self.btc.not_file = ['file', 'some_test']
+        self.btc.not_file = ['file', 'some_test', 'some_test1']
         self.assertFalse(self.btc.is_file_field('file'))
-        self.btc.FILE_FIELDS = ['some_test', 'other']
+        self.btc.file_fields_params_add = {'some_test': {}, 'other': {}}
         self.assertFalse(self.btc.is_file_field('some_test'))
+        self.btc.file_fields_params_edit = {'some_test1': {}, 'other': {}}
+        self.assertFalse(self.btc.is_file_field('some_test1'))
 
     def test_is_file_field_with_default_params_with_not_file_param(self):
         self.btc.not_file = ['some_test', ]
@@ -386,7 +391,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                   'qwe': [1, 2, 3]})
 
     def test_update_params_with_file(self):
-        self.btc.FILE_FIELDS = ('test',)
+        self.btc.file_fields_params_add = {'test': {}}
         f = open(os.path.join(TEMP_DIR, 'file_for_test.ext'), 'a')
         f.write('qwerty')
         f.close()
@@ -397,7 +402,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(params['test'].tell(), 0)
 
     def test_update_params_with_files_list(self):
-        self.btc.FILE_FIELDS = ('test',)
+        self.btc.file_fields_params_edit = {'test': {}}
         f = open(os.path.join(TEMP_DIR, 'file_for_test.ext'), 'a')
         f.write('qwerty')
         f.close()
