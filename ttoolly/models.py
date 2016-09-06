@@ -2229,7 +2229,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
+                self.errors_append(text='For field "%s" with value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2336,7 +2336,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
+                self.errors_append(text='For field "%s" with value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2883,6 +2883,7 @@ class FormEditTestMixIn(FormTestMixIn):
         other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.max_fields_length if el[0] in
                               self.all_fields_edit and el[0] not in other_fields]:
+            current_length = length + 1
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -2891,7 +2892,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                current_length = length + 1
                 params[field] = self.get_value_for_field(current_length, field)
                 response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -2917,6 +2917,7 @@ class FormEditTestMixIn(FormTestMixIn):
         other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [el for el in self.min_fields_length if el[0] in
                               self.all_fields_edit and el[0] not in other_fields]:
+            current_length = length - 1
             sp = transaction.savepoint()
             try:
                 test_obj = self.get_obj_for_edit()
@@ -2925,7 +2926,6 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                current_length = length - 1
                 params[field] = self.get_value_for_field(current_length, field)
                 response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -3207,7 +3207,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
+                self.errors_append(text='For field "%s" with value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -3308,7 +3308,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For field "%s" with value "%s"' % (field, params[field]))
+                self.errors_append(text='For field "%s" with value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -3766,6 +3766,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
         for field, field_dict in self.file_fields_params_add.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
+            max_count = field_dict['max_count']
             sp = transaction.savepoint()
             if new_objects:
                 new_objects.delete()
@@ -3777,7 +3778,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                max_count = field_dict['max_count']
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                  choice(field_dict.get('extensions', ('',)))] if s])
                 f = get_random_file(filename=filename, **field_dict)
@@ -3882,6 +3882,9 @@ class FormAddFileTestMixIn(FileTestMixIn):
             one_max_size = field_dict.get('one_max_size', None)
             if not one_max_size:
                 continue
+            size = convert_size_to_bytes(one_max_size)
+            max_size = self.humanize_file_size(size)
+            current_size = size + 100
             try:
                 initial_obj_count = self.obj.objects.count()
                 params = self.deepcopy(self.default_params_add)
@@ -3889,10 +3892,7 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(one_max_size)
-                max_size = self.humanize_file_size(size)
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                current_size = size + 100
                 f = get_random_file(filename=filename, size=current_size, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
@@ -3918,6 +3918,10 @@ class FormAddFileTestMixIn(FileTestMixIn):
             sum_max_size = field_dict.get('sum_max_size', None)
             if not sum_max_size:
                 continue
+            size = convert_size_to_bytes(sum_max_size)
+            current_size = size + 100
+            max_size = self.humanize_file_size(size)
+            one_size = current_size / field_dict['max_count']
             try:
                 initial_obj_count = self.obj.objects.count()
                 params = self.deepcopy(self.default_params_add)
@@ -3925,10 +3929,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(sum_max_size)
-                current_size = size + 100
-                max_size = self.humanize_file_size(size)
-                one_size = current_size / field_dict['max_count']
                 params[field] = []
                 for _ in xrange(field_dict['max_count']):
                     f = get_random_file(size=one_size, **field_dict)
@@ -4008,6 +4008,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             one_max_size = field_dict.get('one_max_size', '10M')
+            size = convert_size_to_bytes(one_max_size)
+            max_size = self.humanize_file_size(size)
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
@@ -4016,8 +4018,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(one_max_size)
-                max_size = self.humanize_file_size(size)
                 params[field] = max_size_params[field]
                 if self.is_file_list(field):
                     for f in params[field]:
@@ -4052,6 +4052,9 @@ class FormAddFileTestMixIn(FileTestMixIn):
             sum_max_size = field_dict.get('sum_max_size', None)
             if not sum_max_size:
                 continue
+            size = convert_size_to_bytes(sum_max_size)
+            max_size = self.humanize_file_size(size)
+            one_size = size / field_dict['max_count']
             try:
                 initial_obj_count = self.obj.objects.count()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
@@ -4060,9 +4063,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(sum_max_size)
-                max_size = self.humanize_file_size(size)
-                one_size = size / field_dict['max_count']
                 params[field] = []
                 for _ in xrange(field_dict['max_count']):
                     f = get_random_file(size=one_size, **field_dict)
@@ -4202,6 +4202,8 @@ class FormAddFileTestMixIn(FileTestMixIn):
         """
         new_object = None
         for field, field_dict in self.file_fields_params_add.iteritems():
+            width = field_dict.get('min_width', 1)
+            height = field_dict.get('min_height', 1)
             sp = transaction.savepoint()
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
@@ -4213,8 +4215,6 @@ class FormAddFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                width = field_dict.get('min_width', 1)
-                height = field_dict.get('min_height', 1)
                 f = get_random_file(width=width, height=height, **field_dict)
                 self.files.append(f)
                 params = self.deepcopy(self.default_params_add)
@@ -4297,6 +4297,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
         for field, field_dict in self.file_fields_params_edit.iteritems():
             if field_dict.get('max_count', 1) <= 1:
                 continue
+            max_count = field_dict['max_count']
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -4305,7 +4306,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                max_count = field_dict['max_count']
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                  choice(field_dict.get('extensions', ('',)))] if s])
                 f = get_random_file(filename=filename, **field_dict)
@@ -4409,6 +4409,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
             one_max_size = field_dict.get('one_max_size', None)
             if not one_max_size:
                 continue
+            size = convert_size_to_bytes(one_max_size)
+            max_size = self.humanize_file_size(size)
+            current_size = size + 100
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
@@ -4416,10 +4419,7 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(one_max_size)
-                max_size = self.humanize_file_size(size)
                 filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                current_size = size + 100
                 f = get_random_file(filename=filename, size=current_size, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
@@ -4449,6 +4449,10 @@ class FormEditFileTestMixIn(FileTestMixIn):
             sum_max_size = field_dict.get('sum_max_size', None)
             if not sum_max_size:
                 continue
+            size = convert_size_to_bytes(sum_max_size)
+            current_size = size + 100
+            max_size = self.humanize_file_size(size)
+            one_size = current_size / field_dict['max_count']
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
@@ -4456,10 +4460,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(sum_max_size)
-                current_size = size + 100
-                max_size = self.humanize_file_size(size)
-                one_size = current_size / field_dict['max_count']
                 params[field] = []
                 for _ in xrange(field_dict['max_count']):
                     f = get_random_file(size=one_size, **field_dict)
@@ -4541,6 +4541,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
         for field, field_dict in self.file_fields_params_edit.iteritems():
             sp = transaction.savepoint()
             one_max_size = field_dict.get('one_max_size', '10M')
+            size = convert_size_to_bytes(one_max_size)
+            max_size = self.humanize_file_size(size)
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
@@ -4548,8 +4550,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(one_max_size)
-                max_size = self.humanize_file_size(size)
                 params[field] = max_size_params[field]
                 if self.is_file_list(field):
                     for f in params[field]:
@@ -4581,6 +4581,9 @@ class FormEditFileTestMixIn(FileTestMixIn):
             sum_max_size = field_dict.get('sum_max_size', None)
             if not sum_max_size:
                 continue
+            size = convert_size_to_bytes(sum_max_size)
+            max_size = self.humanize_file_size(size)
+            one_size = size / field_dict['max_count']
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
@@ -4588,9 +4591,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                size = convert_size_to_bytes(sum_max_size)
-                max_size = self.humanize_file_size(size)
-                one_size = size / field_dict['max_count']
                 params[field] = []
                 for _ in xrange(field_dict['max_count']):
                     f = get_random_file(size=one_size, **field_dict)
@@ -4727,6 +4727,8 @@ class FormEditFileTestMixIn(FileTestMixIn):
         @note: Edit obj with minimum image file dimensions
         """
         for field, field_dict in self.file_fields_params_edit.iteritems():
+            width = field_dict.get('min_width', 1)
+            height = field_dict.get('min_height', 1)
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -4735,8 +4737,6 @@ class FormEditFileTestMixIn(FileTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                width = field_dict.get('min_width', 1)
-                height = field_dict.get('min_height', 1)
                 f = get_random_file(width=width, height=height, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
