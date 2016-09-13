@@ -1811,7 +1811,6 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: empty required fields
         """
-        self.client.get(self.get_url(self.url_add), **self.additional_params)
         message_type = 'required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
@@ -1862,7 +1861,6 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: required fields are not exists in params
         """
-        self.client.get(self.get_url(self.url_add), **self.additional_params)
         message_type = 'required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
@@ -3371,7 +3369,18 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For value %s error' % value)
+                self.errors_append(text='GET request. For value %s' % value)
+
+        params = self.deepcopy(self.default_params_edit)
+        for value in ('9999999', '2147483648', 'qwerty', 'йцу'):
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url_for_negative(self.url_edit, (value,)), params,
+                                            follow=True, **self.additional_params)
+                self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='POST request. For value %s' % value)
 
     @only_with_obj
     @only_with('max_fields_length')
@@ -4548,7 +4557,6 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
 
-
 class FormDeleteTestMixIn(FormTestMixIn):
 
     url_delete = ''
@@ -4562,8 +4570,8 @@ class FormDeleteTestMixIn(FormTestMixIn):
         for value in ('9999999', '2147483648', 'qwe', u'йцу'):
             sp = transaction.savepoint()
             try:
-                response = self.client.get(self.get_url_for_negative(self.url_delete, (value,)),
-                                           follow=True, **self.additional_params)
+                response = self.client.post(self.get_url_for_negative(self.url_delete, (value,)),
+                                            follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
             except:
                 self.savepoint_rollback(sp)
@@ -4637,7 +4645,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_id = self.get_obj_id_for_edit()
         initial_obj_count = self.obj.objects.count()
         try:
-            self.client.get(self.get_url(self.url_delete, (obj_id,)), **self.additional_params)
+            self.client.post(self.get_url(self.url_delete, (obj_id,)), **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
@@ -4654,11 +4662,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_for_test.save()
         obj_id = obj_for_test.id
         initial_obj_count = self.obj.objects.count()
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         try:
             recovery_url = self.get_url(self.url_recovery, (obj_id,))
-            self.client.get(recovery_url, **additional_params)
+            self.client.post(recovery_url, **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
@@ -4673,7 +4679,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         for value in ('9999999', '2147483648', 'qwe', u'йцу'):
             try:
                 url = self.get_url_for_negative(self.url_delete, (value,))
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.client.post(url, follow=True, **self.additional_params)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
                 self.assertEqual(response.status_code, 200)
@@ -4688,12 +4694,10 @@ class FormRemoveTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try recovery object with invalid id
         """
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         for value in ('9999999', '2147483648',):
             try:
                 url = self.get_url_for_negative(self.url_recovery, (value,))
-                response = self.client.get(url, follow=True, **additional_params)
+                response = self.client.post(url, follow=True, **self.additional_params)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
                 self.assertEqual(response.status_code, 200)
@@ -4748,11 +4752,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         initial_obj_count = self.obj.objects.count()
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         try:
             recovery_url = self.get_url_for_negative(self.url_recovery, (obj_for_test.pk,))
-            response = self.client.get(recovery_url, follow=True, **additional_params)
+            response = self.client.post(recovery_url, follow=True, **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
@@ -4768,8 +4770,8 @@ class FormRemoveTestMixIn(FormTestMixIn):
         initial_obj_count = self.obj.objects.count()
 
         try:
-            response = self.client.get(self.get_url_for_negative(self.url_delete, (obj_for_test.pk,)), follow=True,
-                                       **self.additional_params)
+            response = self.client.post(self.get_url_for_negative(self.url_delete, (obj_for_test.pk,)), follow=True,
+                                        **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
