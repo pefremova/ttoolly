@@ -5072,7 +5072,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             cursor = conn.cursor()
             conn.connection.rollback()
             conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            cursor.execute('DROP DATABASE "%s"', [db_name])
+            cursor.execute('DROP DATABASE "%s"' % db_name)
 
     def _post_teardown(self):
         self.custom_fixture_teardown()
@@ -5125,7 +5125,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                 tables = cursor.fetchall()
                 for table in tables:
                     try:
-                        cursor.execute("DELETE FROM %s", [table])
+                        cursor.execute("DELETE FROM %s" % table)
                     except:
                         transaction.rollback_unless_managed(using=db)
                     else:
@@ -5137,13 +5137,13 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             if db_names:
                 db_name = db_names[0]
         cursor = connections[db_name].cursor()
-        cursor.execute("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name=%s", (table_name,))
+        cursor.execute("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name=%s", [table_name])
         column_names = [el[0] for el in cursor.fetchall()]
         cursor.execute("""SELECT kcu.column_name FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
                           LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
                           ON kcu.table_name = tc.table_name
                                 AND kcu.constraint_name = tc.constraint_name
-                          WHERE tc.table_name = '%s' AND tc.constraint_type='PRIMARY KEY'""" % (table_name,))
+                          WHERE tc.table_name = %s AND tc.constraint_type='PRIMARY KEY'""", [table_name])
         pk_names = [el[0] for el in cursor.fetchall()]
 
         class Meta(CustomModel.Meta):
@@ -5201,5 +5201,5 @@ class CustomTestCaseNew(CustomTestCase):
                 tables = cursor.fetchall()
                 for table in tables:
                     with transaction.atomic(using=db):
-                        cursor.execute("DELETE FROM %s", [table])
+                        cursor.execute("DELETE FROM %s" % table)
 
