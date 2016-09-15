@@ -621,6 +621,8 @@ class GlobalTestMixIn(object):
         return get_all_form_errors(response)
 
     def get_error_field(self, message_type, field):
+        if isinstance(field, (list, tuple)):
+            return self.non_field_error_key
         error_field = re.sub(r'_(\d|ru)$', '', field)
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
@@ -743,8 +745,7 @@ class GlobalTestMixIn(object):
                 else error_message.format(**previous_locals)
 
         if not isinstance(error_message, dict):
-            error_field = kwargs.get('error_field', re.sub(r'_(\d|ru)$', '', field) if
-                                     not isinstance(field, (list, tuple)) else self.non_field_error_key)
+            error_field = self.get_error_field(message_type, kwargs.get('error_field', field))
             error_message = {error_field: [error_message] if not isinstance(error_message, list) else error_message}
         else:
             error_message = self.deepcopy(error_message)
@@ -1811,7 +1812,6 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: empty required fields
         """
-        self.client.get(self.get_url(self.url_add), **self.additional_params)
         message_type = 'required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
@@ -1862,7 +1862,6 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: required fields are not exists in params
         """
-        self.client.get(self.get_url(self.url_add), **self.additional_params)
         message_type = 'required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
@@ -3371,7 +3370,18 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For value %s error' % value)
+                self.errors_append(text='GET request. For value %s' % value)
+
+        params = self.deepcopy(self.default_params_edit)
+        for value in ('9999999', '2147483648', 'qwerty', 'йцу'):
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url_for_negative(self.url_edit, (value,)), params,
+                                            follow=True, **self.additional_params)
+                self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='POST request. For value %s' % value)
 
     @only_with_obj
     @only_with('max_fields_length')
@@ -4548,7 +4558,6 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
 
-
 class FormDeleteTestMixIn(FormTestMixIn):
 
     url_delete = ''
@@ -4562,8 +4571,8 @@ class FormDeleteTestMixIn(FormTestMixIn):
         for value in ('9999999', '2147483648', 'qwe', u'йцу'):
             sp = transaction.savepoint()
             try:
-                response = self.client.get(self.get_url_for_negative(self.url_delete, (value,)),
-                                           follow=True, **self.additional_params)
+                response = self.client.post(self.get_url_for_negative(self.url_delete, (value,)),
+                                            follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
             except:
                 self.savepoint_rollback(sp)
@@ -4637,7 +4646,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_id = self.get_obj_id_for_edit()
         initial_obj_count = self.obj.objects.count()
         try:
-            self.client.get(self.get_url(self.url_delete, (obj_id,)), **self.additional_params)
+            self.client.post(self.get_url(self.url_delete, (obj_id,)), **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
@@ -4654,11 +4663,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_for_test.save()
         obj_id = obj_for_test.id
         initial_obj_count = self.obj.objects.count()
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         try:
             recovery_url = self.get_url(self.url_recovery, (obj_id,))
-            self.client.get(recovery_url, **additional_params)
+            self.client.post(recovery_url, **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
@@ -4673,7 +4680,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         for value in ('9999999', '2147483648', 'qwe', u'йцу'):
             try:
                 url = self.get_url_for_negative(self.url_delete, (value,))
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.client.post(url, follow=True, **self.additional_params)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
                 self.assertEqual(response.status_code, 200)
@@ -4688,12 +4695,10 @@ class FormRemoveTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try recovery object with invalid id
         """
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         for value in ('9999999', '2147483648',):
             try:
                 url = self.get_url_for_negative(self.url_recovery, (value,))
-                response = self.client.get(url, follow=True, **additional_params)
+                response = self.client.post(url, follow=True, **self.additional_params)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
                 self.assertEqual(response.status_code, 200)
@@ -4748,11 +4753,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         initial_obj_count = self.obj.objects.count()
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         try:
             recovery_url = self.get_url_for_negative(self.url_recovery, (obj_for_test.pk,))
-            response = self.client.get(recovery_url, follow=True, **additional_params)
+            response = self.client.post(recovery_url, follow=True, **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
@@ -4768,8 +4771,8 @@ class FormRemoveTestMixIn(FormTestMixIn):
         initial_obj_count = self.obj.objects.count()
 
         try:
-            response = self.client.get(self.get_url_for_negative(self.url_delete, (obj_for_test.pk,)), follow=True,
-                                       **self.additional_params)
+            response = self.client.post(self.get_url_for_negative(self.url_delete, (obj_for_test.pk,)), follow=True,
+                                        **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
@@ -5070,7 +5073,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             cursor = conn.cursor()
             conn.connection.rollback()
             conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            cursor.execute('DROP DATABASE "%s"', [db_name])
+            cursor.execute('DROP DATABASE "%s"' % db_name)
 
     def _post_teardown(self):
         self.custom_fixture_teardown()
@@ -5123,7 +5126,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                 tables = cursor.fetchall()
                 for table in tables:
                     try:
-                        cursor.execute("DELETE FROM %s", [table])
+                        cursor.execute("DELETE FROM %s" % table)
                     except:
                         transaction.rollback_unless_managed(using=db)
                     else:
@@ -5135,13 +5138,13 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             if db_names:
                 db_name = db_names[0]
         cursor = connections[db_name].cursor()
-        cursor.execute("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name=%s", (table_name,))
+        cursor.execute("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name=%s", [table_name])
         column_names = [el[0] for el in cursor.fetchall()]
         cursor.execute("""SELECT kcu.column_name FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
                           LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
                           ON kcu.table_name = tc.table_name
                                 AND kcu.constraint_name = tc.constraint_name
-                          WHERE tc.table_name = '%s' AND tc.constraint_type='PRIMARY KEY'""" % (table_name,))
+                          WHERE tc.table_name = %s AND tc.constraint_type='PRIMARY KEY'""", [table_name])
         pk_names = [el[0] for el in cursor.fetchall()]
 
         class Meta(CustomModel.Meta):
@@ -5199,5 +5202,5 @@ class CustomTestCaseNew(CustomTestCase):
                 tables = cursor.fetchall()
                 for table in tables:
                     with transaction.atomic(using=db):
-                        cursor.execute("DELETE FROM %s", [table])
+                        cursor.execute("DELETE FROM %s" % table)
 
