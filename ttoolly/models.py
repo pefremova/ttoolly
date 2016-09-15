@@ -621,6 +621,8 @@ class GlobalTestMixIn(object):
         return get_all_form_errors(response)
 
     def get_error_field(self, message_type, field):
+        if isinstance(field, (list, tuple)):
+            return self.non_field_error_key
         error_field = re.sub(r'_(\d|ru)$', '', field)
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
@@ -743,8 +745,7 @@ class GlobalTestMixIn(object):
                 else error_message.format(**previous_locals)
 
         if not isinstance(error_message, dict):
-            error_field = kwargs.get('error_field', re.sub(r'_(\d|ru)$', '', field) if
-                                     not isinstance(field, (list, tuple)) else self.non_field_error_key)
+            error_field = self.get_error_field(message_type, kwargs.get('error_field', field))
             error_message = {error_field: [error_message] if not isinstance(error_message, list) else error_message}
         else:
             error_message = self.deepcopy(error_message)
