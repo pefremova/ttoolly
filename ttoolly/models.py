@@ -850,8 +850,11 @@ class GlobalTestMixIn(object):
     def get_random_file(self, field, length):
         self.with_files = True
         filename = get_randname(length, 'r')
-        if getattr(self, 'file_fields_params', {}).get(field, {}).get('extensions', ()):
-            ext = choice(getattr(self, 'file_fields_params', {}).get(field, {}).get('extensions', ()))
+        extensions = (getattr(self, 'file_fields_params', {}).get(field, {}) or
+                      getattr(self, 'file_fields_params_add', {}).get(field, {}) or
+                      getattr(self, 'file_fields_params_edit', {}).get(field, {})).get('extensions', ())
+        if extensions:
+            ext = choice(extensions)
             filename = filename[:-len(ext) - 1] + '.' + ext
         default_file = ((getattr(self, 'default_params', None) and self.default_params.get(field, None))
                         or (getattr(self, 'default_params_add', None) and self.default_params_add.get(field, None))
@@ -1680,6 +1683,7 @@ class FormAddTestMixIn(FormTestMixIn):
         if self.with_captcha:
             self.client.get(self.get_url(self.url_add), **self.additional_params)
             params.update(get_captcha_codes())
+
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -5203,4 +5207,3 @@ class CustomTestCaseNew(CustomTestCase):
                 for table in tables:
                     with transaction.atomic(using=db):
                         cursor.execute("DELETE FROM %s" % table)
-
