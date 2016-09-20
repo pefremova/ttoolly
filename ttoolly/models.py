@@ -22,7 +22,7 @@ from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.core.urlresolvers import reverse, resolve
 from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
-from django.db.models import Model, Q
+from django.db.models import Model, Q, Manager, DateTimeField
 from django.db.models.fields import FieldDoesNotExist
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
@@ -115,6 +115,56 @@ def only_with_any_files_params(param_names=None):
         return tmp
 
     return decorator
+
+
+class EmailLogManager(Manager):
+    """
+    This class is for use as obj in testcases without real object, with only email send.
+    Should redefine assert_object_fields for check email as object
+    """
+    def values_list(self, *args, **kwargs):
+        if args == ('pk',):
+            return [hash(m) for m in mail.outbox]
+        Manager.values_list(self, *args, **kwargs)
+
+    def exclude(self, *args, **kwargs):
+        if 'pk__in' in kwargs.keys():
+            res = [m for m in mail.outbox if hash(m) not in kwargs['pk__in']]
+            for m in res:
+                m.pk = hash(m)
+            return res
+        Manager.exclude(self, *args, **kwargs)
+
+    def filter(self, *args, **kwargs):
+        if 'pk' in kwargs.keys():
+            res = [m for m in mail.outbox if hash(m) == kwargs['pk']]
+            for m in res:
+                m.pk = hash(m)
+
+            class ListWithDelete(list):
+                def delete(self):
+                    mail.outbox = list(set(mail.outbox).difference(self))
+
+            return ListWithDelete(res)
+        Manager.filter(self, *args, **kwargs)
+
+    def get_query_set(self):
+        return mail.outbox
+
+    def all(self):
+        return mail.outbox
+
+    def count(self):
+        return len(mail.outbox)
+
+    def latest(self, *args, **kwargs):
+        return mail.outbox[-1]
+
+
+class EmailLog(Model):
+    created_at = DateTimeField(auto_now=True)
+
+    objects = EmailLogManager()
 
 
 class RequestManager(models.Manager):
