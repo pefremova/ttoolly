@@ -5029,10 +5029,8 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
     request_manager = RequestManager
 
     def _fixture_setup(self):
-        if getattr(self, 'multi_db', False):
-            databases = connections
-        else:
-            databases = [DEFAULT_DB_ALIAS]
+
+        databases = self._databases_names(include_mirrors=False)
 
         if settings.FIRST_DB:
             settings.FIRST_DB = False
@@ -5063,13 +5061,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         if not connections_support_transactions():
             return super(TransactionTestCase, self)._fixture_teardown()
 
-        # If the test case has a multi_db=True flag, teardown all databases.
-        # Otherwise, just teardown default.
-        if getattr(self, 'multi_db', False):
-            databases = connections
-        else:
-            databases = [DEFAULT_DB_ALIAS]
-        for db in databases:
+        for db in self._databases_names(include_mirrors=False):
             conn = connections[db]
             db_name = conn.settings_dict['NAME']
             conn.settings_dict['NAME'] = db_name.strip('_')
@@ -5093,7 +5085,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
 
     def custom_fixture_setup(self, **options):
         verbosity = int(options.get('verbosity', 1))
-        for db in connections:
+        for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
                 fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
@@ -5123,7 +5115,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                 transaction.commit(using=db)
 
     def custom_fixture_teardown(self):
-        for db in connections:
+        for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
                 cursor = connections[db].cursor()
                 cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
@@ -5171,7 +5163,7 @@ class CustomTestCaseNew(CustomTestCase):
 
     def custom_fixture_setup(self, **options):
         verbosity = int(options.get('verbosity', 1))
-        for db in connections:
+        for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
                 fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
@@ -5199,7 +5191,7 @@ class CustomTestCaseNew(CustomTestCase):
                 transaction.commit(using=db)
 
     def custom_fixture_teardown(self):
-        for db in connections:
+        for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
                 cursor = connections[db].cursor()
                 cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
