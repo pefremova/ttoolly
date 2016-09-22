@@ -3476,7 +3476,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 obj_for_edit = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.update_params(params)
                 for ff in file_fields:
-                    params[ff] = ''
+                    self.set_empty_value_for_field(params, ff)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
