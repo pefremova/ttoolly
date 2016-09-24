@@ -15,6 +15,7 @@ import psycopg2.extensions
 import re
 import warnings
 from django import VERSION as DJANGO_VERSION
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
@@ -5210,6 +5211,47 @@ class CustomTestCaseNew(CustomTestCase):
     """For Django>=1.8"""
 
     request_manager = RequestManagerNew
+
+    def _fixture_setup(self):
+
+        databases = self._databases_names(include_mirrors=False)
+
+        if settings.FIRST_DB:
+            settings.FIRST_DB = False
+            for db in databases:
+
+                if self.reset_sequences:
+                    self._reset_sequences(db)
+
+                # If we need to provide replica initial data from migrated apps,
+                # then do so.
+                if self.serialized_rollback and hasattr(connections[db], "_test_serialized_contents"):
+                    if self.available_apps is not None:
+                        apps.unset_available_apps()
+                    connections[db].creation.deserialize_db_from_string(
+                        connections[db]._test_serialized_contents
+                    )
+                    if self.available_apps is not None:
+                        apps.set_available_apps(self.available_apps)
+
+                if self.fixtures:
+                    # We have to use this slightly awkward syntax due to the fact
+                    # that we're using *args and **kwargs together.
+                    call_command('loaddata', *self.fixtures, **{'verbosity': 0, 'database': db})
+
+        for db in databases:
+            conn = connections[db]
+            db_name = conn.settings_dict['NAME'].strip('_')
+            cursor = conn.cursor()
+            conn.connection.rollback()
+            conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+            try:
+                cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
+            except:
+                cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
+                cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
+            conn.close()
+            conn.settings_dict['NAME'] = db_name + '_'
 
     def custom_fixture_setup(self, **options):
         verbosity = int(options.get('verbosity', 1))
