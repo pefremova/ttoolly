@@ -676,7 +676,7 @@ class GlobalTestMixIn(object):
         error_field = re.sub(r'_(\d|ru)$', '', field)
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
-        messages_dict = getattr(settings, 'ERROR_MESSAGES', {})
+        messages_dict = self.deepcopy(getattr(settings, 'ERROR_MESSAGES', {}))
         messages_dict.update(getattr(self, 'custom_error_messages', {}))
         error_message = ''
         if field in messages_dict.keys():
