@@ -286,7 +286,6 @@ class GlobalTestMixIn(object):
     def _fixture_setup(self):
         if getattr(settings, 'TEST_CASE_NAME', self.__class__.__name__) != self.__class__.__name__:
             delattr(settings, 'TEST_CASE_NAME')
-            call_command('flush', verbosity=0, interactive=False, database=DEFAULT_DB_ALIAS)
         super(GlobalTestMixIn, self)._fixture_setup()
 
     def _post_teardown(self):
