@@ -118,6 +118,11 @@ def only_with_any_files_params(param_names=None):
     return decorator
 
 
+class PrettyTuple(tuple):
+    def __format__(self, format):
+        return ', '.join(self)
+
+
 class EmailLogManager(Manager):
     """
     This class is for use as obj in testcases without real object, with only email send.
@@ -1394,6 +1399,9 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.file_fields_params_add.update({k: {'extensions': ('jpg', 'jpeg', 'png')} for k in
                                                     set(self.default_params_add.keys())
                     .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
+        for item in self.file_fields_params_add.itervalues():
+            if item.get('extensions', ()):
+                item['extensions'] = PrettyTuple(item['extensions'])
         if self.file_fields_params_edit is None:
             self.file_fields_params_edit = self.deepcopy(self.file_fields_params)
             if not self.file_fields_params_edit:
@@ -1402,6 +1410,9 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.file_fields_params_edit.update({k: {'extensions': ('jpg', 'jpeg', 'png')} for k in
                                                     set(self.default_params_edit.keys())
                     .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
+        for item in self.file_fields_params_edit.itervalues():
+            if item.get('extensions', ()):
+                item['extensions'] = PrettyTuple(item['extensions'])
         if self.file_fields_params_add or self.file_fields_params_edit:
             self.with_files = True
 
@@ -2703,6 +2714,7 @@ class FormAddTestMixIn(FormTestMixIn):
             size = convert_size_to_bytes(one_max_size)
             max_size = self.humanize_file_size(size)
             current_size = size + 100
+            human_current_size = self.humanize_file_size(current_size)
             try:
                 initial_obj_count = self.obj.objects.count()
                 params = self.deepcopy(self.default_params_add)
@@ -4219,6 +4231,7 @@ class FormEditTestMixIn(FormTestMixIn):
             size = convert_size_to_bytes(one_max_size)
             max_size = self.humanize_file_size(size)
             current_size = size + 100
+            human_current_size = self.humanize_file_size(current_size)
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
