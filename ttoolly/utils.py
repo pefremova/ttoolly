@@ -631,7 +631,9 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         size = 10
         filename = os.path.splitext(filename)[0][:-len(size_text)] + size_text + os.path.splitext(filename)[1]
 
-    if os.path.splitext(filename)[1].lower() in ('.tiff', '.jpg', '.jpeg', '.png', '.gif', '.svg', '.bmp') and size > 0:
+    img_extensions = ('tiff', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp')
+    if size > 0 and (os.path.splitext(filename)[1].lower().strip('.') in img_extensions or
+                     set(img_extensions).intersection(kwargs.get('extensions', ()))):
         return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
                                 **kwargs)
     content = get_randname(size)
