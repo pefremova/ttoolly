@@ -696,10 +696,12 @@ class GlobalTestMixIn(object):
         return error_field
 
     def get_error_message(self, message_type, field, *args, **kwargs):
-        for frame in inspect.getouterframes(inspect.currentframe()):
-            if frame[3].startswith('test_'):
-                break
-        previous_locals = kwargs.get('locals', frame[0].f_locals)
+        previous_locals = kwargs.get('locals', {})
+        if not previous_locals:
+            for frame in inspect.getouterframes(inspect.currentframe()):
+                if frame[3].startswith('test_'):
+                    break
+            previous_locals = frame[0].f_locals
         if 'field' not in previous_locals.iterkeys():
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
