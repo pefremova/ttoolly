@@ -2724,8 +2724,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = get_random_file(filename=filename, size=current_size, **field_dict)
+                f = get_random_file(size=current_size, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2944,8 +2943,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile('', filename)
+                f = get_random_file(size=0, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -4241,8 +4239,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = get_random_file(filename=filename, size=current_size, **field_dict)
+                f = get_random_file(size=current_size, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -4456,8 +4453,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile('', filename)
+                f = get_random_file(size=0, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
