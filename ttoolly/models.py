@@ -123,6 +123,11 @@ class PrettyTuple(tuple):
         return ', '.join(self)
 
 
+class ListWithDelete(list):
+    def delete(self):
+        mail.outbox = list(set(mail.outbox).difference(self))
+
+
 class EmailLogManager(Manager):
     """
     This class is for use as obj in testcases without real object, with only email send.
@@ -138,7 +143,7 @@ class EmailLogManager(Manager):
             res = [m for m in mail.outbox if hash(m) not in kwargs['pk__in']]
             for m in res:
                 m.pk = hash(m)
-            return res
+            return ListWithDelete(res)
         Manager.exclude(self, *args, **kwargs)
 
     def filter(self, *args, **kwargs):
@@ -146,19 +151,14 @@ class EmailLogManager(Manager):
             res = [m for m in mail.outbox if hash(m) == kwargs['pk']]
             for m in res:
                 m.pk = hash(m)
-
-            class ListWithDelete(list):
-                def delete(self):
-                    mail.outbox = list(set(mail.outbox).difference(self))
-
             return ListWithDelete(res)
         Manager.filter(self, *args, **kwargs)
 
     def get_query_set(self):
-        return mail.outbox
+        return ListWithDelete(mail.outbox)
 
     def all(self):
-        return mail.outbox
+        return ListWithDelete(mail.outbox)
 
     def count(self):
         return len(mail.outbox)
@@ -561,8 +561,8 @@ class GlobalTestMixIn(object):
                                        else [value, ]):
                     _params = dict([(k.replace('%s-%d-' % (obj_related_objects.get(field, field), i), ''),
                                      params[k]) for k in params.keys() if
-                                    k.startswith('%s-%d' % (obj_related_objects.get(field, field), i))
-                                    and k not in exclude])
+                                    k.startswith('%s-%d-' % (obj_related_objects.get(field, field), i))
+                                    and k not in exclude and re.sub('\-\d+\-', '-_-', k) not in exclude])
                     try:
                         self.assert_object_fields(el, _params)
                     except Exception, e:
@@ -581,7 +581,7 @@ class GlobalTestMixIn(object):
                 self.assertEqual(value, params_value)
             except AssertionError:
                 local_errors.append('[%s]: %s != %s' %
-                                    (field,
+                                    (field.encode('utf-8') if isinstance(field, unicode) else field,
                                      repr(value) if not isinstance(value, str) else "'%s'" % value,
                                      repr(params_value) if not isinstance(params_value, str)
                                      else "'%s'" % params_value))
@@ -605,7 +605,7 @@ class GlobalTestMixIn(object):
                               "'%s%s' != '%s%s'" % (first[n: n + additional],
                                                     '...' if (n + additional < first_length) else '',
                                                     second[n: n + additional],
-                                                   '...' if (n + additional < second_length) else '')) +
+                                                    '...' if (n + additional < second_length) else '')) +
                              full_error_text)
 
     def assert_xpath_count(self, response, path, count=1, status_code=200):
@@ -678,9 +678,12 @@ class GlobalTestMixIn(object):
     def get_error_field(self, message_type, field):
         if isinstance(field, (list, tuple)):
             return self.non_field_error_key
+
         error_field = re.sub(r'_(\d|ru)$', '', field)
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
+        elif message_type == 'max_block_count':
+            error_field = field + '-' + self.non_field_error_key
         messages_dict = self.deepcopy(getattr(settings, 'ERROR_MESSAGES', {}))
         messages_dict.update(getattr(self, 'custom_error_messages', {}))
         error_message = ''
@@ -769,7 +772,11 @@ class GlobalTestMixIn(object):
                                     else u'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
                           'one_of': u'Оставьте одно из значений в полях {group}.' if
                                     (previous_locals.get('group', None) is None)
-                                    else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals)}
+                                    else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals),
+                          'max_block_count': u'Количество полей формы больше {max_count}.' if
+                                    previous_locals.get('max_count', None) is None
+                                    else u'Количество полей формы больше {max_count}.'.format(**previous_locals),
+                          }
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
         ERROR_MESSAGES.update(messages_from_settings)
@@ -961,6 +968,10 @@ class GlobalTestMixIn(object):
         return value
 
     def get_value_for_field(self, length, field_name):
+        """for fill use name with -0-"""
+
+        field_name = re.sub('\-\d+\-', '-0-', field_name)
+
         if self.is_email_field(field_name):
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
@@ -1023,13 +1034,7 @@ class GlobalTestMixIn(object):
     def is_digital_field(self, field):
         return any([field in (getattr(self, 'digital_fields', ()) or ()),
                     field in (getattr(self, 'digital_fields_add', ()) or ()),
-                    field in (getattr(self, 'digital_fields_edit', ()) or ()),
-                    (getattr(self, 'default_params', None)
-                     and isinstance(self.default_params.get(field, None), int)),
-                    (getattr(self, 'default_params_add', None)
-                     and isinstance(self.default_params_add.get(field, None), int)),
-                    (getattr(self, 'default_params_edit', None)
-                     and isinstance(self.default_params_edit.get(field, None), int))])
+                    field in (getattr(self, 'digital_fields_edit', ()) or ()), ])
 
     def is_email_field(self, field):
         return ([getattr(self, 'email_fields', None),
@@ -1134,6 +1139,10 @@ class LoginMixIn(object):
         url_name = getattr(settings, 'LOGOUT_URL_NAME', 'auth_logout')
         return self.client.get(reverse(url_name), **additional_params)
 
+    def user_relogin(self, username, password, **kwargs):
+        self.user_logout(**kwargs)
+        self.user_login(username, password, **kwargs)
+
 
 class FormTestMixIn(GlobalTestMixIn):
     obj = None
@@ -1174,6 +1183,7 @@ class FormTestMixIn(GlobalTestMixIn):
     int_fields = None
     int_fields_add = None
     int_fields_edit = None
+    max_blocks = None
     max_fields_length = []
     min_fields_length = []
     multiselect_fields = None
@@ -1511,6 +1521,13 @@ class FormTestMixIn(GlobalTestMixIn):
                 getattr(obj, set_name).add(value.__class__(**params))
         obj.save()
         return obj
+
+    def fill_all_block_fields(self, block_name, max_count, params, all_fields_list):
+        simple_names = set([re.findall('^{}\-\d+\-(.+$)'.format(block_name), field)[0]
+                            for field in all_fields_list if re.search('^{}\-\d+\-'.format(block_name), field)])
+        full_fields_list = ['%s-%d-%s' % (block_name, i, field) for i in xrange(max_count) for field in simple_names]
+        self.fill_all_fields(full_fields_list, params)
+        params[block_name + '-TOTAL_FORMS'] = max_count
 
     def fill_all_fields(self, fields, params):
         fields = set(fields)
@@ -2010,8 +2027,8 @@ class FormAddTestMixIn(FormTestMixIn):
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all fields\n%s" %
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
-                                                   (field, length, max_length_params[field])
-                                                   for field, length in fields_for_check]))
+                                                 (field, length, max_length_params[field])
+                                                  for field, length in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -2518,7 +2535,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
     @only_with_obj
     @only_with(('disabled_fields_add',))
-    def test_add_disabled_fields_values_negative(self):
+    def test_add_object_disabled_fields_values_negative(self):
         """
         @author: Polina Efremova
         @note: Try add obj with filled disabled fields
@@ -2584,6 +2601,106 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
 
     @only_with_obj
+    @only_with('max_blocks')
+    def test_add_object_max_inline_blocks_count_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Test max number of lines in inline block
+        """
+        params = self.deepcopy(self.default_params_add)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_add), **self.additional_params)
+            params.update(get_captcha_codes())
+        for name, max_count in self.max_blocks.iteritems():
+            self.fill_all_block_fields(name, max_count, params,
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+        initial_obj_count = self.obj.objects.count()
+        old_pks = list(self.obj.objects.values_list('pk', flat=True))
+        sp = transaction.savepoint()
+        try:
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            exclude = getattr(self, 'exclude_from_check_add', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="Max count in all (%s) blocks" % u', '.join('%s in %s' % (k, v) for k, v in
+                                                                                self.max_blocks.iteritems()))
+        finally:
+            self.obj.objects.exclude(pk__in=old_pks).delete()
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(self.max_blocks.keys()) == 1:
+            self.formatted_assert_errors()
+
+        for name, max_count in self.max_blocks.items():
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            self.fill_all_block_fields(name, max_count, params,
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
+            finally:
+                self.obj.objects.exclude(pk__in=old_pks).delete()
+
+    @only_with_obj
+    @only_with('max_blocks')
+    def test_add_object_inline_blocks_count_gt_max_negative(self):
+        """
+        @author:Polina Efremova
+        @note: Test max + 1 number of lines in inline blocks
+        """
+        message_type = 'max_block_count'
+        for name, max_count in self.max_blocks.items():
+            initial_obj_count = self.obj.objects.count()
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            gt_max_count = max_count + 1
+
+            self.fill_all_block_fields(name, gt_max_count, params,
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_objects_count_on_add(False, initial_obj_count)
+                error_message = self.get_error_message(message_type, name)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
+            finally:
+                self.obj.objects.exclude(pk__in=old_pks).delete()
+
+    @only_with_obj
     @only_with('file_fields_params_add')
     @only_with_files_params('max_count')
     def test_add_object_many_files_negative(self):
@@ -2616,7 +2733,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_object = self.obj.objects.exclude(pk__in=old_pks)
+                new_objects = self.obj.objects.exclude(pk__in=old_pks)
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
@@ -2916,9 +3033,8 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
-                                        (
-                                        max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
-                                        field))
+                                         (max_size, one_size * field_dict['max_count'], one_size,
+                                          field_dict['max_count'], field))
             finally:
                 self.del_files()
 
@@ -4042,7 +4158,7 @@ class FormEditTestMixIn(FormTestMixIn):
 
     @only_with_obj
     @only_with(('disabled_fields_edit',))
-    def test_edit_disabled_fields_values_negative(self):
+    def test_edit_object_disabled_fields_values_negative(self):
         """
         @author: Polina Efremova
         @note: Try change values in disabled fields
@@ -4103,6 +4219,98 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
+
+    @only_with_obj
+    @only_with('max_blocks')
+    def test_edit_object_max_inline_blocks_count_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Test max number of line in inline blocks
+        """
+        obj_for_edit = self.get_obj_for_edit()
+        params = self.deepcopy(self.default_params_edit)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        for name, max_count in self.max_blocks.iteritems():
+            self.fill_all_block_fields(name, max_count, params,
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+        sp = transaction.savepoint()
+        try:
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            exclude = getattr(self, 'exclude_from_check_edit', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="Max count in all (%s) blocks" % u', '.join('%s in %s' % (k, v) for k, v in
+                                                                                self.max_blocks.iteritems()))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(self.max_blocks.keys()) == 1:
+            self.formatted_assert_errors()
+
+        for name, max_count in self.max_blocks.items():
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            self.fill_all_block_fields(name, max_count, params,
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = getattr(self, 'exclude_from_check_edit', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
+
+    @only_with_obj
+    @only_with('max_blocks')
+    def test_edit_object_inline_blocks_count_gt_max_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Test max + 1 number of lines in inline blocks
+        """
+        message_type = 'max_block_count'
+        for name, max_count in self.max_blocks.items():
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            gt_max_count = max_count + 1
+            self.fill_all_block_fields(name, gt_max_count, params,
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                error_message = self.get_error_message(message_type, name)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -4892,12 +5100,12 @@ class FormRemoveTestMixIn(FormTestMixIn):
 
 
 class FormAddFileTestMixIn(object):
-    '''Может наследоваться в тестах, поэтому оставлено'''
+    """Может наследоваться в тестах, поэтому оставлено"""
     pass
 
 
 class FormEditFileTestMixIn(object):
-    '''Может наследоваться в тестах, поэтому оставлено'''
+    """Может наследоваться в тестах, поэтому оставлено"""
     pass
 
 
