@@ -15,6 +15,7 @@ import psycopg2.extensions
 import re
 import warnings
 from django import VERSION as DJANGO_VERSION
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
@@ -22,7 +23,7 @@ from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.core.urlresolvers import reverse, resolve
 from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
-from django.db.models import Model, Q
+from django.db.models import Model, Q, Manager, DateTimeField
 from django.db.models.fields import FieldDoesNotExist
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
@@ -115,6 +116,61 @@ def only_with_any_files_params(param_names=None):
         return tmp
 
     return decorator
+
+
+class PrettyTuple(tuple):
+    def __format__(self, format):
+        return ', '.join(self)
+
+
+class ListWithDelete(list):
+    def delete(self):
+        mail.outbox = list(set(mail.outbox).difference(self))
+
+
+class EmailLogManager(Manager):
+    """
+    This class is for use as obj in testcases without real object, with only email send.
+    Should redefine assert_object_fields for check email as object
+    """
+    def values_list(self, *args, **kwargs):
+        if args == ('pk',):
+            return [hash(m) for m in mail.outbox]
+        Manager.values_list(self, *args, **kwargs)
+
+    def exclude(self, *args, **kwargs):
+        if 'pk__in' in kwargs.keys():
+            res = [m for m in mail.outbox if hash(m) not in kwargs['pk__in']]
+            for m in res:
+                m.pk = hash(m)
+            return ListWithDelete(res)
+        Manager.exclude(self, *args, **kwargs)
+
+    def filter(self, *args, **kwargs):
+        if 'pk' in kwargs.keys():
+            res = [m for m in mail.outbox if hash(m) == kwargs['pk']]
+            for m in res:
+                m.pk = hash(m)
+            return ListWithDelete(res)
+        Manager.filter(self, *args, **kwargs)
+
+    def get_query_set(self):
+        return ListWithDelete(mail.outbox)
+
+    def all(self):
+        return ListWithDelete(mail.outbox)
+
+    def count(self):
+        return len(mail.outbox)
+
+    def latest(self, *args, **kwargs):
+        return mail.outbox[-1]
+
+
+class EmailLog(Model):
+    created_at = DateTimeField(auto_now=True)
+
+    objects = EmailLogManager()
 
 
 class RequestManager(models.Manager):
@@ -235,7 +291,6 @@ class GlobalTestMixIn(object):
     def _fixture_setup(self):
         if getattr(settings, 'TEST_CASE_NAME', self.__class__.__name__) != self.__class__.__name__:
             delattr(settings, 'TEST_CASE_NAME')
-            call_command('flush', verbosity=0, interactive=False, database=DEFAULT_DB_ALIAS)
         super(GlobalTestMixIn, self)._fixture_setup()
 
     def _post_teardown(self):
@@ -506,8 +561,8 @@ class GlobalTestMixIn(object):
                                        else [value, ]):
                     _params = dict([(k.replace('%s-%d-' % (obj_related_objects.get(field, field), i), ''),
                                      params[k]) for k in params.keys() if
-                                    k.startswith('%s-%d' % (obj_related_objects.get(field, field), i))
-                                    and k not in exclude])
+                                    k.startswith('%s-%d-' % (obj_related_objects.get(field, field), i))
+                                    and k not in exclude and re.sub('\-\d+\-', '-_-', k) not in exclude])
                     try:
                         self.assert_object_fields(el, _params)
                     except Exception, e:
@@ -526,7 +581,7 @@ class GlobalTestMixIn(object):
                 self.assertEqual(value, params_value)
             except AssertionError:
                 local_errors.append('[%s]: %s != %s' %
-                                    (field,
+                                    (field.encode('utf-8') if isinstance(field, unicode) else field,
                                      repr(value) if not isinstance(value, str) else "'%s'" % value,
                                      repr(params_value) if not isinstance(params_value, str)
                                      else "'%s'" % params_value))
@@ -550,7 +605,7 @@ class GlobalTestMixIn(object):
                               "'%s%s' != '%s%s'" % (first[n: n + additional],
                                                     '...' if (n + additional < first_length) else '',
                                                     second[n: n + additional],
-                                                   '...' if (n + additional < second_length) else '')) +
+                                                    '...' if (n + additional < second_length) else '')) +
                              full_error_text)
 
     def assert_xpath_count(self, response, path, count=1, status_code=200):
@@ -621,10 +676,15 @@ class GlobalTestMixIn(object):
         return get_all_form_errors(response)
 
     def get_error_field(self, message_type, field):
+        if isinstance(field, (list, tuple)):
+            return self.non_field_error_key
+
         error_field = re.sub(r'_(\d|ru)$', '', field)
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
-        messages_dict = getattr(settings, 'ERROR_MESSAGES', {})
+        elif message_type == 'max_block_count':
+            error_field = field + '-' + self.non_field_error_key
+        messages_dict = self.deepcopy(getattr(settings, 'ERROR_MESSAGES', {}))
         messages_dict.update(getattr(self, 'custom_error_messages', {}))
         error_message = ''
         if field in messages_dict.keys():
@@ -639,10 +699,12 @@ class GlobalTestMixIn(object):
         return error_field
 
     def get_error_message(self, message_type, field, *args, **kwargs):
-        for frame in inspect.getouterframes(inspect.currentframe()):
-            if frame[3].startswith('test_'):
-                break
-        previous_locals = kwargs.get('locals', frame[0].f_locals)
+        previous_locals = kwargs.get('locals', {})
+        if not previous_locals:
+            for frame in inspect.getouterframes(inspect.currentframe()):
+                if frame[3].startswith('test_'):
+                    break
+            previous_locals = frame[0].f_locals
         if 'field' not in previous_locals.iterkeys():
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
@@ -710,7 +772,11 @@ class GlobalTestMixIn(object):
                                     else u'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
                           'one_of': u'Оставьте одно из значений в полях {group}.' if
                                     (previous_locals.get('group', None) is None)
-                                    else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals)}
+                                    else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals),
+                          'max_block_count': u'Количество полей формы больше {max_count}.' if
+                                    previous_locals.get('max_count', None) is None
+                                    else u'Количество полей формы больше {max_count}.'.format(**previous_locals),
+                          }
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
         ERROR_MESSAGES.update(messages_from_settings)
@@ -743,8 +809,7 @@ class GlobalTestMixIn(object):
                 else error_message.format(**previous_locals)
 
         if not isinstance(error_message, dict):
-            error_field = kwargs.get('error_field', re.sub(r'_(\d|ru)$', '', field) if
-                                     not isinstance(field, (list, tuple)) else self.non_field_error_key)
+            error_field = self.get_error_field(message_type, kwargs.get('error_field', field))
             error_message = {error_field: [error_message] if not isinstance(error_message, list) else error_message}
         else:
             error_message = self.deepcopy(error_message)
@@ -849,8 +914,11 @@ class GlobalTestMixIn(object):
     def get_random_file(self, field, length):
         self.with_files = True
         filename = get_randname(length, 'r')
-        if getattr(self, 'file_fields_params', {}).get(field, {}).get('extensions', ()):
-            ext = choice(getattr(self, 'file_fields_params', {}).get(field, {}).get('extensions', ()))
+        extensions = (getattr(self, 'file_fields_params', {}).get(field, {}) or
+                      getattr(self, 'file_fields_params_add', {}).get(field, {}) or
+                      getattr(self, 'file_fields_params_edit', {}).get(field, {})).get('extensions', ())
+        if extensions:
+            ext = choice(extensions)
             filename = filename[:-len(ext) - 1] + '.' + ext
         default_file = ((getattr(self, 'default_params', None) and self.default_params.get(field, None))
                         or (getattr(self, 'default_params_add', None) and self.default_params_add.get(field, None))
@@ -900,6 +968,10 @@ class GlobalTestMixIn(object):
         return value
 
     def get_value_for_field(self, length, field_name):
+        """for fill use name with -0-"""
+
+        field_name = re.sub('\-\d+\-', '-0-', field_name)
+
         if self.is_email_field(field_name):
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
@@ -962,13 +1034,7 @@ class GlobalTestMixIn(object):
     def is_digital_field(self, field):
         return any([field in (getattr(self, 'digital_fields', ()) or ()),
                     field in (getattr(self, 'digital_fields_add', ()) or ()),
-                    field in (getattr(self, 'digital_fields_edit', ()) or ()),
-                    (getattr(self, 'default_params', None)
-                     and isinstance(self.default_params.get(field, None), int)),
-                    (getattr(self, 'default_params_add', None)
-                     and isinstance(self.default_params_add.get(field, None), int)),
-                    (getattr(self, 'default_params_edit', None)
-                     and isinstance(self.default_params_edit.get(field, None), int))])
+                    field in (getattr(self, 'digital_fields_edit', ()) or ()), ])
 
     def is_email_field(self, field):
         return ([getattr(self, 'email_fields', None),
@@ -1073,6 +1139,10 @@ class LoginMixIn(object):
         url_name = getattr(settings, 'LOGOUT_URL_NAME', 'auth_logout')
         return self.client.get(reverse(url_name), **additional_params)
 
+    def user_relogin(self, username, password, **kwargs):
+        self.user_logout(**kwargs)
+        self.user_login(username, password, **kwargs)
+
 
 class FormTestMixIn(GlobalTestMixIn):
     obj = None
@@ -1113,6 +1183,7 @@ class FormTestMixIn(GlobalTestMixIn):
     int_fields = None
     int_fields_add = None
     int_fields_edit = None
+    max_blocks = None
     max_fields_length = []
     min_fields_length = []
     multiselect_fields = None
@@ -1340,6 +1411,9 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.file_fields_params_add.update({k: {'extensions': ('jpg', 'jpeg', 'png')} for k in
                                                     set(self.default_params_add.keys())
                     .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
+        for item in self.file_fields_params_add.itervalues():
+            if item.get('extensions', ()):
+                item['extensions'] = PrettyTuple(item['extensions'])
         if self.file_fields_params_edit is None:
             self.file_fields_params_edit = self.deepcopy(self.file_fields_params)
             if not self.file_fields_params_edit:
@@ -1348,6 +1422,9 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.file_fields_params_edit.update({k: {'extensions': ('jpg', 'jpeg', 'png')} for k in
                                                     set(self.default_params_edit.keys())
                     .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
+        for item in self.file_fields_params_edit.itervalues():
+            if item.get('extensions', ()):
+                item['extensions'] = PrettyTuple(item['extensions'])
         if self.file_fields_params_add or self.file_fields_params_edit:
             self.with_files = True
 
@@ -1444,6 +1521,13 @@ class FormTestMixIn(GlobalTestMixIn):
                 getattr(obj, set_name).add(value.__class__(**params))
         obj.save()
         return obj
+
+    def fill_all_block_fields(self, block_name, max_count, params, all_fields_list):
+        simple_names = set([re.findall('^{}\-\d+\-(.+$)'.format(block_name), field)[0]
+                            for field in all_fields_list if re.search('^{}\-\d+\-'.format(block_name), field)])
+        full_fields_list = ['%s-%d-%s' % (block_name, i, field) for i in xrange(max_count) for field in simple_names]
+        self.fill_all_fields(full_fields_list, params)
+        params[block_name + '-TOTAL_FORMS'] = max_count
 
     def fill_all_fields(self, fields, params):
         fields = set(fields)
@@ -1679,6 +1763,7 @@ class FormAddTestMixIn(FormTestMixIn):
         if self.with_captcha:
             self.client.get(self.get_url(self.url_add), **self.additional_params)
             params.update(get_captcha_codes())
+
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -1811,7 +1896,6 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: empty required fields
         """
-        self.client.get(self.get_url(self.url_add), **self.additional_params)
         message_type = 'required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
@@ -1862,7 +1946,6 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: required fields are not exists in params
         """
-        self.client.get(self.get_url(self.url_add), **self.additional_params)
         message_type = 'required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
@@ -1944,8 +2027,8 @@ class FormAddTestMixIn(FormTestMixIn):
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all fields\n%s" %
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
-                                                   (field, length, max_length_params[field])
-                                                   for field, length in fields_for_check]))
+                                                 (field, length, max_length_params[field])
+                                                  for field, length in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -2452,7 +2535,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
     @only_with_obj
     @only_with(('disabled_fields_add',))
-    def test_add_disabled_fields_values_negative(self):
+    def test_add_object_disabled_fields_values_negative(self):
         """
         @author: Polina Efremova
         @note: Try add obj with filled disabled fields
@@ -2518,6 +2601,106 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
 
     @only_with_obj
+    @only_with('max_blocks')
+    def test_add_object_max_inline_blocks_count_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Test max number of lines in inline block
+        """
+        params = self.deepcopy(self.default_params_add)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_add), **self.additional_params)
+            params.update(get_captcha_codes())
+        for name, max_count in self.max_blocks.iteritems():
+            self.fill_all_block_fields(name, max_count, params,
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+        initial_obj_count = self.obj.objects.count()
+        old_pks = list(self.obj.objects.values_list('pk', flat=True))
+        sp = transaction.savepoint()
+        try:
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+            exclude = getattr(self, 'exclude_from_check_add', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="Max count in all (%s) blocks" % u', '.join('%s in %s' % (k, v) for k, v in
+                                                                                self.max_blocks.iteritems()))
+        finally:
+            self.obj.objects.exclude(pk__in=old_pks).delete()
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(self.max_blocks.keys()) == 1:
+            self.formatted_assert_errors()
+
+        for name, max_count in self.max_blocks.items():
+            initial_obj_count = self.obj.objects.count()
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            self.fill_all_block_fields(name, max_count, params,
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
+            finally:
+                self.obj.objects.exclude(pk__in=old_pks).delete()
+
+    @only_with_obj
+    @only_with('max_blocks')
+    def test_add_object_inline_blocks_count_gt_max_negative(self):
+        """
+        @author:Polina Efremova
+        @note: Test max + 1 number of lines in inline blocks
+        """
+        message_type = 'max_block_count'
+        for name, max_count in self.max_blocks.items():
+            initial_obj_count = self.obj.objects.count()
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_add), **self.additional_params)
+                params.update(get_captcha_codes())
+            old_pks = list(self.obj.objects.values_list('pk', flat=True))
+            gt_max_count = max_count + 1
+
+            self.fill_all_block_fields(name, gt_max_count, params,
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_objects_count_on_add(False, initial_obj_count)
+                error_message = self.get_error_message(message_type, name)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
+            finally:
+                self.obj.objects.exclude(pk__in=old_pks).delete()
+
+    @only_with_obj
     @only_with('file_fields_params_add')
     @only_with_files_params('max_count')
     def test_add_object_many_files_negative(self):
@@ -2550,7 +2733,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                new_object = self.obj.objects.exclude(pk__in=old_pks)
+                new_objects = self.obj.objects.exclude(pk__in=old_pks)
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
@@ -2650,6 +2833,7 @@ class FormAddTestMixIn(FormTestMixIn):
             size = convert_size_to_bytes(one_max_size)
             max_size = self.humanize_file_size(size)
             current_size = size + 100
+            human_current_size = self.humanize_file_size(current_size)
             try:
                 initial_obj_count = self.obj.objects.count()
                 params = self.deepcopy(self.default_params_add)
@@ -2657,8 +2841,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = get_random_file(filename=filename, size=current_size, **field_dict)
+                f = get_random_file(size=current_size, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2850,9 +3033,8 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
-                                        (
-                                        max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
-                                        field))
+                                         (max_size, one_size * field_dict['max_count'], one_size,
+                                          field_dict['max_count'], field))
             finally:
                 self.del_files()
 
@@ -2877,8 +3059,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile('', filename)
+                f = get_random_file(size=0, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -3371,7 +3552,18 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For value %s error' % value)
+                self.errors_append(text='GET request. For value %s' % value)
+
+        params = self.deepcopy(self.default_params_edit)
+        for value in ('9999999', '2147483648', 'qwerty', 'йцу'):
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url_for_negative(self.url_edit, (value,)), params,
+                                            follow=True, **self.additional_params)
+                self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='POST request. For value %s' % value)
 
     @only_with_obj
     @only_with('max_fields_length')
@@ -3412,7 +3604,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 obj_for_edit = self.obj.objects.get(pk=obj_for_edit.pk)
                 self.update_params(params)
                 for ff in file_fields:
-                    params[ff] = ''
+                    self.set_empty_value_for_field(params, ff)
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
@@ -3966,7 +4158,7 @@ class FormEditTestMixIn(FormTestMixIn):
 
     @only_with_obj
     @only_with(('disabled_fields_edit',))
-    def test_edit_disabled_fields_values_negative(self):
+    def test_edit_object_disabled_fields_values_negative(self):
         """
         @author: Polina Efremova
         @note: Try change values in disabled fields
@@ -4027,6 +4219,98 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
+
+    @only_with_obj
+    @only_with('max_blocks')
+    def test_edit_object_max_inline_blocks_count_positive(self):
+        """
+        @author: Polina Efremova
+        @note: Test max number of line in inline blocks
+        """
+        obj_for_edit = self.get_obj_for_edit()
+        params = self.deepcopy(self.default_params_edit)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        for name, max_count in self.max_blocks.iteritems():
+            self.fill_all_block_fields(name, max_count, params,
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+        sp = transaction.savepoint()
+        try:
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+            exclude = getattr(self, 'exclude_from_check_edit', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except:
+            self.savepoint_rollback(sp)
+            self.errors_append(text="Max count in all (%s) blocks" % u', '.join('%s in %s' % (k, v) for k, v in
+                                                                                self.max_blocks.iteritems()))
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(self.max_blocks.keys()) == 1:
+            self.formatted_assert_errors()
+
+        for name, max_count in self.max_blocks.items():
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            self.fill_all_block_fields(name, max_count, params,
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = getattr(self, 'exclude_from_check_edit', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
+
+    @only_with_obj
+    @only_with('max_blocks')
+    def test_edit_object_inline_blocks_count_gt_max_negative(self):
+        """
+        @author: Polina Efremova
+        @note: Test max + 1 number of lines in inline blocks
+        """
+        message_type = 'max_block_count'
+        for name, max_count in self.max_blocks.items():
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            gt_max_count = max_count + 1
+            self.fill_all_block_fields(name, gt_max_count, params,
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+            sp = transaction.savepoint()
+            try:
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                error_message = self.get_error_message(message_type, name)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -4155,6 +4439,7 @@ class FormEditTestMixIn(FormTestMixIn):
             size = convert_size_to_bytes(one_max_size)
             max_size = self.humanize_file_size(size)
             current_size = size + 100
+            human_current_size = self.humanize_file_size(current_size)
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
@@ -4162,8 +4447,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = get_random_file(filename=filename, size=current_size, **field_dict)
+                f = get_random_file(size=current_size, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -4377,8 +4661,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                filename = '.'.join([s for s in ['big_file', choice(field_dict.get('extensions', ('',)))] if s])
-                f = ContentFile('', filename)
+                f = get_random_file(size=0, **field_dict)
                 self.files.append(f)
                 params[field] = [f, ] if self.is_file_list(field) else f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
@@ -4548,7 +4831,6 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
 
-
 class FormDeleteTestMixIn(FormTestMixIn):
 
     url_delete = ''
@@ -4562,8 +4844,8 @@ class FormDeleteTestMixIn(FormTestMixIn):
         for value in ('9999999', '2147483648', 'qwe', u'йцу'):
             sp = transaction.savepoint()
             try:
-                response = self.client.get(self.get_url_for_negative(self.url_delete, (value,)),
-                                           follow=True, **self.additional_params)
+                response = self.client.post(self.get_url_for_negative(self.url_delete, (value,)),
+                                            follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
             except:
                 self.savepoint_rollback(sp)
@@ -4637,7 +4919,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_id = self.get_obj_id_for_edit()
         initial_obj_count = self.obj.objects.count()
         try:
-            self.client.get(self.get_url(self.url_delete, (obj_id,)), **self.additional_params)
+            self.client.post(self.get_url(self.url_delete, (obj_id,)), **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
@@ -4654,11 +4936,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_for_test.save()
         obj_id = obj_for_test.id
         initial_obj_count = self.obj.objects.count()
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         try:
             recovery_url = self.get_url(self.url_recovery, (obj_id,))
-            self.client.get(recovery_url, **additional_params)
+            self.client.post(recovery_url, **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_id)))
         except:
@@ -4673,7 +4953,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         for value in ('9999999', '2147483648', 'qwe', u'йцу'):
             try:
                 url = self.get_url_for_negative(self.url_delete, (value,))
-                response = self.client.get(url, follow=True, **self.additional_params)
+                response = self.client.post(url, follow=True, **self.additional_params)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
                 self.assertEqual(response.status_code, 200)
@@ -4688,12 +4968,10 @@ class FormRemoveTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try recovery object with invalid id
         """
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         for value in ('9999999', '2147483648',):
             try:
                 url = self.get_url_for_negative(self.url_recovery, (value,))
-                response = self.client.get(url, follow=True, **additional_params)
+                response = self.client.post(url, follow=True, **self.additional_params)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
                 self.assertEqual(response.status_code, 200)
@@ -4748,11 +5026,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         initial_obj_count = self.obj.objects.count()
-        additional_params = self.deepcopy(self.additional_params)
-        additional_params.update({'HTTP_REFERER': '127.0.0.1'})
         try:
             recovery_url = self.get_url_for_negative(self.url_recovery, (obj_for_test.pk,))
-            response = self.client.get(recovery_url, follow=True, **additional_params)
+            response = self.client.post(recovery_url, follow=True, **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
@@ -4768,8 +5044,8 @@ class FormRemoveTestMixIn(FormTestMixIn):
         initial_obj_count = self.obj.objects.count()
 
         try:
-            response = self.client.get(self.get_url_for_negative(self.url_delete, (obj_for_test.pk,)), follow=True,
-                                       **self.additional_params)
+            response = self.client.post(self.get_url_for_negative(self.url_delete, (obj_for_test.pk,)), follow=True,
+                                        **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
@@ -4824,12 +5100,12 @@ class FormRemoveTestMixIn(FormTestMixIn):
 
 
 class FormAddFileTestMixIn(object):
-    '''Может наследоваться в тестах, поэтому оставлено'''
+    """Может наследоваться в тестах, поэтому оставлено"""
     pass
 
 
 class FormEditFileTestMixIn(object):
-    '''Может наследоваться в тестах, поэтому оставлено'''
+    """Может наследоваться в тестах, поэтому оставлено"""
     pass
 
 
@@ -5022,10 +5298,8 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
     request_manager = RequestManager
 
     def _fixture_setup(self):
-        if getattr(self, 'multi_db', False):
-            databases = connections
-        else:
-            databases = [DEFAULT_DB_ALIAS]
+
+        databases = self._databases_names(include_mirrors=False)
 
         if settings.FIRST_DB:
             settings.FIRST_DB = False
@@ -5056,13 +5330,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         if not connections_support_transactions():
             return super(TransactionTestCase, self)._fixture_teardown()
 
-        # If the test case has a multi_db=True flag, teardown all databases.
-        # Otherwise, just teardown default.
-        if getattr(self, 'multi_db', False):
-            databases = connections
-        else:
-            databases = [DEFAULT_DB_ALIAS]
-        for db in databases:
+        for db in self._databases_names(include_mirrors=False):
             conn = connections[db]
             db_name = conn.settings_dict['NAME']
             conn.settings_dict['NAME'] = db_name.strip('_')
@@ -5070,7 +5338,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             cursor = conn.cursor()
             conn.connection.rollback()
             conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            cursor.execute('DROP DATABASE "%s"', [db_name])
+            cursor.execute('DROP DATABASE "%s"' % db_name)
 
     def _post_teardown(self):
         self.custom_fixture_teardown()
@@ -5086,7 +5354,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
 
     def custom_fixture_setup(self, **options):
         verbosity = int(options.get('verbosity', 1))
-        for db in connections:
+        for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
                 fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
@@ -5116,14 +5384,14 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                 transaction.commit(using=db)
 
     def custom_fixture_teardown(self):
-        for db in connections:
+        for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
                 cursor = connections[db].cursor()
                 cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
                 tables = cursor.fetchall()
                 for table in tables:
                     try:
-                        cursor.execute("DELETE FROM %s", [table])
+                        cursor.execute("DELETE FROM %s" % table)
                     except:
                         transaction.rollback_unless_managed(using=db)
                     else:
@@ -5135,13 +5403,13 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             if db_names:
                 db_name = db_names[0]
         cursor = connections[db_name].cursor()
-        cursor.execute("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name=%s", (table_name,))
+        cursor.execute("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name=%s", [table_name])
         column_names = [el[0] for el in cursor.fetchall()]
         cursor.execute("""SELECT kcu.column_name FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
                           LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
                           ON kcu.table_name = tc.table_name
                                 AND kcu.constraint_name = tc.constraint_name
-                          WHERE tc.table_name = '%s' AND tc.constraint_type='PRIMARY KEY'""" % (table_name,))
+                          WHERE tc.table_name = %s AND tc.constraint_type='PRIMARY KEY'""", [table_name])
         pk_names = [el[0] for el in cursor.fetchall()]
 
         class Meta(CustomModel.Meta):
@@ -5162,9 +5430,50 @@ class CustomTestCaseNew(CustomTestCase):
 
     request_manager = RequestManagerNew
 
+    def _fixture_setup(self):
+
+        databases = self._databases_names(include_mirrors=False)
+
+        if settings.FIRST_DB:
+            settings.FIRST_DB = False
+            for db in databases:
+
+                if self.reset_sequences:
+                    self._reset_sequences(db)
+
+                # If we need to provide replica initial data from migrated apps,
+                # then do so.
+                if self.serialized_rollback and hasattr(connections[db], "_test_serialized_contents"):
+                    if self.available_apps is not None:
+                        apps.unset_available_apps()
+                    connections[db].creation.deserialize_db_from_string(
+                        connections[db]._test_serialized_contents
+                    )
+                    if self.available_apps is not None:
+                        apps.set_available_apps(self.available_apps)
+
+                if self.fixtures:
+                    # We have to use this slightly awkward syntax due to the fact
+                    # that we're using *args and **kwargs together.
+                    call_command('loaddata', *self.fixtures, **{'verbosity': 0, 'database': db})
+
+        for db in databases:
+            conn = connections[db]
+            db_name = conn.settings_dict['NAME'].strip('_')
+            cursor = conn.cursor()
+            conn.connection.rollback()
+            conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+            try:
+                cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
+            except:
+                cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
+                cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
+            conn.close()
+            conn.settings_dict['NAME'] = db_name + '_'
+
     def custom_fixture_setup(self, **options):
         verbosity = int(options.get('verbosity', 1))
-        for db in connections:
+        for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
                 fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
@@ -5192,12 +5501,11 @@ class CustomTestCaseNew(CustomTestCase):
                 transaction.commit(using=db)
 
     def custom_fixture_teardown(self):
-        for db in connections:
+        for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
                 cursor = connections[db].cursor()
                 cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
                 tables = cursor.fetchall()
                 for table in tables:
                     with transaction.atomic(using=db):
-                        cursor.execute("DELETE FROM %s", [table])
-
+                        cursor.execute("DELETE FROM %s" % table)
