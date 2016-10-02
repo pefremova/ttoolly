@@ -773,9 +773,9 @@ class GlobalTestMixIn(object):
                           'one_of': u'Оставьте одно из значений в полях {group}.' if
                                     (previous_locals.get('group', None) is None)
                                     else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals),
-                          'max_block_count': u'Количество полей формы больше {max_count}.' if
+                          'max_block_count': u'Пожалуйста, заполните не более {max_count} форм.' if
                                     previous_locals.get('max_count', None) is None
-                                    else u'Количество полей формы больше {max_count}.'.format(**previous_locals),
+                                    else u'Пожалуйста, заполните не более {max_count} форм.'.format(**previous_locals),
                           }
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
