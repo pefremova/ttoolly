@@ -15,7 +15,6 @@ import psycopg2.extensions
 import re
 import warnings
 from django import VERSION as DJANGO_VERSION
-from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
@@ -3572,6 +3571,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: fill all fields with maximum length values
         """
+        obj_for_edit = self.get_obj_for_edit()
         other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         fields_for_check = [el for el in self.max_fields_length if el[0] in
                             self.all_fields_edit and el[0] not in other_fields]
@@ -3584,7 +3584,6 @@ class FormEditTestMixIn(FormTestMixIn):
 
         sp = transaction.savepoint()
         try:
-            obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             if self.with_captcha:
@@ -3961,6 +3960,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: value in digital fields == max
         """
+        obj_for_edit = self.get_obj_for_edit()
         fields_for_check = []
         max_value_params = {}
         for field in self.digital_fields_edit:
@@ -3971,7 +3971,6 @@ class FormEditTestMixIn(FormTestMixIn):
             max_value_params[field] = min(max_values)
 
         sp = transaction.savepoint()
-        obj_for_edit = self.get_obj_for_edit()
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
@@ -4062,6 +4061,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit object: value in digital fields == min
         """
+        obj_for_edit = self.get_obj_for_edit()
         fields_for_check = []
         min_value_params = {}
         for field in self.digital_fields_edit:
@@ -4072,7 +4072,6 @@ class FormEditTestMixIn(FormTestMixIn):
             min_value_params[field] = max(min_values)
 
         sp = transaction.savepoint()
-        obj_for_edit = self.get_obj_for_edit()
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
@@ -4357,6 +4356,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try edit obj with photos count == max files count
         """
+        obj_for_edit = self.get_obj_for_edit()
         fields_for_check = []
         max_count_params = {}
         for field, field_dict in self.file_fields_params_edit.iteritems():
@@ -4372,7 +4372,6 @@ class FormEditTestMixIn(FormTestMixIn):
 
         sp = transaction.savepoint()
         try:
-            obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             if self.with_captcha:
@@ -4516,6 +4515,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Edit obj with file size == max one file size
         """
+        obj_for_edit = self.get_obj_for_edit()
         fields_for_check = self.file_fields_params_edit.keys()
         max_size_params = {}
         for field in fields_for_check:
@@ -4535,7 +4535,6 @@ class FormEditTestMixIn(FormTestMixIn):
 
         sp = transaction.savepoint()
         try:
-            obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             if self.with_captcha:
@@ -5431,6 +5430,8 @@ class CustomTestCaseNew(CustomTestCase):
     request_manager = RequestManagerNew
 
     def _fixture_setup(self):
+        """Version sensitive import"""
+        from django.apps import apps
 
         databases = self._databases_names(include_mirrors=False)
 
