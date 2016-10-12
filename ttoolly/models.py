@@ -3052,7 +3052,6 @@ class FormAddTestMixIn(FormTestMixIn):
             if not extensions:
                 extensions = (get_randname(3, 'wd'), '')
             extensions += tuple([e.upper() for e in extensions if e])
-            is_file_list = self.is_file_list(field)
             for ext in extensions:
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 sp = transaction.savepoint()
@@ -3170,7 +3169,6 @@ class FormAddTestMixIn(FormTestMixIn):
         for field, field_dict in self.file_fields_params_add.iteritems():
             if new_objects:
                 new_objects.delete()
-            is_file_list = self.is_file_list(field)
             values = ()
             min_width = field_dict.get('min_width', None)
             if min_width:
@@ -4615,7 +4613,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 f = self.get_random_file(field, size=0)
-                params[field] = [f, ] if self.is_file_list(field) else f
+                params[field] = f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                             **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -4639,7 +4637,6 @@ class FormEditTestMixIn(FormTestMixIn):
             if not extensions:
                 extensions = (get_randname(3, 'wd'), '')
             extensions += tuple([e.upper() for e in extensions if e])
-            is_file_list = self.is_file_list(field)
             for ext in extensions:
                 sp = transaction.savepoint()
                 filename = '.'.join([el for el in ['test', ext] if el])
@@ -4747,7 +4744,6 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'min_dimensions'
         for field, field_dict in self.file_fields_params_edit.iteritems():
-            is_file_list = self.is_file_list(field)
             values = ()
             min_width = field_dict.get('min_width', None)
             if min_width:
