@@ -2602,7 +2602,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params.update(get_captcha_codes())
         for name, max_count in self.max_blocks.iteritems():
             self.fill_all_block_fields(name, max_count, params,
-                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add or ())))
         initial_obj_count = self.obj.objects.count()
         old_pks = list(self.obj.objects.values_list('pk', flat=True))
         sp = transaction.savepoint()
@@ -2637,7 +2637,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_add), **self.additional_params)
                 params.update(get_captcha_codes())
             self.fill_all_block_fields(name, max_count, params,
-                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add or ())))
             sp = transaction.savepoint()
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2673,7 +2673,7 @@ class FormAddTestMixIn(FormTestMixIn):
             gt_max_count = max_count + 1
 
             self.fill_all_block_fields(name, gt_max_count, params,
-                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add)))
+                                       set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add or ())))
             sp = transaction.savepoint()
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -4198,7 +4198,7 @@ class FormEditTestMixIn(FormTestMixIn):
             params.update(get_captcha_codes())
         for name, max_count in self.max_blocks.iteritems():
             self.fill_all_block_fields(name, max_count, params,
-                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
         sp = transaction.savepoint()
         try:
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -4228,7 +4228,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                 params.update(get_captcha_codes())
             self.fill_all_block_fields(name, max_count, params,
-                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
             sp = transaction.savepoint()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -4260,7 +4260,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params.update(get_captcha_codes())
             gt_max_count = max_count + 1
             self.fill_all_block_fields(name, gt_max_count, params,
-                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit)))
+                                       set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
             sp = transaction.savepoint()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
