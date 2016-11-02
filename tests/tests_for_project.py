@@ -13,6 +13,7 @@ class TestSomeModel(FormAddTestMixIn, FormAddFileTestMixIn, FormEditTestMixIn, F
                   'bool_field', 'one_to_one_field', 'one_to_one_field2')
     choice_fields = ('foreign_key_field', 'one_to_one_field', 'one_to_one_field2')
     custom_error_messages = {'image_field': {'wrong_extension': [u'Загрузите правильное изображение. Файл, который вы загрузили, поврежден или не является изображением.']}}
+    datetime_fields = ('datetime_field',)
     default_params = {'digital_field': 1.56,
                       'int_field': 34,
                       'email_field': '',
