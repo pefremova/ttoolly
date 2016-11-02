@@ -27,7 +27,7 @@ from xml.etree import ElementTree as et
 
 
 def convert_size_to_bytes(size):
-    SYMBOLS = ['', 'K', 'M', ]
+    SYMBOLS = ['', 'K', 'M', 'G']
     size, symbol = re.findall(r'([\d\.]+)(\w?)', str(size))[0]
     size = float(size) * 1024 ** SYMBOLS.index(symbol if symbol in SYMBOLS else '')
     return int(size)
