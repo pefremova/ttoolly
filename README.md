@@ -38,6 +38,7 @@ __FormTestMixIn(GlobalTestMixIn)__
 | default_params_add | default_params  | Параметры по умолчанию, которые используются при создании объекта | default_params_add = {'field1': value1, 'field2: value2}||
 | default_params_edit | default_params  | Параметры по умолчанию, которые используются при редактировании объекта | default_params_edit = {'field1': value1, 'field2: value2}||
 | date_fields | Ключи из default_params_add, default_params_edit, значения из all_fields_add, all_fields_edit, содержащие в названии 'date' | Названия полей, содержащих даты| date_fields = ('field1', 'field2') |
+| datetime_fields | () | Названия полей, содержащих datetime| datetime_fields = ('field1', 'field2') |
 | digital_fields| None | Названия полей, содержащих числа | digital_fields = ('field1', 'field2') | Позитивные: Максимальные, минимальные числовые значения<br>Негативные: Значения больше максимального, меньше минимального, строки  |
 | digital_fields_add | digital_fields или default_params_add.keys(), для которых значения являются числами и не указаны в choice_fields_add, choice_fields_add_with_value_in_error | Названия полей на форме создания, содержащих числа | digital_fields_add = ('field1', 'field2')||
 | digital_fields_edit | digital_fields или default_params_edit.keys(), для которых значения являются числами и не указаны в choice_fields_edit, choice_fields_edit_with_value_in_error| Названия полей на форме редактирования, содержащих числа | digital_fields_edit = ('field1', 'field2') ||

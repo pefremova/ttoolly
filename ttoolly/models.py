@@ -864,12 +864,41 @@ class GlobalTestMixIn(object):
             return value, params_value
         if (isinstance(value, date) or isinstance(value, time)) and not (isinstance(params_value, date) or
                                                                          isinstance(params_value, time)):
+            params_value_delimiters = re.findall(r'\d+(.)\d+\1\d+', params_value)
+
             if isinstance(value, datetime):
-                value = value.strftime('%d.%m.%Y %H:%M:%S')
+                format_str = '%d.%m.%Y %H:%M:%S'
+                if params_value_delimiters:
+                    date_format_elements = ['%d', '%m', '%Y']
+                    date_delimiter = params_value_delimiters[0]
+                    if len(params_value.split(date_delimiter)[0]) == 4:
+                        date_format_elements.reverse()
+                    time_format_elements = ['%H', '%M', '%S']
+                    if len(params_value_delimiters) > 1:
+                        time_delimiter = params_value_delimiters[1]
+                    else:
+                        time_delimiter = ':'
+                    format_str = date_delimiter.join(date_format_elements) + ' ' + time_delimiter.join(time_format_elements)
+
+                value = value.strftime(format_str)
             elif isinstance(value, date):
-                value = value.strftime('%d.%m.%Y')
+                format_str = '%d.%m.%Y'
+                if params_value_delimiters:
+                    date_format_elements = ['%d', '%m', '%Y']
+                    date_delimiter = params_value_delimiters[0]
+                    if len(params_value.split(date_delimiter)[0]) == 4:
+                        date_format_elements.reverse()
+                    format_str = date_delimiter.join(date_format_elements)
+
+                value = value.strftime(format_str)
             elif isinstance(value, time):
-                value = value.strftime('%H:%M:%S')
+                format_str = '%H:%M:%S'
+                if params_value_delimiters:
+                    time_format_elements = ['%H', '%M', '%S']
+                    time_delimiter = params_value_delimiters[0]
+                    format_str = time_delimiter.join(time_format_elements)
+
+                value = value.strftime(format_str)
             return value, params_value
 
         if isinstance(value, Model):
@@ -959,7 +988,6 @@ class GlobalTestMixIn(object):
         """for fill use name with -0-"""
 
         field_name = re.sub('\-\d+\-', '-0-', field_name)
-
         if self.is_email_field(field_name):
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
@@ -973,6 +1001,8 @@ class GlobalTestMixIn(object):
         elif self.is_date_field(field_name):
             if field_name.endswith('1'):
                 return datetime.now().strftime('%H:%M')
+            elif self.is_datetime_field(field_name):
+                return datetime.now().strftime(settings.DATETIME_INPUT_FORMATS[0])
             else:
                 return datetime.now().strftime(settings.DATE_INPUT_FORMATS[0])
         elif self.is_digital_field(field_name):
@@ -1018,6 +1048,9 @@ class GlobalTestMixIn(object):
 
     def is_date_field(self, field):
         return field in getattr(self, 'date_fields', ())
+
+    def is_datetime_field(self, field):
+        return field in getattr(self, 'datetime_fields', ())
 
     def is_digital_field(self, field):
         return any([field in (getattr(self, 'digital_fields', ()) or ()),
@@ -1147,6 +1180,7 @@ class FormTestMixIn(GlobalTestMixIn):
     default_params_add = None
     default_params_edit = None
     date_fields = None
+    datetime_fields = ()
     digital_fields = None
     digital_fields_add = None
     digital_fields_edit = None
@@ -1534,7 +1568,7 @@ class FormTestMixIn(GlobalTestMixIn):
                         if self.get_field_by_name(self.obj, field)[0].__class__.__name__ == 'DateTimeField':
                             params[field + '_0'] = self.get_value_for_field(10, field + '_0')
                             params[field + '_1'] = self.get_value_for_field(10, field + '_1')
-                        continue
+                        params[field] = self.get_value_for_field(10, field)
                 else:
                     params[field] = self.get_value_for_field(10, field)
 
