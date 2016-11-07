@@ -2859,7 +2859,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 f = self.get_random_file(field, size=current_size)
-                filename = f.name
+                filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
@@ -3065,7 +3065,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 f = self.get_random_file(field, size=0)
-                filename = f.name
+                filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
@@ -3224,7 +3224,7 @@ class FormAddTestMixIn(FormTestMixIn):
                         self.client.get(self.get_url(self.url_add), **self.additional_params)
                         params.update(get_captcha_codes())
                     f = self.get_random_file(field, width=width, height=height)
-                    filename = f.name
+                    filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     params[field] = f
@@ -4445,7 +4445,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 f = self.get_random_file(field, size=current_size)
-                filename = f.name
+                filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -4651,7 +4651,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 f = self.get_random_file(field, size=0)
-                filename = f.name
+                filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                             **self.additional_params)
@@ -4801,7 +4801,7 @@ class FormEditTestMixIn(FormTestMixIn):
                         self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                         params.update(get_captcha_codes())
                     f = self.get_random_file(field, width=width, height=height)
-                    filename = f.name
+                    filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     params[field] = f
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                                 **self.additional_params)
