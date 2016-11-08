@@ -5414,34 +5414,53 @@ class CustomTestCaseNew(CustomTestCase):
 
     request_manager = RequestManagerNew
 
+    @classmethod
+    def tearDownClass(cls):
+        """TransactionTestCase._fixture_teardown"""
+        for db_name in cls._databases_names(include_mirrors=False):
+            # Flush the database
+            call_command('flush', verbosity=0, interactive=False,
+                         database=db_name, reset_sequences=False,
+                         allow_cascade=cls.available_apps is not None,
+                         inhibit_post_migrate=cls.available_apps is not None)
+        cls.custom_fixture_teardown()
+        super(CustomTestCaseNew, cls).tearDownClass()
+
+    @classmethod
+    def setUpClass(cls):
+        super(CustomTestCaseNew, cls).setUpClass()
+
+        """load fixtures to main database once"""
+
+        for db in cls._databases_names(include_mirrors=False):
+
+            if cls.reset_sequences:
+                cls._reset_sequences(db)
+
+            # If we need to provide replica initial data from migrated apps,
+            # then do so.
+            if cls.serialized_rollback and hasattr(connections[db], "_test_serialized_contents"):
+                if cls.available_apps is not None:
+                    apps.unset_available_apps()
+                connections[db].creation.deserialize_db_from_string(
+                    connections[db]._test_serialized_contents
+                )
+                if cls.available_apps is not None:
+                    apps.set_available_apps(self.available_apps)
+
+            if cls.fixtures:
+                # We have to use this slightly awkward syntax due to the fact
+                # that we're using *args and **kwargs together.
+                call_command('loaddata', *cls.fixtures, **{'verbosity': 0, 'database': db})
+
+        cls.custom_fixture_setup()
+
     def _fixture_setup(self):
         """Version sensitive import"""
         from django.apps import apps
 
+        """only copy from main database"""
         databases = self._databases_names(include_mirrors=False)
-
-        if settings.FIRST_DB:
-            settings.FIRST_DB = False
-            for db in databases:
-
-                if self.reset_sequences:
-                    self._reset_sequences(db)
-
-                # If we need to provide replica initial data from migrated apps,
-                # then do so.
-                if self.serialized_rollback and hasattr(connections[db], "_test_serialized_contents"):
-                    if self.available_apps is not None:
-                        apps.unset_available_apps()
-                    connections[db].creation.deserialize_db_from_string(
-                        connections[db]._test_serialized_contents
-                    )
-                    if self.available_apps is not None:
-                        apps.set_available_apps(self.available_apps)
-
-                if self.fixtures:
-                    # We have to use this slightly awkward syntax due to the fact
-                    # that we're using *args and **kwargs together.
-                    call_command('loaddata', *self.fixtures, **{'verbosity': 0, 'database': db})
 
         for db in databases:
             conn = connections[db]
@@ -5457,11 +5476,18 @@ class CustomTestCaseNew(CustomTestCase):
             conn.close()
             conn.settings_dict['NAME'] = db_name + '_'
 
-    def custom_fixture_setup(self, **options):
+    def _post_teardown(self):
+        super(CustomTestCase, self)._post_teardown()
+
+    def _pre_setup(self):
+        super(CustomTestCase, self)._pre_setup()
+
+    @classmethod
+    def custom_fixture_setup(cls, **options):
         verbosity = int(options.get('verbosity', 1))
-        for db in self._databases_names(include_mirrors=False):
-            if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
-                fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
+        for db in cls._databases_names(include_mirrors=False):
+            if hasattr(cls, 'fixtures_for_custom_db'):
+                fixtures = [fixture for fixture in cls.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
                 sequence_sql = []
                 for fixture in fixtures:
@@ -5486,12 +5512,16 @@ class CustomTestCaseNew(CustomTestCase):
                         cursor.execute(line)
                 transaction.commit(using=db)
 
-    def custom_fixture_teardown(self):
-        for db in self._databases_names(include_mirrors=False):
-            if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
-                cursor = connections[db].cursor()
-                cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
-                tables = cursor.fetchall()
-                for table in tables:
-                    with transaction.atomic(using=db):
-                        cursor.execute("DELETE FROM %s" % table)
+    @classmethod
+    def custom_fixture_teardown(cls):
+
+        if hasattr(cls, 'fixtures_for_custom_db'):
+            for db in cls._databases_names(include_mirrors=False):
+                fixtures = [fixture for fixture in cls.fixtures_for_custom_db if fixture.endswith(db + '.json')]
+                if fixtures:
+                    cursor = connections[db].cursor()
+                    cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+                    tables = cursor.fetchall()
+                    for table in tables:
+                        with transaction.atomic(using=db):
+                            cursor.execute("DELETE FROM %s" % table)
