@@ -5520,8 +5520,10 @@ class CustomTestCaseNew(CustomTestCase):
                 fixtures = [fixture for fixture in cls.fixtures_for_custom_db if fixture.endswith(db + '.json')]
                 if fixtures:
                     cursor = connections[db].cursor()
-                    cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
+                    cursor.execute("SELECT table_name FROM information_schema.tables "
+                                   "WHERE table_schema='public' and table_name != 'django_migrations'")
                     tables = cursor.fetchall()
                     for table in tables:
                         with transaction.atomic(using=db):
                             cursor.execute("DELETE FROM %s" % table)
+
