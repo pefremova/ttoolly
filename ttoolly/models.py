@@ -262,6 +262,7 @@ class GlobalTestMixIn(object):
     additional_params = None
     all_unique = None
     choice_fields_values = None
+    custom_error_messages = None
     errors = []
     files = []
     maxDiff = None
@@ -285,6 +286,8 @@ class GlobalTestMixIn(object):
                 self.all_unique[tuple(key)] = el[0]
             else:
                 self.all_unique[(el,)] = el
+        if self.custom_error_messages is None:
+            self.custom_error_messages = {}
         super(GlobalTestMixIn, self).__init__(*args, **kwargs)
 
     def _fixture_setup(self):
