@@ -5299,17 +5299,19 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                     call_command('loaddata', *self.fixtures,
                                  **{'verbosity': 0, 'database': db})
 
+        databases = self._databases_names(include_mirrors=True)
         for db in databases:
             conn = connections[db]
             db_name = conn.settings_dict['NAME'].strip('_')
-            cursor = conn.cursor()
-            conn.connection.rollback()
-            conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            try:
-                cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
-            except:
-                cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
-                cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
+            if conn.settings_dict.get('TEST', {}).get('MIRROR', False):
+                cursor = conn.cursor()
+                conn.connection.rollback()
+                conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+                try:
+                    cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
+                except:
+                    cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
+                    cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
             conn.close()
             conn.settings_dict['NAME'] = db_name + '_'
 
@@ -5317,15 +5319,19 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         if not connections_support_transactions():
             return super(TransactionTestCase, self)._fixture_teardown()
 
-        for db in self._databases_names(include_mirrors=False):
+        for db in self._databases_names(include_mirrors=True):
             conn = connections[db]
             db_name = conn.settings_dict['NAME']
             conn.settings_dict['NAME'] = db_name.strip('_')
             conn.close()
+
+        for db in self._databases_names(include_mirrors=False):
+            conn = connections[db]
+            db_name = conn.settings_dict['NAME']
             cursor = conn.cursor()
             conn.connection.rollback()
             conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            cursor.execute('DROP DATABASE "%s"' % db_name)
+            cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
 
     def _post_teardown(self):
         self.custom_fixture_teardown()
@@ -5463,19 +5469,20 @@ class CustomTestCaseNew(CustomTestCase):
         from django.apps import apps
 
         """only copy from main database"""
-        databases = self._databases_names(include_mirrors=False)
+        databases = self._databases_names(include_mirrors=True)
 
         for db in databases:
             conn = connections[db]
             db_name = conn.settings_dict['NAME'].strip('_')
-            cursor = conn.cursor()
-            conn.connection.rollback()
-            conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            try:
-                cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
-            except:
-                cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
-                cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
+            if conn.settings_dict.get('TEST', {}).get('MIRROR', False):
+                cursor = conn.cursor()
+                conn.connection.rollback()
+                conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+                try:
+                    cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
+                except:
+                    cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
+                    cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
             conn.close()
             conn.settings_dict['NAME'] = db_name + '_'
 
