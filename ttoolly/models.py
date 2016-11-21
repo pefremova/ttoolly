@@ -5303,7 +5303,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         for db in databases:
             conn = connections[db]
             db_name = conn.settings_dict['NAME'].strip('_')
-            if conn.settings_dict.get('TEST', {}).get('MIRROR', False):
+            if not conn.settings_dict.get('TEST', {}).get('MIRROR', False):
                 cursor = conn.cursor()
                 conn.connection.rollback()
                 conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -5474,7 +5474,7 @@ class CustomTestCaseNew(CustomTestCase):
         for db in databases:
             conn = connections[db]
             db_name = conn.settings_dict['NAME'].strip('_')
-            if conn.settings_dict.get('TEST', {}).get('MIRROR', False):
+            if not conn.settings_dict.get('TEST', {}).get('MIRROR', False):
                 cursor = conn.cursor()
                 conn.connection.rollback()
                 conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
