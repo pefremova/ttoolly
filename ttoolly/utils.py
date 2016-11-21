@@ -123,7 +123,6 @@ def get_all_form_errors(response):
         return None
 
     def get_errors(form):
-
         """simple form"""
         errors = form._errors
         if not errors:
@@ -545,7 +544,7 @@ def get_value_for_obj_field(f, filename=None):
             not (getattr(f, '_choices', None) or f.choices):
         return random.randint(0, 1000)
     elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
-        related_model = getattr(f.related, 'parent_model', f.related.model)
+        related_model = f.rel.model
         if related_model == f.model:
             # fix recursion
             return None
@@ -587,7 +586,7 @@ def get_value_for_obj_field(f, filename=None):
         length = random.randint(1, f.max_length - 4 - dir_path_length - 1)
         name = get_randname(length) + '.jpg'
         return ContentFile(content, name=name)
-    elif mro_names.intersection(['JSONField',]):
+    elif mro_names.intersection(['JSONField', ]):
         return {get_randname(10, 'wd'): get_randname(10) for i in xrange(random.randint(0, 5))}
 
 
@@ -939,6 +938,7 @@ def use_in_all_tests(decorator):
 
 
 class FakeSizeMemoryFileUploadHandler(MemoryFileUploadHandler):
+
     def file_complete(self, file_size):
         if getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True):
             return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)

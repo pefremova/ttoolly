@@ -118,11 +118,13 @@ def only_with_any_files_params(param_names=None):
 
 
 class PrettyTuple(tuple):
+
     def __format__(self, format):
         return ', '.join(self)
 
 
 class ListWithDelete(list):
+
     def delete(self):
         mail.outbox = list(set(mail.outbox).difference(self))
 
@@ -132,6 +134,7 @@ class EmailLogManager(Manager):
     This class is for use as obj in testcases without real object, with only email send.
     Should redefine assert_object_fields for check email as object
     """
+
     def values_list(self, *args, **kwargs):
         if args == ('pk',):
             return [hash(m) for m in mail.outbox]
@@ -719,33 +722,33 @@ class GlobalTestMixIn(object):
         if isinstance(verbose_field, str):
             verbose_field = verbose_field.decode('utf-8')
         ERROR_MESSAGES = {'required': u'Обязательное поле.',
-                          'max_length': u'Убедитесь, что это значение содержит не ' + \
+                          'max_length': u'Убедитесь, что это значение содержит не ' +
                                         u'более {length} символов (сейчас {current_length}).' if
-                                                                (previous_locals.get('length', None) is None or
-                                                                 not isinstance(previous_locals.get('length'), int)) \
-                                        else u'Убедитесь, что это значение содержит не ' + \
-                                        u'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
-                          'max_length_file': u'Убедитесь, что это имя файла содержит не ' + \
-                                        u'более {length} символов (сейчас {current_length}).' if
-                                                                (previous_locals.get('length', None) is None or
-                                                                 not isinstance(previous_locals.get('length'), int)) \
-                                        else u'Убедитесь, что это имя файла содержит не ' + \
-                                        u'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
+                          (previous_locals.get('length', None) is None or
+                           not isinstance(previous_locals.get('length'), int))
+                          else u'Убедитесь, что это значение содержит не ' +
+                          u'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
+                          'max_length_file': u'Убедитесь, что это имя файла содержит не ' +
+                          u'более {length} символов (сейчас {current_length}).' if
+                          (previous_locals.get('length', None) is None or
+                           not isinstance(previous_locals.get('length'), int))
+                          else u'Убедитесь, что это имя файла содержит не ' +
+                          u'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
                           'max_length_digital': u'Убедитесь, что это значение меньше либо равно {max_value}.' if
-                                                                    (previous_locals.get('max_value', None) is None) \
-                                        else u'Убедитесь, что это значение меньше либо равно {max_value}.'.format(**previous_locals),
-                          'min_length': u'Убедитесь, что это значение содержит не ' + \
+                          (previous_locals.get('max_value', None) is None)
+                          else u'Убедитесь, что это значение меньше либо равно {max_value}.'.format(**previous_locals),
+                          'min_length': u'Убедитесь, что это значение содержит не ' +
                                         u'менее {length} символов (сейчас {current_length}).' if
-                                                                (previous_locals.get('length', None) is None or
-                                                                 not isinstance(previous_locals.get('length'), int)) \
-                                        else u'Убедитесь, что это значение содержит не ' + \
-                                        u'менее {length} символов (сейчас {current_length}).'.format(**previous_locals),
+                          (previous_locals.get('length', None) is None or
+                           not isinstance(previous_locals.get('length'), int))
+                          else u'Убедитесь, что это значение содержит не ' +
+                          u'менее {length} символов (сейчас {current_length}).'.format(**previous_locals),
                           'min_length_digital': u'Убедитесь, что это значение больше либо равно {min_value}.' if
-                                                                    (previous_locals.get('min_value', None) is None) \
-                                        else u'Убедитесь, что это значение больше либо равно {min_value}.'.format(**previous_locals),
+                          (previous_locals.get('min_value', None) is None)
+                          else u'Убедитесь, что это значение больше либо равно {min_value}.'.format(**previous_locals),
                           'wrong_value': u'Выберите корректный вариант. Вашего ' +
                                          u'варианта нет среди допустимых значений.' if
-                                         previous_locals.get('value', '') == '' \
+                                         previous_locals.get('value', '') == ''
                                          else u'Выберите корректный вариант. {value} '.format(**previous_locals) +
                                          u'нет среди допустимых значений.',
                           'wrong_value_int': u'Введите целое число.',
@@ -768,7 +771,7 @@ class GlobalTestMixIn(object):
                           'min_dimensions': u'Минимальный размер изображения {min_width}x{min_height}' if
                                     (previous_locals.get('min_width', None) is None or
                                      previous_locals.get('min_height', None))
-                                     else u'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals),
+                          else u'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals),
                           'max_sum_size_file': u'Суммарный размер изображений не должен превышать {max_size}.' if
                                     previous_locals.get('max_size', None) is None
                                     else u'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
@@ -881,7 +884,8 @@ class GlobalTestMixIn(object):
                         time_delimiter = params_value_delimiters[1]
                     else:
                         time_delimiter = ':'
-                    format_str = date_delimiter.join(date_format_elements) + ' ' + time_delimiter.join(time_format_elements)
+                    format_str = date_delimiter.join(
+                        date_format_elements) + ' ' + time_delimiter.join(time_format_elements)
 
                 value = value.strftime(format_str)
             elif isinstance(value, date):
@@ -931,7 +935,7 @@ class GlobalTestMixIn(object):
             else:
                 value = ''
             params_value = params_value if (isinstance(params_value, str) or isinstance(params_value, unicode))\
-                                        else params_value.name
+                else params_value.name
             params_value = os.path.basename(params_value)
 
         return value, params_value
@@ -946,8 +950,8 @@ class GlobalTestMixIn(object):
         self.with_files = True
         filename = get_randname(length, 'r')
         file_dict = self.deepcopy(getattr(self, 'file_fields_params', {}).get(field, {}) or
-                      getattr(self, 'file_fields_params_add', {}).get(field, {}) or
-                      getattr(self, 'file_fields_params_edit', {}).get(field, {}))
+                                  getattr(self, 'file_fields_params_add', {}).get(field, {}) or
+                                  getattr(self, 'file_fields_params_edit', {}).get(field, {}))
 
         if file_dict.get('extensions', ()):
             ext = choice(file_dict['extensions'])
@@ -1064,9 +1068,9 @@ class GlobalTestMixIn(object):
         return ([getattr(self, 'email_fields', None),
                  getattr(self, 'email_fields_add', None),
                  getattr(self, 'email_fields_edit', None)] == [None, None, None] and 'email' in field) \
-                 or any([field in (getattr(self, 'email_fields', ()) or ()),
-                         field in (getattr(self, 'email_fields_add', ()) or ()),
-                         field in (getattr(self, 'email_fields_edit', ()) or ()), ])
+            or any([field in (getattr(self, 'email_fields', ()) or ()),
+                    field in (getattr(self, 'email_fields_add', ()) or ()),
+                    field in (getattr(self, 'email_fields_edit', ()) or ()), ])
 
     def is_int_field(self, field):
         return any([field in (getattr(self, 'int_fields', ()) or ()),
@@ -1086,12 +1090,12 @@ class GlobalTestMixIn(object):
                 return True
             return False
         return field not in getattr(self, 'not_file', []) and \
-                 any([field in getattr(self, 'file_fields_params_add', {}).keys(),
-                      field in getattr(self, 'file_fields_params_edit', {}).keys(),
-                      re.findall(r'(^|[^a-zA-Z])(file)', field),
-                      check_by_params_name('default_params'),
-                      check_by_params_name('default_params_add'),
-                      check_by_params_name('default_params_edit')])
+            any([field in getattr(self, 'file_fields_params_add', {}).keys(),
+                 field in getattr(self, 'file_fields_params_edit', {}).keys(),
+                 re.findall(r'(^|[^a-zA-Z])(file)', field),
+                 check_by_params_name('default_params'),
+                 check_by_params_name('default_params_add'),
+                 check_by_params_name('default_params_edit')])
 
     def is_multiselect_field(self, field):
         return any([field in (getattr(self, 'multiselect_fields', ()) or ()),
@@ -1326,9 +1330,9 @@ class FormTestMixIn(GlobalTestMixIn):
                                    list(set(self.choice_fields).intersection(self.all_fields_edit)))
 
         self.choice_fields_add_with_value_in_error = self.choice_fields_add_with_value_in_error or \
-                list(set(self.choice_fields_with_value_in_error).intersection(self.all_fields_add))
+            list(set(self.choice_fields_with_value_in_error).intersection(self.all_fields_add))
         self.choice_fields_edit_with_value_in_error = self.choice_fields_edit_with_value_in_error or \
-                list(set(self.choice_fields_with_value_in_error).intersection(self.all_fields_edit))
+            list(set(self.choice_fields_with_value_in_error).intersection(self.all_fields_edit))
 
     def _prepare_date_fields(self):
         if self.date_fields is None:
@@ -1345,7 +1349,7 @@ class FormTestMixIn(GlobalTestMixIn):
             else:
                 self.digital_fields_add = (set([k for k, v in self.default_params_add.iteritems() if
                                                 'FORMS' not in k and isinstance(v, (float, int))
-                                                                 and not isinstance(v, bool)])
+                                                and not isinstance(v, bool)])
                                            .difference(self.choice_fields_add)
                                            .difference(self.choice_fields_add_with_value_in_error))
         if self.digital_fields_edit is None:
@@ -1354,7 +1358,7 @@ class FormTestMixIn(GlobalTestMixIn):
             else:
                 self.digital_fields_edit = (set([k for k, v in self.default_params_edit.iteritems() if
                                                  'FORMS' not in k and isinstance(v, (float, int))
-                                                                  and not isinstance(v, bool)])
+                                                 and not isinstance(v, bool)])
                                             .difference(self.choice_fields_edit)
                                             .difference(self.choice_fields_edit_with_value_in_error))
 
@@ -1391,16 +1395,18 @@ class FormTestMixIn(GlobalTestMixIn):
     def _prepare_multiselect_fields(self):
         if self.multiselect_fields_add is None:
             if self.multiselect_fields is not None:
-                self.multiselect_fields_add = set(copy(self.multiselect_fields)).intersection(self.default_params_add.keys())
+                self.multiselect_fields_add = set(copy(self.multiselect_fields)).intersection(
+                    self.default_params_add.keys())
             else:
                 self.multiselect_fields_add = (set([k for k, v in self.default_params_add.iteritems() if
-                                               'FORMS' not in k and isinstance(v, (list, tuple))]))
+                                                    'FORMS' not in k and isinstance(v, (list, tuple))]))
         if self.multiselect_fields_edit is None:
             if self.multiselect_fields is not None:
-                self.multiselect_fields_edit = set(copy(self.multiselect_fields)).intersection(self.default_params_edit.keys())
+                self.multiselect_fields_edit = set(copy(self.multiselect_fields)).intersection(
+                    self.default_params_edit.keys())
             else:
                 self.multiselect_fields_edit = (set([k for k, v in self.default_params_edit.iteritems() if
-                                                'FORMS' not in k and isinstance(v, (list, tuple))]))
+                                                     'FORMS' not in k and isinstance(v, (list, tuple))]))
 
     def _prepare_disabled_fields(self):
         if self.disabled_fields_add is None:
@@ -1432,10 +1438,10 @@ class FormTestMixIn(GlobalTestMixIn):
             self.file_fields_params_add = self.deepcopy(self.file_fields_params)
             if not self.file_fields_params_add:
                 self.file_fields_params_add = {k: {} for k in set(self.default_params_add.keys())
-                    .intersection(('file', 'filename', 'image', 'preview')).difference(getattr(self, 'not_file', []))}
+                                               .intersection(('file', 'filename', 'image', 'preview')).difference(getattr(self, 'not_file', []))}
                 self.file_fields_params_add.update({k: {'extensions': ('jpg', 'jpeg', 'png')} for k in
                                                     set(self.default_params_add.keys())
-                    .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
+                                                    .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
         for item in self.file_fields_params_add.itervalues():
             if item.get('extensions', ()):
                 item['extensions'] = PrettyTuple(item['extensions'])
@@ -1443,10 +1449,10 @@ class FormTestMixIn(GlobalTestMixIn):
             self.file_fields_params_edit = self.deepcopy(self.file_fields_params)
             if not self.file_fields_params_edit:
                 self.file_fields_params_edit = {k: {} for k in set(self.default_params_edit.keys())
-                    .intersection(('file', 'filename', 'image', 'preview')).difference(getattr(self, 'not_file', []))}
+                                                .intersection(('file', 'filename', 'image', 'preview')).difference(getattr(self, 'not_file', []))}
                 self.file_fields_params_edit.update({k: {'extensions': ('jpg', 'jpeg', 'png')} for k in
-                                                    set(self.default_params_edit.keys())
-                    .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
+                                                     set(self.default_params_edit.keys())
+                                                     .intersection(('image', 'preview', 'photo')).difference(getattr(self, 'not_file', []))})
         for item in self.file_fields_params_edit.itervalues():
             if item.get('extensions', ()):
                 item['extensions'] = PrettyTuple(item['extensions'])
@@ -1532,15 +1538,15 @@ class FormTestMixIn(GlobalTestMixIn):
                     mro_names = set([m.__name__ for m in f.__class__.__mro__])
                     if 'AutoField' in mro_names:
                         continue
-                    if mro_names.intersection(['ForeignKey', ]) and getattr(f.related, 'parent_model',
-                                                                            f.related.model) == obj.__class__:
+                    if mro_names.intersection(['ForeignKey', ]) and f.rel.model == obj.__class__:
                         params[f_name] = obj
                     elif f_name in inline_models_dict[set_name]:
                         if getattr(self, 'choice_fields_values', {}).get(set_name + '-0-' + f_name, ''):
-                            params[f_name] = f.rel.to.objects.get(pk=choice(self.choice_fields_values[set_name + '-0-' + f_name]))
+                            params[f_name] = f.rel.to.objects.get(
+                                pk=choice(self.choice_fields_values[set_name + '-0-' + f_name]))
                         else:
                             params[f_name] = f.rel.to.objects.all()[0] if mro_names.intersection(['ForeignKey', ]) \
-                                                                       else self.get_value_for_field(10, f_name)
+                                else self.get_value_for_field(10, f_name)
                     else:
                         params[f_name] = getattr(value, f_name)
                 getattr(obj, set_name).add(value.__class__(**params))
@@ -1778,7 +1784,8 @@ class FormAddTestMixIn(FormTestMixIn):
         initial_obj_count = self.obj.objects.count()
         old_pks = list(self.obj.objects.values_list('pk', flat=True))
         params = self.deepcopy(self.default_params_add)
-        prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_add) if self.one_of_fields_add else {}
+        prepared_depends_fields = self.prepare_depend_from_one_of(
+            self.one_of_fields_add) if self.one_of_fields_add else {}
         only_independent_fields = set(self.all_fields_add).difference(prepared_depends_fields.keys())
         for field in prepared_depends_fields.keys():
             self.set_empty_value_for_field(params, field)
@@ -1837,7 +1844,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    response = self.client.post(
+                        self.get_url(self.url_add), params, follow=True, **self.additional_params)
                     self.assert_no_form_errors(response)
                     self.assertEqual(response.status_code, self.status_code_success_add,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_add))
@@ -1858,7 +1866,7 @@ class FormAddTestMixIn(FormTestMixIn):
         old_pks = list(self.obj.objects.values_list('pk', flat=True))
         params = self.deepcopy(self.default_params_add)
         required_fields = self.required_fields_add + \
-                          self._get_required_from_related(self.required_related_fields_add)
+            self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
         new_object = None
         for field in set(params.keys()).difference(required_fields):
@@ -1899,8 +1907,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = params[field] if params[field] not in (None, '') else \
-                        self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
-                                                 dict(self.max_fields_length).get(field, 10)), field)
+                    self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
+                                                     dict(self.max_fields_length).get(field, 10)), field)
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
@@ -2053,7 +2061,7 @@ class FormAddTestMixIn(FormTestMixIn):
             self.errors_append(text="For max values in all fields\n%s" %
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
                                                  (field, length, max_length_params[field])
-                                                  for field, length in fields_for_check]))
+                                                 for field, length in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -2604,7 +2612,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for group in self.one_of_fields_add:
             for filled_group in tuple(set([(el, additional_el) for i, el in enumerate(group) for additional_el in
                                            group[i + 1:]]).difference(set(self.one_of_fields_add).difference(group))) + \
-                                           (group,):
+                    (group,):
                 sp = transaction.savepoint()
                 try:
                     params = self.deepcopy(self.default_params_add)
@@ -3041,8 +3049,8 @@ class FormAddTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
-                                         (max_size, one_size * field_dict['max_count'], one_size,
-                                          field_dict['max_count'], field))
+                                   (max_size, one_size * field_dict['max_count'], one_size,
+                                    field_dict['max_count'], field))
             finally:
                 self.del_files()
 
@@ -3313,7 +3321,8 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
-        prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_edit) if self.one_of_fields_edit else {}
+        prepared_depends_fields = self.prepare_depend_from_one_of(
+            self.one_of_fields_edit) if self.one_of_fields_edit else {}
         only_independent_fields = set(self.all_fields_edit).difference(prepared_depends_fields.keys())
         for field in prepared_depends_fields.keys():
             self.set_empty_value_for_field(params, field)
@@ -3420,8 +3429,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = params[field] if params[field] not in (None, '') else \
-                        self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
-                                                         dict(self.max_fields_length).get(field, 10)), field)
+                    self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
+                                                     dict(self.max_fields_length).get(field, 10)), field)
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
@@ -4201,7 +4210,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for group in self.one_of_fields_edit:
             for filled_group in tuple(set([(el, additional_el) for i, el in enumerate(group) for additional_el in
                                            group[i + 1:]]).difference(set(self.one_of_fields_edit).difference(group))) + \
-                                           (group,):
+                    (group,):
                 sp = transaction.savepoint()
                 try:
                     test_obj = self.get_obj_for_edit()
@@ -5244,7 +5253,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
         @note: check unallowed links, that should response 404
         """
         links_other = tuple(self.allowed_links) + tuple(self.links_403) + tuple(self.links_redirect) + \
-                      tuple(self.links_400) + tuple(self.links_401) + tuple(self.links_405)
+            tuple(self.links_400) + tuple(self.links_401) + tuple(self.links_405)
         links_other = [self._get_values(el)[0] for el in links_other]
         for el in self.get_urls():
             try:
@@ -5536,4 +5545,3 @@ class CustomTestCaseNew(CustomTestCase):
                     for table in tables:
                         with transaction.atomic(using=db):
                             cursor.execute("DELETE FROM %s" % table)
-
