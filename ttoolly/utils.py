@@ -1,5 +1,22 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
+import chardet
 from datetime import datetime, date, time
+import decimal
+import io
+import json
+import os
+import random
+import re
+from shutil import copyfile, rmtree
+import string
+import struct
+import sys
+from time import mktime
+import traceback
+from xml.etree import ElementTree as et
+
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
@@ -8,22 +25,7 @@ from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMat
 from django.forms.forms import NON_FIELD_ERRORS
 from django.template.context import Context
 from django.test import Client
-from shutil import copyfile, rmtree
-from time import mktime
 import rstr
-
-import chardet
-import decimal
-import io
-import json
-import os
-import random
-import re
-import string
-import struct
-import sys
-import traceback
-from xml.etree import ElementTree as et
 
 
 def convert_size_to_bytes(size):
@@ -40,7 +42,7 @@ def fill_all_obj_fields(obj, fields=(), save=True):
     for field_name in fields:
         if getattr(obj, field_name):
             continue
-        f = obj.__class__._meta.get_field_by_name(field_name)[0]
+        f = obj.__class__._meta.get_field(field_name)
         if f.auto_created:
             continue
         if field_name not in required_fields and f.null and f.blank:
@@ -885,7 +887,8 @@ def prepare_custom_file_for_tests(file_path, filename=''):
 
 
 def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
-    mro_names = [m.__name__ for m in model_name._meta.get_field_by_name(field)[0].__class__.__mro__]
+
+    mro_names = [m.__name__ for m in model_name._meta.get_field(field).__class__.__mro__]
     for obj in model_name.objects.all():
         file_from_obj = getattr(obj, field, None)
         if file_from_obj:

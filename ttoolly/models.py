@@ -830,7 +830,7 @@ class GlobalTestMixIn(object):
             all_names = model._meta.get_all_field_names()
             field_name = field.split('-')[0]
             field_name = field_name if field_name in all_names else obj_related_objects.get(field_name, field_name)
-            related = model._meta.get_field_by_name(field_name)[0]
+            related = model._meta.get_field(field_name)
             model = getattr(related, 'related_model', getattr(getattr(related, 'rel', None), 'to', related.model))
             field = field.split('-')[-1]
         return model._meta.get_field_by_name(field)
