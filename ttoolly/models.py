@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import inspect
 import json
 from copy import copy, deepcopy
@@ -31,7 +33,7 @@ from lxml.html import document_fromstring
 from utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                    get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                    get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_random_jpg_content,
-                   get_all_urls, convert_size_to_bytes, get_random_file)
+                   get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model)
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
@@ -332,7 +334,7 @@ class GlobalTestMixIn(object):
                 return super(GlobalTestMixIn, self).assertEqual(*args, **kwargs)
             except Exception, e:
                 if warn:
-                    message = warn[0].message.message + u'\n' + e.message
+                    message = warn[0].message.message + '\n' + e.message
                     e.args = (message,)
                 raise e
 
@@ -376,7 +378,7 @@ class GlobalTestMixIn(object):
         return res
 
     def assert_dict_equal(self, d1, d2, msg=None):
-        msg = msg + u':\n' if msg else ''
+        msg = msg + ':\n' if msg else ''
         self.assertIsInstance(d1, dict, msg + 'First argument is not a dictionary')
         self.assertIsInstance(d2, dict, msg + 'Second argument is not a dictionary')
 
@@ -387,20 +389,20 @@ class GlobalTestMixIn(object):
             self.fail(self._formatMessage(error_message, None))
 
     def assert_form_equal(self, form_fields, etalon_fields, text=''):
-        text = (text + u':\n') if text else ''
+        text = (text + ':\n') if text else ''
         errors = []
         not_present_fields = set(etalon_fields).difference(form_fields)
         if not_present_fields:
-            errors.append(u'Fields %s not at form' % str(list(not_present_fields)))
+            errors.append('Fields %s not at form' % str(list(not_present_fields)))
         present_fields = set(form_fields).difference(etalon_fields)
         if present_fields:
-            errors.append(u"Fields %s not need at form" % str(list(present_fields)))
+            errors.append("Fields %s not need at form" % str(list(present_fields)))
         count_dict_form = {k: form_fields.count(k) for k in form_fields}
         count_dict_etalon = {k: etalon_fields.count(k) for k in etalon_fields}
         for field, count_in_etalon in count_dict_etalon.iteritems():
             count_in_form = count_dict_form.get(field, None)
             if count_in_form and count_in_form != count_in_etalon:
-                errors.append(u"Field '%s' present at form %s time(s) (should be %s)" %
+                errors.append("Field '%s' present at form %s time(s) (should be %s)" %
                               (field, count_in_form, count_in_etalon))
 
         if errors:
@@ -410,7 +412,7 @@ class GlobalTestMixIn(object):
             raise AssertionError(error_message)
 
     def assert_list_equal(self, list1, list2, msg=None):
-        msg = msg + u':\n' if msg else ''
+        msg = msg + ':\n' if msg else ''
         self.assertIsInstance(list1, list, msg + 'First argument is not a list')
         self.assertIsInstance(list2, list, msg + 'Second argument is not a list')
 
@@ -519,26 +521,26 @@ class GlobalTestMixIn(object):
         params.update(other_values)
 
         local_errors = []
-        object_fields = obj._meta.get_all_field_names()
+        object_fields = get_all_field_names_from_model(obj)
         object_related_field_names = [name for name in object_fields if
-                                      self.get_field_by_name(obj, name)[0].__class__.__name__ in ('RelatedObject',
-                                                                                                  'ManyToOneRel',
-                                                                                                  'OneToOneField',
-                                                                                                  'ManyToManyField')]
+                                      self.get_field_by_name(obj, name).__class__.__name__ in ('RelatedObject',
+                                                                                               'ManyToOneRel',
+                                                                                               'OneToOneField',
+                                                                                               'ManyToManyField')]
         fields_for_check = set(params.keys()).intersection(object_fields)
         fields_for_check.update([k.split('-')[0] for k in params.keys() if k.split('-')[0]
                                  in object_related_field_names])
         fields_for_check = fields_for_check.difference(exclude)
         obj_related_objects = self.get_related_names(obj)
         one_to_one_fields = [name for name in object_related_field_names if
-                             self.get_field_by_name(obj, name)[0].__class__.__name__ == 'OneToOneField' or
-                             getattr(self.get_field_by_name(obj, name)[0], 'field', None) and
-                             self.get_field_by_name(obj, name)[0].field.__class__.__name__ == 'OneToOneField']
+                             self.get_field_by_name(obj, name).__class__.__name__ == 'OneToOneField' or
+                             getattr(self.get_field_by_name(obj, name), 'field', None) and
+                             self.get_field_by_name(obj, name).field.__class__.__name__ == 'OneToOneField']
 
         for field in fields_for_check:
             # TODO: refactor me
             if field in one_to_one_fields:
-                cls = self.get_field_by_name(obj, field)[0]
+                cls = self.get_field_by_name(obj, field)
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
                 value = _model.objects.filter(**{cls.related_query_name(): obj})
                 if value:
@@ -600,7 +602,7 @@ class GlobalTestMixIn(object):
             try:
                 self.assertEqual(first, second)
             except AssertionError, e:
-                full_error_text = u'\n\nFull error message text:\n%s' % unicode_to_readable(e.message).decode('utf-8')
+                full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(e.message).decode('utf-8')
         first_length = len(first)
         second_length = len(second)
         for n in xrange(max(first_length, second_length)):
@@ -714,73 +716,73 @@ class GlobalTestMixIn(object):
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
-        verbose_obj = self.obj._meta.verbose_name if getattr(self, 'obj', None) else u'Объект'
+        verbose_obj = self.obj._meta.verbose_name if getattr(self, 'obj', None) else 'Объект'
         if isinstance(verbose_obj, str):
             verbose_obj = verbose_obj.decode('utf-8')
-        verbose_field = getattr(self.get_field_by_name(self.obj, field)[0], 'verbose_name', field) if \
-            (getattr(self, 'obj', None) and field in self.obj._meta.get_all_field_names()) else field
+        verbose_field = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field) if \
+            (getattr(self, 'obj', None) and field in get_all_field_names_from_model(self.obj)) else field
         if isinstance(verbose_field, str):
             verbose_field = verbose_field.decode('utf-8')
-        ERROR_MESSAGES = {'required': u'Обязательное поле.',
-                          'max_length': u'Убедитесь, что это значение содержит не ' +
-                                        u'более {length} символов (сейчас {current_length}).' if
+        ERROR_MESSAGES = {'required': 'Обязательное поле.',
+                          'max_length': 'Убедитесь, что это значение содержит не ' +
+                                        'более {length} символов (сейчас {current_length}).' if
                           (previous_locals.get('length', None) is None or
                            not isinstance(previous_locals.get('length'), int))
-                          else u'Убедитесь, что это значение содержит не ' +
-                          u'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
-                          'max_length_file': u'Убедитесь, что это имя файла содержит не ' +
-                          u'более {length} символов (сейчас {current_length}).' if
+                          else 'Убедитесь, что это значение содержит не ' +
+                          'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
+                          'max_length_file': 'Убедитесь, что это имя файла содержит не ' +
+                          'более {length} символов (сейчас {current_length}).' if
                           (previous_locals.get('length', None) is None or
                            not isinstance(previous_locals.get('length'), int))
-                          else u'Убедитесь, что это имя файла содержит не ' +
-                          u'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
-                          'max_length_digital': u'Убедитесь, что это значение меньше либо равно {max_value}.' if
+                          else 'Убедитесь, что это имя файла содержит не ' +
+                          'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
+                          'max_length_digital': 'Убедитесь, что это значение меньше либо равно {max_value}.' if
                           (previous_locals.get('max_value', None) is None)
-                          else u'Убедитесь, что это значение меньше либо равно {max_value}.'.format(**previous_locals),
-                          'min_length': u'Убедитесь, что это значение содержит не ' +
-                                        u'менее {length} символов (сейчас {current_length}).' if
+                          else 'Убедитесь, что это значение меньше либо равно {max_value}.'.format(**previous_locals),
+                          'min_length': 'Убедитесь, что это значение содержит не ' +
+                                        'менее {length} символов (сейчас {current_length}).' if
                           (previous_locals.get('length', None) is None or
                            not isinstance(previous_locals.get('length'), int))
-                          else u'Убедитесь, что это значение содержит не ' +
-                          u'менее {length} символов (сейчас {current_length}).'.format(**previous_locals),
-                          'min_length_digital': u'Убедитесь, что это значение больше либо равно {min_value}.' if
+                          else 'Убедитесь, что это значение содержит не ' +
+                          'менее {length} символов (сейчас {current_length}).'.format(**previous_locals),
+                          'min_length_digital': 'Убедитесь, что это значение больше либо равно {min_value}.' if
                           (previous_locals.get('min_value', None) is None)
-                          else u'Убедитесь, что это значение больше либо равно {min_value}.'.format(**previous_locals),
-                          'wrong_value': u'Выберите корректный вариант. Вашего ' +
-                                         u'варианта нет среди допустимых значений.' if
+                          else 'Убедитесь, что это значение больше либо равно {min_value}.'.format(**previous_locals),
+                          'wrong_value': 'Выберите корректный вариант. Вашего ' +
+                                         'варианта нет среди допустимых значений.' if
                                          previous_locals.get('value', '') == ''
-                                         else u'Выберите корректный вариант. {value} '.format(**previous_locals) +
-                                         u'нет среди допустимых значений.',
-                          'wrong_value_int': u'Введите целое число.',
-                          'wrong_value_digital': u'Введите число.',
-                          'wrong_value_email': u'Введите правильный адрес электронной почты.',
-                          'unique': u'{verbose_obj} с таким {verbose_field} уже существует.'.format(**locals()),
-                          'delete_not_exists': u'Произошла ошибка. Попробуйте позже.',
-                          'recovery_not_exists': u'Произошла ошибка. Попробуйте позже.',
-                          'empty_file': u'Отправленный файл пуст.',
-                          'max_count_file': u'Допускается загрузить не более {max_count} файлов.' if
+                                         else 'Выберите корректный вариант. {value} '.format(**previous_locals) +
+                                         'нет среди допустимых значений.',
+                          'wrong_value_int': 'Введите целое число.',
+                          'wrong_value_digital': 'Введите число.',
+                          'wrong_value_email': 'Введите правильный адрес электронной почты.',
+                          'unique': '{verbose_obj} с таким {verbose_field} уже существует.'.format(**locals()),
+                          'delete_not_exists': 'Произошла ошибка. Попробуйте позже.',
+                          'recovery_not_exists': 'Произошла ошибка. Попробуйте позже.',
+                          'empty_file': 'Отправленный файл пуст.',
+                          'max_count_file': 'Допускается загрузить не более {max_count} файлов.' if
                                     (previous_locals.get('max_count', None) is None)
-                                    else u'Допускается загрузить не более {max_count} файлов.'.format(**previous_locals),
-                          'max_size_file': u'Размер файла {filename} больше {max_size}.' if
+                                    else 'Допускается загрузить не более {max_count} файлов.'.format(**previous_locals),
+                          'max_size_file': 'Размер файла {filename} больше {max_size}.' if
                                     (previous_locals.get('filename', None) is None or
                                      previous_locals.get('max_size', None) is None)
-                                    else u'Размер файла {filename} больше {max_size}.'.format(**previous_locals),
-                          'wrong_extension': u'Некорректный формат файла {filename}.' if
+                                    else 'Размер файла {filename} больше {max_size}.'.format(**previous_locals),
+                          'wrong_extension': 'Некорректный формат файла {filename}.' if
                                     previous_locals.get('filename', None) is None
-                                    else u'Некорректный формат файла {filename}.'.format(**previous_locals),
-                          'min_dimensions': u'Минимальный размер изображения {min_width}x{min_height}' if
+                                    else 'Некорректный формат файла {filename}.'.format(**previous_locals),
+                          'min_dimensions': 'Минимальный размер изображения {min_width}x{min_height}' if
                                     (previous_locals.get('min_width', None) is None or
                                      previous_locals.get('min_height', None))
-                          else u'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals),
-                          'max_sum_size_file': u'Суммарный размер изображений не должен превышать {max_size}.' if
+                          else 'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals),
+                          'max_sum_size_file': 'Суммарный размер изображений не должен превышать {max_size}.' if
                                     previous_locals.get('max_size', None) is None
-                                    else u'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
-                          'one_of': u'Оставьте одно из значений в полях {group}.' if
+                                    else 'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
+                          'one_of': 'Оставьте одно из значений в полях {group}.' if
                                     (previous_locals.get('group', None) is None)
-                                    else u'Оставьте одно из значений в полях {group}.'.format(**previous_locals),
-                          'max_block_count': u'Пожалуйста, заполните не более {max_count} форм.' if
+                                    else 'Оставьте одно из значений в полях {group}.'.format(**previous_locals),
+                          'max_block_count': 'Пожалуйста, заполните не более {max_count} форм.' if
                                     previous_locals.get('max_count', None) is None
-                                    else u'Пожалуйста, заполните не более {max_count} форм.'.format(**previous_locals),
+                                    else 'Пожалуйста, заполните не более {max_count} форм.'.format(**previous_locals),
                           }
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
@@ -827,13 +829,13 @@ class GlobalTestMixIn(object):
     def get_field_by_name(self, model, field):
         if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
             obj_related_objects = self.get_related_names(model)
-            all_names = model._meta.get_all_field_names()
+            all_names = get_all_field_names_from_model(model)
             field_name = field.split('-')[0]
             field_name = field_name if field_name in all_names else obj_related_objects.get(field_name, field_name)
             related = model._meta.get_field(field_name)
             model = getattr(related, 'related_model', getattr(getattr(related, 'rel', None), 'to', related.model))
             field = field.split('-')[-1]
-        return model._meta.get_field_by_name(field)
+        return model._meta.get_field(field)
 
     def get_fields_list_from_response(self, response):
         return get_fields_list_from_response(response)
@@ -841,7 +843,7 @@ class GlobalTestMixIn(object):
     def get_object_fields(self, obj):
         object_fields = []
         if DJANGO_VERSION < (1, 8):
-            fields = [self.get_field_by_name(obj, name)[0] for name in obj._meta.get_all_field_names()]
+            fields = [self.get_field_by_name(obj, name) for name in get_all_field_names_from_model(obj)]
         else:
             fields = obj._meta.get_fields()
         for field in set(fields):
@@ -971,8 +973,14 @@ class GlobalTestMixIn(object):
         return res
 
     def get_related_names(self, model):
+        def get_all_related_objects(model):
+            """from django docs"""
+            return [f for f in model._meta.get_fields()
+                    if (f.one_to_many or f.one_to_one)
+                    and f.auto_created and not f.concrete]
+
         obj_related_objects = dict([(el.get_accessor_name(), getattr(el, 'var_name', el.get_accessor_name())) for el in
-                                    model._meta.get_all_related_objects()])
+                                    get_all_related_objects(model)])
         obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
 
@@ -1016,8 +1024,8 @@ class GlobalTestMixIn(object):
             if getattr(self, 'obj', None):
                 try:
                     if 'ForeignKey' in [b.__name__ for b in
-                                        self.get_field_by_name(self.obj, field_name)[0].__class__.__mro__]:
-                        return choice(self.get_field_by_name(self.obj, field_name)[0].rel.to.objects.all()).pk
+                                        self.get_field_by_name(self.obj, field_name).__class__.__mro__]:
+                        return choice(self.get_field_by_name(self.obj, field_name).rel.to.objects.all()).pk
                 except FieldDoesNotExist:
                     pass
             if 'get_digital_values_range' not in dir(self):
@@ -1513,7 +1521,7 @@ class FormTestMixIn(GlobalTestMixIn):
             if field not in self.all_fields_edit:
                 """only if user can change this field"""
                 continue
-            field_class = self.get_field_by_name(obj, field)[0]
+            field_class = self.get_field_by_name(obj, field)
             value = self._get_field_value_by_name(obj_for_edit, field)
             n = 0
             if value:
@@ -1534,7 +1542,7 @@ class FormTestMixIn(GlobalTestMixIn):
             for value in values:
                 params = {}
                 for f_name in self.get_object_fields(value):
-                    f = self.get_field_by_name(value, f_name)[0]
+                    f = self.get_field_by_name(value, f_name)
                     mro_names = set([m.__name__ for m in f.__class__.__mro__])
                     if 'AutoField' in mro_names:
                         continue
@@ -1574,7 +1582,7 @@ class FormTestMixIn(GlobalTestMixIn):
                             if existing_value in (None, '', [], ()):
                                 params[field] = self.get_value_for_field(10, field)
                     else:
-                        if self.get_field_by_name(self.obj, field)[0].__class__.__name__ == 'DateTimeField':
+                        if self.get_field_by_name(self.obj, field).__class__.__name__ == 'DateTimeField':
                             params[field + '_0'] = self.get_value_for_field(10, field + '_0')
                             params[field + '_1'] = self.get_value_for_field(10, field + '_1')
                         params[field] = self.get_value_for_field(10, field)
@@ -1582,7 +1590,7 @@ class FormTestMixIn(GlobalTestMixIn):
                     params[field] = self.get_value_for_field(10, field)
 
     def get_digital_values_range(self, field):
-        class_name = self.get_field_by_name(self.obj, field)[0].__class__.__name__
+        class_name = self.get_field_by_name(self.obj, field).__class__.__name__
         max_value_from_params = dict(getattr(self, 'max_fields_length', ())).get(field, None)
         max_values = [max_value_from_params] if max_value_from_params is not None else []
         min_value_from_params = dict(getattr(self, 'min_fields_length', ())).get(field, None)
@@ -1605,7 +1613,7 @@ class FormTestMixIn(GlobalTestMixIn):
         return {'max_values': set(max_values), 'min_values': set(min_values)}
 
     def get_gt_max(self, field, value):
-        if ('Integer' in self.get_field_by_name(self.obj, field)[0].__class__.__name__) or \
+        if ('Integer' in self.get_field_by_name(self.obj, field).__class__.__name__) or \
                 (isinstance(value, int) and value < 1.0e+10):
             return value + 1
         elif value < 1.0e+10:
@@ -1621,7 +1629,7 @@ class FormTestMixIn(GlobalTestMixIn):
         return [value for value in [self.get_gt_max(field, v) for v in values_list] if value]
 
     def get_lt_min(self, field, value):
-        if ('Integer' in self.get_field_by_name(self.obj, field)[0].__class__.__name__) or \
+        if ('Integer' in self.get_field_by_name(self.obj, field).__class__.__name__) or \
                 (isinstance(value, int) and value > -1.0e+10):
             return value - 1
         elif value > -1.0e+10:
@@ -1647,7 +1655,7 @@ class FormTestMixIn(GlobalTestMixIn):
         next_obj = self.obj
         existing_values = None
         for i, name in enumerate(filter_name.split('__')):
-            field = self.get_field_by_name(next_obj, name)[0]
+            field = self.get_field_by_name(next_obj, name)
             field_class_name = field.__class__.__name__
             if field_class_name == 'ForeignKey':
                 next_obj = field.rel.to
@@ -1712,11 +1720,11 @@ class FormAddTestMixIn(FormTestMixIn):
     def assert_objects_count_on_add(self, is_positive, initial_obj_count=0, additional=1):
         if is_positive:
             self.assertEqual(self.obj.objects.count(), initial_obj_count + additional,
-                             u'Objects count after add = %s (expect %s)' %
+                             'Objects count after add = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count + additional))
         else:
             self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                             u'Objects count after wrong add = %s (expect %s)' %
+                             'Objects count after wrong add = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count))
 
     def get_existing_obj(self):
@@ -1733,7 +1741,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in param_names:
             if not re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
                 filters &= ~Q(**{'%s__isnull' % field: True})
-                field_class = self.get_field_by_name(self.obj, field)[0]
+                field_class = self.get_field_by_name(self.obj, field)
                 if not set([c.__name__ for c in field_class.__class__.__mro__]).intersection(('RelatedField',
                                                                                               'ForeignKey',
                                                                                               'IntegerField')):
@@ -1741,7 +1749,7 @@ class FormAddTestMixIn(FormTestMixIn):
             else:
                 related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
                 filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
-                field_class = self.get_field_by_name(self.obj, field)[0]
+                field_class = self.get_field_by_name(self.obj, field)
                 if not set([c.__name__ for c in field_class.__class__.__mro__]).intersection(('RelatedField',
                                                                                               'ForeignKey',
                                                                                               'IntegerField')):
@@ -2171,7 +2179,7 @@ class FormAddTestMixIn(FormTestMixIn):
         message_type = 'wrong_value'
         for field in set(tuple(self.choice_fields_add) + tuple(self.choice_fields_add_with_value_in_error)):
             params = self.deepcopy(self.default_params_add)
-            for value in (u'qwe', u'12345678', u'йцу'):
+            for value in ('qwe', '12345678', 'йцу'):
                 self.update_params(params)
                 initial_obj_count = self.obj.objects.count()
                 if self.with_captcha:
@@ -2201,7 +2209,7 @@ class FormAddTestMixIn(FormTestMixIn):
         message_type = 'wrong_value'
         for field in self.multiselect_fields_add:
             params = self.deepcopy(self.default_params_add)
-            for value in (u'12345678',):
+            for value in ('12345678',):
                 self.update_params(params)
                 initial_obj_count = self.obj.objects.count()
                 if self.with_captcha:
@@ -2243,7 +2251,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if el_field not in self.all_fields_add:
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                params[el_field] = self.get_params_according_to_type(value, u'')[0]
+                params[el_field] = self.get_params_according_to_type(value, '')[0]
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
@@ -2276,7 +2284,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if el_field not in self.all_fields_add:
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                params[el_field] = self.get_params_according_to_type(value, u'')[0]
+                params[el_field] = self.get_params_according_to_type(value, '')[0]
                 if isinstance(params[el_field], (str, unicode)):
                     params[el_field] = params[el_field].upper()
             try:
@@ -2302,7 +2310,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         for field in [f for f in self.digital_fields_add]:
             message_type = 'wrong_value_int' if field in self.int_fields_add else 'wrong_value_digital'
-            for value in ('q', u'й', 'NaN', 'inf', '-inf'):
+            for value in ('q', 'й', 'NaN', 'inf', '-inf'):
                 initial_obj_count = self.obj.objects.count()
                 sp = transaction.savepoint()
                 try:
@@ -2332,7 +2340,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'wrong_value_email'
         for field in [f for f in self.email_fields_add]:
-            for value in ('q', u'й', 'qwe@rty', u'qw@йц', '@qwe', 'qwe@'):
+            for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
                 initial_obj_count = self.obj.objects.count()
                 sp = transaction.savepoint()
                 try:
@@ -2631,7 +2639,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
-                    self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
+                    self.errors_append(text='For filled %s fields from group %s' % (str(filled_group), str(group)))
 
     @only_with_obj
     @only_with('max_blocks')
@@ -2662,8 +2670,8 @@ class FormAddTestMixIn(FormTestMixIn):
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
-            self.errors_append(text="Max count in all (%s) blocks" % u', '.join('%s in %s' % (k, v) for k, v in
-                                                                                self.max_blocks.iteritems()))
+            self.errors_append(text="Max count in all (%s) blocks" % ', '.join('%s in %s' % (k, v) for k, v in
+                                                                               self.max_blocks.iteritems()))
         finally:
             self.obj.objects.exclude(pk__in=old_pks).delete()
 
@@ -3270,14 +3278,14 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in param_names:
             if not re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
                 filters &= ~Q(**{'%s__isnull' % field: True})
-                field_class = self.get_field_by_name(self.obj, field)[0]
+                field_class = self.get_field_by_name(self.obj, field)
                 if not set([c.__name__ for c in field_class.__class__.__mro__])\
                         .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
                     filters &= ~Q(**{field: ''})
             else:
                 related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
                 filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
-                field_class = self.get_field_by_name(self.obj, field)[0]
+                field_class = self.get_field_by_name(self.obj, field)
                 if not set([c.__name__ for c in field_class.__class__.__mro__])\
                         .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
                     filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
@@ -3774,7 +3782,7 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'wrong_value'
         for field in set(tuple(self.choice_fields_edit) + tuple(self.choice_fields_edit_with_value_in_error)):
-            for value in (u'qwe', u'12345678', u'йцу'):
+            for value in ('qwe', '12345678', 'йцу'):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 if self.with_captcha:
@@ -3806,7 +3814,7 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'wrong_value'
         for field in self.multiselect_fields_edit:
-            for value in (u'12345678',):
+            for value in ('12345678',):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 if self.with_captcha:
@@ -3851,7 +3859,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     """only if user can change this field"""
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                params[el_field] = self.get_params_according_to_type(value, u'')[0]
+                params[el_field] = self.get_params_according_to_type(value, '')[0]
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -3885,7 +3893,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     """only if user can change this field"""
                     continue
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                params[el_field] = self.get_params_according_to_type(value, u'')[0]
+                params[el_field] = self.get_params_according_to_type(value, '')[0]
                 if isinstance(params[el_field], (str, unicode)):
                     params[el_field] = params[el_field].upper()
             try:
@@ -3912,7 +3920,7 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         for field in self.digital_fields_edit:
             message_type = 'wrong_value_int' if field in self.int_fields_edit else 'wrong_value_digital'
-            for value in ('q', u'й', 'NaN', 'inf', '-inf'):
+            for value in ('q', 'й', 'NaN', 'inf', '-inf'):
                 sp = transaction.savepoint()
                 try:
                     test_obj = self.get_obj_for_edit()
@@ -3944,7 +3952,7 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'wrong_value_email'
         for field in self.email_fields_edit:
-            for value in ('q', u'й', 'qwe@rty', u'qw@йц', '@qwe', 'qwe@'):
+            for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
                 sp = transaction.savepoint()
                 try:
                     test_obj = self.get_obj_for_edit()
@@ -4230,7 +4238,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
-                    self.errors_append(text=u'For filled %s fields from group %s' % (str(filled_group), str(group)))
+                    self.errors_append(text='For filled %s fields from group %s' % (str(filled_group), str(group)))
 
     @only_with_obj
     @only_with('max_blocks')
@@ -4260,8 +4268,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
-            self.errors_append(text="Max count in all (%s) blocks" % u', '.join('%s in %s' % (k, v) for k, v in
-                                                                                self.max_blocks.iteritems()))
+            self.errors_append(text="Max count in all (%s) blocks" % ', '.join('%s in %s' % (k, v) for k, v in
+                                                                               self.max_blocks.iteritems()))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -4837,7 +4845,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try delete object with invalid id
         """
-        for value in ('9999999', '2147483648', 'qwe', u'йцу'):
+        for value in ('9999999', '2147483648', 'qwe', 'йцу'):
             sp = transaction.savepoint()
             try:
                 response = self.client.post(self.get_url_for_negative(self.url_delete, (value,)),
@@ -4861,7 +4869,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
 
         self.client.post(self.get_url(self.url_delete, (obj_pk,)), {'post': 'yes'}, **self.additional_params)
         self.assertEqual(self.obj.objects.count(), initial_obj_count - 1,
-                         u'Objects count after delete = %s (expect %s)' %
+                         'Objects count after delete = %s (expect %s)' %
                          (self.obj.objects.count(), initial_obj_count - 1))
 
     @only_with_obj
@@ -4879,9 +4887,9 @@ class FormDeleteTestMixIn(FormTestMixIn):
         response = self.client.post(self.get_url(self.url_list), params, follow=True, **self.additional_params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
-                             [u'Успешно удалены %d %s.' % (len(obj_ids), self.obj._meta.verbose_name)])
+                             ['Успешно удалены %d %s.' % (len(obj_ids), self.obj._meta.verbose_name)])
             self.assertEqual(self.obj.objects.count(), initial_obj_count - len(obj_ids),
-                             u'Objects count after delete = %s (expect %s)' %
+                             'Objects count after delete = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count - len(obj_ids)))
         except:
             self.errors_append()
@@ -4946,7 +4954,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try delete object with invalid id
         """
-        for value in ('9999999', '2147483648', 'qwe', u'йцу'):
+        for value in ('9999999', '2147483648', 'qwe', 'йцу'):
             try:
                 url = self.get_url_for_negative(self.url_delete, (value,))
                 response = self.client.post(url, follow=True, **self.additional_params)
@@ -4992,7 +5000,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             response = self.client.post(url, params, follow=True, **self.additional_params)
             self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)))
             self.assertEqual(response.status_code, 200)
-            error_message = u'Вы не можете изменять объекты в корзине.'
+            error_message = 'Вы не можете изменять объекты в корзине.'
             self.assertEqual(self.get_all_form_messages(response), [error_message])
         except:
             self.errors_append()
@@ -5027,7 +5035,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             response = self.client.post(recovery_url, follow=True, **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
-            self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
+            self.assertEqual(self.get_all_form_messages(response), ['Произошла ошибка. Попробуйте позже.'])
         except:
             self.errors_append()
 
@@ -5044,7 +5052,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
                                         **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
-            self.assertEqual(self.get_all_form_messages(response), [u'Произошла ошибка. Попробуйте позже.'])
+            self.assertEqual(self.get_all_form_messages(response), ['Произошла ошибка. Попробуйте позже.'])
         except:
             self.errors_append()
 
@@ -5063,9 +5071,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         response = self.client.post(self.get_url(self.url_list), params, follow=True, **self.additional_params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
-                             [u'Успешно удалено %d объектов.' % len(obj_ids)])
+                             ['Успешно удалено %d объектов.' % len(obj_ids)])
             self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                             u'Objects count after remove (should not be changed) = %s (expect %s)' %
+                             'Objects count after remove (should not be changed) = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count))
             self.assertTrue(all([self.get_is_removed(obj) for obj in self.obj.objects.filter(pk__in=obj_ids)]))
         except:
@@ -5086,9 +5094,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         response = self.client.post(self.get_url(self.url_trash_list), params, follow=True, **self.additional_params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
-                             [u'Успешно восстановлено %d объектов.' % len(obj_ids)])
+                             ['Успешно восстановлено %d объектов.' % len(obj_ids)])
             self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                             u'Objects count after recovery (should not be changed) = %s (expect %s)' %
+                             'Objects count after recovery (should not be changed) = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count))
             self.assertFalse(any(self.obj.objects.filter(pk__in=obj_ids).values_list('is_removed', flat=True)))
         except:
@@ -5226,7 +5234,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 401)
                 self.assertEqual(self.get_all_form_errors(response),
-                                 {"detail": u'Учетные данные не были предоставлены.'})
+                                 {"detail": 'Учетные данные не были предоставлены.'})
             except:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 

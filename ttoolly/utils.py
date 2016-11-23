@@ -66,7 +66,7 @@ def format_errors(errors, space_count=0):
     if space_count > 0:
         spaces = ' ' * space_count
         joined_errors = spaces + ('\n' + spaces).join(joined_errors.splitlines())
-    return (u'\n%s' % joined_errors).encode('utf-8')
+    return ('\n%s' % joined_errors).encode('utf-8')
 
 
 def generate_random_obj(obj_model, additional_params=None, filename=None, with_save=True):
@@ -105,19 +105,31 @@ def generate_sql(data):
                 elif isinstance(value, bool):
                     value = str(value)
                 else:
-                    value = u"'%s'" % value
+                    value = "'%s'" % value
                 values.append(value)
             else:
-                additional_sql += u"INSERT INTO %s (%s) VALUES (%s);\n" % \
+                additional_sql += "INSERT INTO %s (%s) VALUES (%s);\n" % \
                                   ('_'.join([table_name, key]),
                                    ', '.join([element['model'].split('.')[1], key + '_id']),
                                    ', '.join([pk, value]))
 
         columns = ', '.join(columns)
         values = ', '.join(values)
-        sql += u"INSERT INTO %s (%s) VALUES (%s);\n" % (table_name, columns, values)
+        sql += "INSERT INTO %s (%s) VALUES (%s);\n" % (table_name, columns, values)
         sql += additional_sql
     return sql
+
+
+def get_all_field_names_from_model(model_name):
+    """from django docs"""
+    from itertools import chain
+    return list(set(chain.from_iterable(
+        (field.name, field.attname) if hasattr(field, 'attname') else (field.name,)
+        for field in model_name._meta.get_fields()
+        # For complete backwards compatibility, you may want to exclude
+        # GenericForeignKey from the results.
+        if not (field.many_to_one and field.related_model is None)
+    )))
 
 
 def get_all_form_errors(response):
@@ -288,7 +300,8 @@ def get_captcha_codes():
 def get_error(tr_limit=getattr(settings, 'TEST_TRACEBACK_LIMIT', None)):
     etype, value, tb = sys.exc_info()
     if any([etype, value, tb]):
-        err = ''.join(traceback.format_exception(etype, value, tb, limit=tr_limit))
+        text = traceback.format_exception(etype, value, tb, limit=tr_limit)
+        err = ''.join([el.decode('utf-8') for el in traceback.format_exception(etype, value, tb, limit=tr_limit)])
         result = unicode_to_readable(err)
     else:
         result = ''
@@ -445,7 +458,7 @@ def get_randname(l=10, _type='a', length_of_chunk=10):
         text = ''
         letters_dict = {'d': string.digits,
                         'w': string.letters,
-                        'r': u'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ',
+                        'r': 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ',
                         'p': string.punctuation,
                         's': string.whitespace}
         for t in _type:
@@ -464,7 +477,7 @@ def get_randname_from_file(filename, l=100):
     f.close()
     result = random.choice(text)
     while len(result) < l:
-        result = u' '.join([result, random.choice(text)])
+        result = ' '.join([result, random.choice(text)])
     return result[:l]
 
 
