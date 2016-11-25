@@ -1,0 +1,18 @@
+[
+    {
+        "pk": 1,
+        "model": "test_app.somemodel",
+        "fields": {
+            "unique_int_field": 1,
+            "digital_field": 0.4, 
+            "int_field": 2
+        }
+    },
+    {
+        "pk": 1,
+        "model": "test_app.othermodel",
+        "fields": {
+            "other_text_field": "текст"
+        }
+    }
+]
