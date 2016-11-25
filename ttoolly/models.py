@@ -587,11 +587,11 @@ class GlobalTestMixIn(object):
             try:
                 self.assertEqual(value, params_value)
             except AssertionError:
-                local_errors.append('[%s]: %s != %s' %
-                                    (field.encode('utf-8') if isinstance(field, unicode) else field,
-                                     repr(value) if not isinstance(value, str) else "'%s'" % value,
-                                     repr(params_value) if not isinstance(params_value, str)
-                                     else "'%s'" % params_value))
+                text = '[%s]: %s != %s' %\
+                    (field.decode('utf-8') if isinstance(field, unicode) else field,
+                     repr(value) if not isinstance(value, str) else repr(value.decode('utf-8')),
+                     repr(params_value) if not isinstance(params_value, str) else repr(params_value.decode('utf-8')))
+                local_errors.append(text)
 
         if local_errors:
             raise AssertionError("Values from object != expected values from dict:\n" + "\n".join(local_errors))
@@ -983,9 +983,6 @@ class GlobalTestMixIn(object):
                                     get_all_related_objects(model)])
         obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
-
-    def _get_value_for_compare(self, *args, **kwargs):
-        raise DeprecationWarning('use get_value_for_compare')
 
     def get_value_for_compare(self, obj, field):
         if not hasattr(obj, field):

@@ -605,18 +605,6 @@ def get_value_for_obj_field(f, filename=None):
         return {get_randname(10, 'wd'): get_randname(10) for i in xrange(random.randint(0, 5))}
 
 
-def generate_random_file_with_size(*args, **kwargs):
-    raise DeprecationWarning('use get_random_file')
-
-
-def get_file_with_name(filename):
-    raise DeprecationWarning('use get_random_file with return_opened=True')
-
-
-def generate_random_contentfile(*args, **kwargs):
-    raise DeprecationWarning('use get_random_contentfile')
-
-
 def get_random_contentfile(size=10, filename=None):
     if not filename:
         filename = get_randname(10, 'wd')
@@ -660,10 +648,6 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
     if return_opened:
         f = open(path, 'r')
     return f
-
-
-def generate_random_image_with_size(*args, **kwargs):
-    raise DeprecationWarning('use get_random_image')
 
 
 def get_random_image(path='', size=10, width=None, height=None, rewrite=False, return_opened=True, filename=None,
@@ -713,14 +697,6 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
     return f
 
 
-def generate_random_image_content(*args, **kwargs):
-    raise DeprecationWarning('use get_random_jpg_content')
-
-
-def generate_random_image_contentfile(*args, **kwargs):
-    raise DeprecationWarning('use get_random_image_contentfile')
-
-
 def get_random_image_contentfile(size=10, width=1, height=1, filename=None):
     data = get_random_jpg_content(size, width, height)
     if not filename:
@@ -754,10 +730,6 @@ def get_random_gif_content(size=10, width=1, height=1):
 
 def get_random_jpg_content(size=10, width=1, height=1):
     return get_random_img_content('JPEG', size, width, height)
-
-
-def generate_random_bmp_image_with_size(*args, **kwargs):
-    raise DeprecationWarning('use get_random_bmp_content or get_random_image')
 
 
 def get_random_bmp_content(size=10, ):
