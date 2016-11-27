@@ -3355,6 +3355,8 @@ class FormEditTestMixIn(FormTestMixIn):
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
+                for f in prepared_depends_fields.iterkeys():
+                    self.set_empty_value_for_field(params, f)
                 self.fill_all_fields(only_independent_fields, params)
                 self.fill_all_fields(fields_from_groups, params)
                 for f in prepared_depends_fields[field]:
