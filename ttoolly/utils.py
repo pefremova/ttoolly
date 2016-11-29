@@ -746,33 +746,8 @@ def generate_random_bmp_image_with_size(*args, **kwargs):
     raise DeprecationWarning('use get_random_bmp_content or get_random_image')
 
 
-def get_random_bmp_content(size=10, ):
-    """
-    generate bmp content
-    """
-    size = convert_size_to_bytes(size)
-
-    content = 'BM\x00\x00\x00\x00\x00\x00\x00\x006\x00\x00\x00(\x00\x00\x00'
-    height = int((size / 3) ** 0.5 / 2) or 1
-    width = int(size / 3 / height) + 1
-    content += struct.pack('<L', width) + struct.pack('<L', height)
-    content += '\x00\x00\x18\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-    line = ''
-    for column in range(width):
-        line += struct.pack('<BBB', random.randint(1, 255), random.randint(1, 255), random.randint(1, 255))
-    for row in range(height - 1, -1, -1):
-        content += line
-        row_mod = (width * 24 / 8) % 4
-        if row_mod == 0:
-            padding = 0
-        else:
-            padding = (4 - row_mod)
-        padbytes = ''
-        for _ in range(padding):
-            x = struct.pack('<B', 0)
-            padbytes = padbytes + x
-        content += padbytes
-    return content
+def get_random_bmp_content(size=10, width=1, height=1):
+    return get_random_img_content('BMP', size, width, height)
 
 
 def get_random_svg_content(size=10, width=1, height=1):
