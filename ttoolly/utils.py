@@ -378,7 +378,10 @@ def get_fields_list_from_response(response, only_success=True):
                 forms.extend(getattr(fs, 'forms', fs))
         if _forms:
             forms.pop(n)
-            forms.extend(_forms)
+            if isinstance(_forms, dict):
+                forms.extend(_forms.values())
+            else:
+                forms.extend(_forms)
         else:
             n += 1
 
