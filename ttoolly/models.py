@@ -3146,7 +3146,7 @@ class FormAddTestMixIn(FormTestMixIn):
             if not extensions:
                 continue
             ext = get_randname(3, 'wd')
-            while ext in extensions:
+            while ext.lower() in extensions:
                 ext = get_randname(3, 'wd')
             wrong_extensions = tuple(field_dict.get('wrong_extensions', ())) + ('', ext)
             for ext in wrong_extensions:
@@ -4733,7 +4733,7 @@ class FormEditTestMixIn(FormTestMixIn):
             if not extensions:
                 continue
             ext = get_randname(3, 'wd')
-            while ext in extensions:
+            while ext.lower() in extensions:
                 ext = get_randname(3, 'wd')
             wrong_extensions = tuple(field_dict.get('wrong_extensions', ())) + ('', ext)
             for ext in wrong_extensions:
