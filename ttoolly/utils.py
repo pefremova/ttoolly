@@ -875,7 +875,6 @@ def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
 
 
 def unicode_to_readable(text):
-    text = text.encode('utf-8') if isinstance(text, unicode) else text
     words = [el.strip() for el in re.findall(r'\\+u[\\u0-9a-f ]{4,}', text) if len(el.strip()) > 5]
     unicode_symbol_path_regexp = r'\\+$|\\+u[0-9a-f]{0,3}$'
     while words:
@@ -884,7 +883,9 @@ def unicode_to_readable(text):
                 _el = el[:-len(re.findall(unicode_symbol_path_regexp, el)[0])]
             else:
                 _el = el
-            text = text.replace(_el, _el.decode('unicode-escape').encode('utf-8'))
+            replace_to = (_el.decode('unicode-escape') if isinstance(_el, unicode)
+                          else _el.decode('unicode-escape').encode('utf-8'))
+            text = text.replace(_el, replace_to)
         words = [el.strip() for el in re.findall(r'\\+u[\\u0-9a-f ]{4,}', text) if len(el.strip()) > 5]
     text = re.sub(r'\\{2,}x', '\\x', text)
     return text

@@ -366,15 +366,16 @@ class GlobalTestMixIn(object):
                     d1_value = d1[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
                                            (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) \
                         else repr(d1[key])
+                    d1_value = d1_value if isinstance(d1_value, unicode) else d1_value.decode('utf-8')
                     d2_value = d2[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
                                            (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) \
                         else repr(d2[key])
+                    d2_value = d2_value if isinstance(d2_value, unicode) else d2_value.decode('utf-8')
                     text.append('%s[%s]: %s != %s' %
                                 (parent_key if parent_key else '',
                                  key, d1_value, d2_value))
         res = '\n'.join(text)
-        if not isinstance(res, unicode):
-            res = res.decode('utf-8')
+
         return res
 
     def assert_dict_equal(self, d1, d2, msg=None):
@@ -402,8 +403,8 @@ class GlobalTestMixIn(object):
         for field, count_in_etalon in count_dict_etalon.iteritems():
             count_in_form = count_dict_form.get(field, None)
             if count_in_form and count_in_form != count_in_etalon:
-                errors.append("Field '%s' present at form %s time(s) (should be %s)" %
-                              (field, count_in_form, count_in_etalon))
+                errors.append("Field %s present at form %s time(s) (should be %s)" %
+                              (repr(field), count_in_form, count_in_etalon))
 
         if errors:
             error_message = ';\n'.join(errors)
@@ -618,10 +619,8 @@ class GlobalTestMixIn(object):
     def assert_xpath_count(self, response, path, count=1, status_code=200):
         self.assertEqual(response.status_code, status_code, "Response status code %s != %s" %
                          (response.status_code, status_code))
-        if not ('xml' in response.content and 'encoding' in response.content):
-            res = response.content.decode('utf-8')
-        else:
-            res = response.content
+
+        res = response.content
         self.assert_xpath_count_in_html(res, path, count)
 
     def assert_xpath_count_in_html(self, html, path, count):
@@ -660,7 +659,7 @@ class GlobalTestMixIn(object):
             text = text.decode('utf-8')
         if getattr(settings, 'COLORIZE_TESTS', False) and text:
             text = "\x1B[38;5;%dm" % color + text + "\x1B[0m"
-        result = text + get_error().decode('utf-8')
+        result = text + get_error()
         if result:
             errors.append(result)
         return errors
@@ -2194,7 +2193,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
-                    self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
+                    self.errors_append(text='For %s value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('multiselect_fields_add',))
@@ -2223,7 +2222,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
-                    self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
+                    self.errors_append(text='For %s value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('unique_fields_add',))
@@ -2326,7 +2325,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
-                    self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('email_fields_add',))
@@ -2356,7 +2355,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
-                    self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -3802,7 +3801,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
-                    self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
+                    self.errors_append(text='For %s value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('multiselect_fields_edit',))
@@ -3832,7 +3831,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
-                    self.errors_append(text='For %s value "%s"' % (field, value.encode('utf-8')))
+                    self.errors_append(text='For %s value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('unique_fields_edit',))
@@ -3940,7 +3939,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
-                    self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('email_fields_edit',))
@@ -3971,7 +3970,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
-                    self.errors_append(text='For value "%s" in field "%s"' % (value.encode('utf-8'), field))
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -4886,7 +4885,8 @@ class FormDeleteTestMixIn(FormTestMixIn):
         response = self.client.post(self.get_url(self.url_list), params, follow=True, **self.additional_params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
-                             ['Успешно удалены %d %s.' % (len(obj_ids), self.obj._meta.verbose_name)])
+                             ['Успешно удалены %d %s.' % (len(obj_ids), self.obj._meta.verbose_name if len(obj_ids) == 1
+                                                          else self.obj._meta.verbose_name_plural)])
             self.assertEqual(self.obj.objects.count(), initial_obj_count - len(obj_ids),
                              'Objects count after delete = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count - len(obj_ids)))
