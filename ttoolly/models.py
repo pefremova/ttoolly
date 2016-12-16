@@ -1157,12 +1157,12 @@ class LoginMixIn(object):
         url_name = getattr(settings, 'LOGIN_URL_NAME', 'login')
         params = {'username': username, 'password': password,
                   'this_is_the_login_form': 1}
-        csrf_cookie = self.client.cookies.get('csrftoken', '')
+        csrf_cookie = self.client.cookies.get(settings.CSRF_COOKIE_NAME, '')
         if csrf_cookie:
             params['csrfmiddlewaretoken'] = csrf_cookie.value
         else:
             response = self.client.get(reverse(url_name), **additional_params)
-            params['csrfmiddlewaretoken'] = response.cookies['csrftoken'].value
+            params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
         params.update(get_captcha_codes())
         return self.client.post(reverse(url_name), params, **additional_params)
 
