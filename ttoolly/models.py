@@ -1754,8 +1754,9 @@ class FormAddTestMixIn(FormTestMixIn):
         response = self.client.get(self.get_url(self.url_add), **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
+            """not set because of one field can be on form many times"""
             self.assert_form_equal(form_fields['visible_fields'],
-                                   list(set(self.all_fields_add).difference(self.hidden_fields_add or ())))
+                                   [el for el in self.all_fields_add if el not in (self.hidden_fields_add or ())])
         except:
             self.errors_append(text='For visible fields')
         if self.disabled_fields_add is not None:
@@ -3290,8 +3291,9 @@ class FormEditTestMixIn(FormTestMixIn):
         response = self.client.get(self.get_url(self.url_edit, (obj_pk,)), **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
+            """not set because of one field can be on form many times"""
             self.assert_form_equal(form_fields['visible_fields'],
-                                   list(set(self.all_fields_edit).difference(self.hidden_fields_edit or ())))
+                                   [el for el in self.all_fields_edit if el not in (self.hidden_fields_edit or ())])
         except:
             self.errors_append(text='For visible fields')
         if self.disabled_fields_edit is not None:
