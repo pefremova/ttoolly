@@ -25,5 +25,5 @@ class Command(BaseCommand):
                                                          obj_model.objects.all(), indent=4,
                                                          use_natural_foreign_keys=True))
         f = open(path_to_file, 'a')
-        f.write(text)
+        f.write(text.encode('utf-8'))
         f.close()
