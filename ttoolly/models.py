@@ -46,11 +46,13 @@ def get_dirs_for_move():
 
 
 def only_with_obj(fn):
+
     def tmp(self):
         if self.obj:
             return fn(self)
         else:
             raise SkipTest('Need "obj"')
+    tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (only_with_obj,)
     tmp.__name__ = fn.__name__
     return tmp
 
@@ -68,6 +70,7 @@ def only_with(param_names=None):
                 return fn(self)
             else:
                 raise SkipTest("Need all these params: %s" % repr(param_names))
+        tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (only_with,)
         tmp.__name__ = fn.__name__
         return tmp
     return decorator
@@ -230,14 +233,14 @@ class MetaCheckFailures(type):
             def tmp(self):
                 fn(self)
                 self.formatted_assert_errors()
-            tmp.with_check_errors_decorator = True
+            tmp.decorators = tuple(set(getattr(tmp, 'decorators', ()))) + (check_errors,)
             tmp.__name__ = fn.__name__
             return tmp
 
         def decorate(cls, bases, dct):
             for attr in cls.__dict__:
                 if callable(getattr(cls, attr)) and attr.startswith('test_') and \
-                        not getattr(getattr(cls, attr), 'with_check_errors_decorator', False):
+                        check_errors not in getattr(getattr(cls, attr), 'decorators', ()):
                     setattr(cls, attr, check_errors(getattr(cls, attr)))
             bases = cls.__bases__
             for base in bases:

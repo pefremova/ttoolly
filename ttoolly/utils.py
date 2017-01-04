@@ -892,13 +892,20 @@ def unicode_to_readable(text):
 
 
 def use_in_all_tests(decorator):
-    def decorate(cls):
+    def decorate(cls, child=None):
+        if child is None:
+            child = cls
         for attr in cls.__dict__:
             if callable(getattr(cls, attr)) and attr.startswith('test_'):
-                setattr(cls, attr, decorator(getattr(cls, attr)))
+                fn = getattr(child, attr, getattr(cls, attr))
+                if decorator not in getattr(fn, 'decorators', ()):
+                    decorated = decorator(fn)
+                    decorated.__name__ = fn.__name__
+                    decorated.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (decorator,)
+                    setattr(child, attr, decorated)
         bases = cls.__bases__
         for base in bases:
-            decorate(base)
+            decorate(base, child)
         return cls
 
     return decorate
