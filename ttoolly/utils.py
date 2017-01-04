@@ -123,7 +123,6 @@ def get_all_form_errors(response):
         return None
 
     def get_errors(form):
-
         """simple form"""
         errors = form._errors
         if not errors:
@@ -590,7 +589,7 @@ def get_value_for_obj_field(f, filename=None):
         length = random.randint(1, f.max_length - 4 - dir_path_length - 1)
         name = get_randname(length) + '.jpg'
         return ContentFile(content, name=name)
-    elif mro_names.intersection(['JSONField',]):
+    elif mro_names.intersection(['JSONField', ]):
         return {get_randname(10, 'wd'): get_randname(10) for i in xrange(random.randint(0, 5))}
 
 
@@ -904,19 +903,27 @@ def unicode_to_readable(text):
 
 
 def use_in_all_tests(decorator):
-    def decorate(cls):
+    def decorate(cls, child=None):
+        if child is None:
+            child = cls
         for attr in cls.__dict__:
             if callable(getattr(cls, attr)) and attr.startswith('test_'):
-                setattr(cls, attr, decorator(getattr(cls, attr)))
+                fn = getattr(child, attr, getattr(cls, attr))
+                if decorator not in getattr(fn, 'decorators', ()):
+                    decorated = decorator(fn)
+                    decorated.__name__ = fn.__name__
+                    decorated.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (decorator,)
+                    setattr(child, attr, decorated)
         bases = cls.__bases__
         for base in bases:
-            decorate(base)
+            decorate(base, child)
         return cls
 
     return decorate
 
 
 class FakeSizeMemoryFileUploadHandler(MemoryFileUploadHandler):
+
     def file_complete(self, file_size):
         if getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True):
             return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)
