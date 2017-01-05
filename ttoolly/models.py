@@ -1868,7 +1868,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
-            params[field] = params[field] if params[field] not in (None, '') else \
+            params[field] = params[field] if params.get(field, None) not in (None, '') else \
                 self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
                                                  dict(self.max_fields_length).get(field, 10)), field)
         if self.with_captcha:
@@ -1902,7 +1902,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = params[field] if params[field] not in (None, '') else \
+                params[field] = params[field] if params.get(field, None) not in (None, '') else \
                         self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
                                                  dict(self.max_fields_length).get(field, 10)), field)
                 try:
@@ -3399,7 +3399,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
-            params[field] = params[field] if params[field] not in (None, '') else \
+            params[field] = params[field] if params.get(field, None) not in (None, '') else \
                 self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
                                                  dict(self.max_fields_length).get(field, 10)), field)
         try:
@@ -3426,7 +3426,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = params[field] if params[field] not in (None, '') else \
+                params[field] = params[field] if params.get(field, None) not in (None, '') else \
                         self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
                                                          dict(self.max_fields_length).get(field, 10)), field)
                 try:
