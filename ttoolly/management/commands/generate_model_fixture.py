@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function, absolute_import
 from django.core.management.base import BaseCommand
 from ttoolly.utils import unicode_to_readable, generate_random_obj
 from django.core import serializers
@@ -34,4 +34,4 @@ class Command(BaseCommand):
             f.write(text)
             f.close()
         else:
-            print text
+            print(text)

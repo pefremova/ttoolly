@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function, absolute_import
 
 import inspect
 import json
@@ -30,10 +30,10 @@ from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
 from lxml.html import document_fromstring
-from utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
-                   get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
-                   get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_random_jpg_content,
-                   get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model)
+from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
+                    get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
+                    get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_random_jpg_content,
+                    get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model)
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
@@ -335,7 +335,7 @@ class GlobalTestMixIn(object):
             warnings.simplefilter("always")
             try:
                 return super(GlobalTestMixIn, self).assertEqual(*args, **kwargs)
-            except Exception, e:
+            except Exception as e:
                 if warn:
                     message = warn[0].message.message + '\n' + e.message
                     e.args = (message,)
@@ -564,7 +564,7 @@ class GlobalTestMixIn(object):
                 if count_for_check and value.__class__.__name__ == 'RelatedManager':
                     try:
                         self.assertEqual(value.all().count(), count_for_check)
-                    except Exception, e:
+                    except Exception as e:
                         local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, unicode)
                                                               else field) + str(e))
                 for i, el in enumerate(value.all().order_by('pk')
@@ -576,7 +576,7 @@ class GlobalTestMixIn(object):
                                     and k not in exclude and re.sub('\-\d+\-', '-_-', k) not in exclude])
                     try:
                         self.assert_object_fields(el, _params)
-                    except Exception, e:
+                    except Exception as e:
                         local_errors.append('[%s]:%s' % (field.encode('utf-8') if isinstance(field, unicode)
                                                          else field, '\n  '.join(str(e).splitlines())))
                 continue
@@ -605,7 +605,7 @@ class GlobalTestMixIn(object):
         if '-v' in sys.argv:
             try:
                 self.assertEqual(first, second)
-            except AssertionError, e:
+            except AssertionError as e:
                 full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(e.message).decode('utf-8')
         first_length = len(first)
         second_length = len(second)
@@ -5152,7 +5152,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                                 res_kwargs or res_args),)
             except:
                 result += (aa,)
-                print '!!!!!', res, aa
+                print('!!!!!', res, aa)
         return result
 
     def login(self):
@@ -5379,7 +5379,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                     cursor = connections[db].cursor()
                     try:
                         cursor.execute(sql)
-                    except Exception, e:
+                    except Exception as e:
                         sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
                         transaction.rollback_unless_managed(using=db)
                     else:
@@ -5528,7 +5528,7 @@ class CustomTestCaseNew(CustomTestCase):
                     with transaction.atomic(using=db):
                         try:
                             cursor.execute(sql)
-                        except Exception, e:
+                        except Exception as e:
                             sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
 
                     for element in data:

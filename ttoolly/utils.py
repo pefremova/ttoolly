@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function, absolute_import
 
 import chardet
 from datetime import datetime, date, time
@@ -859,7 +859,7 @@ def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
             if os.path.exists(full_path):
                 continue
             if verbosity > 2:
-                print 'Generate file for path %s' % full_path
+                print('Generate file for path %s' % full_path)
             directory = os.path.dirname(full_path)
             if not os.path.exists(directory):
                 os.makedirs(directory)

@@ -484,7 +484,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                 self.to = to
         try:
             self.btc.assert_mail_count([M(to='test@test.test'), M(to='test2@test.test')], 2)
-        except Exception, e:
+        except Exception as e:
             self.assertTrue(False, 'With raise: %s' % str(e))
 
     def test_assert_mail_count_negative(self):
@@ -584,7 +584,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         response = HttpResponse('<html><a href="/qwe">тест</a><a href="test">тест2</a></html>')
         try:
             self.btc.assert_xpath_count(response, '//a[@href="/qwe"]', 1)
-        except Exception, e:
+        except Exception as e:
             self.assertTrue(False, 'With raise: %s' % e.__unicode__())
 
     def test_assert_xpath_count_wrong_status(self):
@@ -614,7 +614,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                 content_type='application/xml')
         try:
             self.btc.assert_xpath_count(response, '//el/link', 2)
-        except Exception, e:
+        except Exception as e:
             self.assertTrue(False, 'With raise: %s' % repr(e))
 
     def test_assert_xpath_count_xml_with_encode_positive(self):
@@ -623,7 +623,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                 content_type='application/xml')
         try:
             self.btc.assert_xpath_count(response, '//el/link', 2)
-        except Exception, e:
+        except Exception as e:
             self.assertTrue(False, 'With raise: %s' % repr(e))
 
     def test_assert_object_fields(self):
@@ -654,7 +654,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                                                  'bool_field': '',
                                                  'one_to_one_field': other_1.pk,
                                                  'one_to_one_field2': some_2.pk})
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_object_fields_with_difference(self):
@@ -668,7 +668,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         el_1 = SomeModel(text_field='текст 1')
         try:
             self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'}, exclude=('text_field',))
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_object_fields_with_exclude_in_class(self):
@@ -676,7 +676,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.exclude_from_check = ('text_field',)
         try:
             self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'})
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_object_fields_with_difference_with_other_values(self):
@@ -699,7 +699,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         el_1 = SomeModel(text_field='текст 1')
         try:
             self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'}, other_values={'qwe': 123})
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_object_fields_with_not_existing_other_values_in_class(self):
@@ -707,7 +707,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.other_values_for_check = {'qwe': 123}
         try:
             self.btc.assert_object_fields(el_1, {'text_field': 'текст 1'},)
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_errors_append(self):
@@ -818,8 +818,8 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.errors = []
         try:
             self.btc.formatted_assert_errors()
-        except Exception, e:
-            print str(e)
+        except Exception as e:
+            print(e)
             self.assertTrue(False, 'With raise')
 
     def test_formatted_assert_errors_with_errors(self):
@@ -1102,7 +1102,7 @@ class TestFormTestMixInMethods(unittest.TestCase):
         el_2 = SomeModel(text_field='текст')
         try:
             self.ftc.assert_objects_equal(el_1, el_2)
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_objects_equal_with_difference(self):
@@ -1138,7 +1138,7 @@ class TestFormTestMixInMethods(unittest.TestCase):
         el_2 = SomeModel(text_field='текст 2')
         try:
             self.ftc.assert_objects_equal(el_1, el_2, exclude=('text_field',))
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_assert_objects_equal_with_exclude_from_check(self):
@@ -1147,7 +1147,7 @@ class TestFormTestMixInMethods(unittest.TestCase):
         self.ftc.exclude_from_check = ('text_field',)
         try:
             self.ftc.assert_objects_equal(el_1, el_2,)
-        except Exception, e:
+        except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
     def test_get_all_fields_from_default_params(self):
