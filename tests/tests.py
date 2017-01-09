@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
 
+from builtins import str
+
+from collections import OrderedDict
 from datetime import date, datetime, time
 from shutil import rmtree
 import hashlib
@@ -1252,16 +1256,19 @@ class TestUtils(unittest.TestCase):
                           {'fields': {'field': 1}, 'id': '1', "model": "testmodel2", 'pk': 'id'}])
 
     def test_generate_sql(self):
-        data = [{'fields': {'field_bool': False,
-                            'field_text': 'text',
-                            'field_int': 2,
-                            "field_none": None},
-                 'test_id': '1',
-                 "model": "testmodel",
-                 'pk': 'test_id'}]
+        data = [OrderedDict([
+            ('fields', OrderedDict([
+                ('field_bool', False),
+                ('field_text', 'text'),
+                ('field_int', 2),
+                ('field_none', None)])),
+            ('test_id', '1'),
+            ('model', 'testmodel'),
+            ('pk', 'test_id')
+        ])]
         self.assertEqual(utils.generate_sql(data),
-                         'INSERT INTO testmodel (test_id, field_bool, field_none, field_text, field_int) ' +
-                         'VALUES (1, False, null, \'text\', \'2\');\n')
+                         'INSERT INTO testmodel (test_id, field_bool, field_text, field_int, field_none) ' +
+                         'VALUES (1, False, \'text\', \'2\', null);\n')
 
     def test_generate_sql_many_objects(self):
         data = [{'fields': {'field': 1}, 'id': '1', "model": "testmodel", 'pk': 'id'},
@@ -1330,8 +1337,7 @@ class TestUtils(unittest.TestCase):
         OtherModel.objects.create()
         initial_other_obj_count = OtherModel.objects.all().count()
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
-        new_obj = utils.fill_all_obj_fields(test_obj,
-                                            fields=('many_related_field', 'foreign_key_field'))
+        utils.fill_all_obj_fields(test_obj, fields=('many_related_field', 'foreign_key_field'))
         self.assertEqual(OtherModel.objects.all().count(), initial_other_obj_count)
 
     def test_fill_all_obj_fields_with_save(self):
@@ -1393,7 +1399,7 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_file_with_path(self):
         new_file = utils.get_random_file(path='/tmp/test', )
-        self.assertEqual(type(new_file), file)
+        self.assertTrue(hasattr(new_file, 'read'))
         self.assertEqual(len(new_file.read()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
@@ -1408,7 +1414,7 @@ class TestUtils(unittest.TestCase):
         hasher = hashlib.md5()
         hasher.update(new_file.read())
         self.assertNotEqual(hasher.hexdigest(), last_file_hash)
-        self.assertEqual(type(new_file), file)
+        self.assertTrue(hasattr(new_file, 'read'))
         new_file.seek(0)
         self.assertEqual(len(new_file.read()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
@@ -1416,11 +1422,11 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(new_file.mode, 'r')
 
     def test_get_random_file_with_path_without_rewrite(self):
-        new_file = utils.get_random_file(path='/tmp/test')
+        utils.get_random_file(path='/tmp/test')
         last_change_time = os.stat('/tmp/test').st_mtime
         new_file = utils.get_random_file(path='/tmp/test', rewrite=False)
         self.assertEqual(os.stat('/tmp/test').st_mtime, last_change_time)
-        self.assertEqual(type(new_file), file)
+        self.assertTrue(hasattr(new_file, 'read'))
         self.assertEqual(len(new_file.read()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
@@ -1493,12 +1499,12 @@ class TestUtils(unittest.TestCase):
         sm = SomeModel.objects.create(image_field='test', int_field=1)
         utils.prepare_file_for_tests(SomeModel, 'image_field')
         self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')))
-        with open(os.path.join(settings.MEDIA_ROOT, 'test')) as f:
+        with open(os.path.join(settings.MEDIA_ROOT, 'test'), 'rb') as f:
             self.assertEqual(imghdr.what(f), 'jpeg')
 
     def test_get_random_url_value(self):
         v = utils.get_random_url_value(100)
-        self.assertEqual(type(v), unicode)
+        self.assertTrue(isinstance(v, str))
         self.assertLessEqual(len(v.split('/')[0]), 62)
         self.assertEqual(re.findall(r'^[^/]{4,62}/.+$', v), [v])
 
@@ -1510,6 +1516,6 @@ class TestUtils(unittest.TestCase):
     def test_unicode_to_readable(self):
         self.assertEqual(utils.unicode_to_readable(''), '')
         self.assertEqual(utils.unicode_to_readable('qwe u"\u0430"'), 'qwe u"а"')
-        self.assertEqual(utils.unicode_to_readable(b'qwe u"\u0430\u043"'), b'qwe u"а\u043"')
+        self.assertEqual(utils.unicode_to_readable(b'qwe u"\u0430\u043"'), 'qwe u"а\\u043"')
         self.assertEqual(utils.unicode_to_readable('qwe u"а"'), 'qwe u"а"')
         self.assertEqual(utils.unicode_to_readable("тест u\'\\u0442\\u0435\\u0441\\u04421\'"), "тест u'тест1'")

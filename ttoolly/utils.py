@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function, absolute_import
+from __future__ import (absolute_import, division,
+                        print_function, unicode_literals)
+
+from future.utils import viewvalues, viewitems, viewkeys
+from past.builtins import xrange
+from builtins import str
 
 import chardet
 from datetime import datetime, date, time
@@ -11,11 +16,11 @@ import random
 import re
 from shutil import copyfile, rmtree
 import string
-import struct
 import sys
 from time import mktime
 import traceback
 from xml.etree import ElementTree as et
+from io import StringIO
 
 from django.conf import settings
 from django.core.cache import cache
@@ -58,7 +63,7 @@ def fill_all_obj_fields(obj, fields=(), save=True):
 
 def format_errors(errors, space_count=0):
     joined_errors = '\n\n'.join(errors)
-    if not isinstance(joined_errors, unicode):
+    if isinstance(joined_errors, bytes):
         if chardet.detect(joined_errors)['encoding'] == 'utf-8':
             joined_errors = joined_errors.decode('utf-8')
     if not joined_errors:
@@ -97,7 +102,7 @@ def generate_sql(data):
         columns = [pk, ]
         values = [element[pk], ]
         additional_sql = ''
-        for key, value in element['fields'].iteritems():
+        for key, value in viewitems(element['fields']):
             if not isinstance(value, list):
                 columns.append(key)
                 if value is None:
@@ -145,15 +150,15 @@ def get_all_form_errors(response):
             if isinstance(errors, list):
                 _errors = {}
                 for n, el in enumerate(errors):
-                    _errors.update({'%s-%s-%s' % (form.prefix, n, k): v for k, v in el.iteritems()})
+                    _errors.update({'%s-%s-%s' % (form.prefix, n, k): v for k, v in viewitems(el)})
             else:
-                _errors = {'%s-%s' % (form.prefix, k): v for k, v in errors.iteritems()}
+                _errors = {'%s-%s' % (form.prefix, k): v for k, v in viewitems(errors)}
             errors = _errors
 
         """form with formsets"""
         form_formsets = getattr(form, 'formsets', {})
         if form_formsets:
-            for fs_name, fs in form_formsets.iteritems():
+            for fs_name, fs in viewitems(form_formsets):
                 errors.pop('-'.join(filter(None, [form.prefix, fs_name])), None)
                 errors.update(get_formset_errors(fs))
 
@@ -181,7 +186,7 @@ def get_all_form_errors(response):
     except KeyError:
         pass
     try:
-        forms.extend([form for form in response.context['forms'].itervalues()])
+        forms.extend([form for form in viewvalues(response.context['forms'])])
     except KeyError:
         pass
     try:
@@ -196,7 +201,7 @@ def get_all_form_errors(response):
                 form_errors.update({'-'.join([re.sub(r'-(\d+)$', '', fs.prefix), NON_FIELD_ERRORS]): non_form_errors})
             errors = fs._errors
             if errors:
-                form_errors.update({'%s-%s' % (fs.prefix, key): value for key, value in errors.iteritems()})
+                form_errors.update({'%s-%s' % (fs.prefix, key): value for key, value in viewitems(errors)})
     except KeyError:
         pass
     try:
@@ -207,7 +212,7 @@ def get_all_form_errors(response):
             errors = fs.formset._errors
             if errors:
                 for n, el in enumerate(errors):
-                    for key, value in el.iteritems():
+                    for key, value in viewitems(el):
                         form_errors.update({'%s-%d-%s' % (fs.formset.prefix, n, key): value})
     except KeyError:
         pass
@@ -316,7 +321,7 @@ def get_fields_list_from_response(response, only_success=True):
         fields = form.fields.keys()
         visible_fields = set(fields).intersection([f.name for f in form.visible_fields()])
         hidden_fields = [f.name for f in form.hidden_fields()]
-        disabled_fields = [k for k, v in form.fields.iteritems() if v.widget.attrs.get('readonly', False)]
+        disabled_fields = [k for k, v in viewitems(form.fields) if v.widget.attrs.get('readonly', False)]
         visible_fields = visible_fields.difference(disabled_fields)
         if form.prefix:
             fields = ['%s-%s' % (form.prefix, field) for field in fields]
@@ -342,7 +347,7 @@ def get_fields_list_from_response(response, only_success=True):
     except KeyError:
         pass
     try:
-        forms.extend([form for form in response.context['forms'].itervalues()])
+        forms.extend([form for form in viewvalues(response.context['forms'])])
     except KeyError:
         pass
     try:
@@ -388,7 +393,7 @@ def get_fields_list_from_response(response, only_success=True):
         _forms = getattr(forms[n], 'forms', [])
         _formsets = getattr(forms[n], 'formsets', {})
         if _formsets:
-            for fs_name, fs in _formsets.iteritems():
+            for fs_name, fs in viewitems(_formsets):
                 forms.extend(getattr(fs, 'forms', fs))
         if _forms:
             forms.pop(n)
@@ -409,7 +414,7 @@ def get_fields_list_from_response(response, only_success=True):
         for fs in response.context['inline_admin_formsets']:
             fs_name = fs.formset.prefix
             for number, form in enumerate(fs.formset.forms):
-                _fields = [fs_name + '-%d-' % number + f for f in form.fields.iterkeys()]
+                _fields = [fs_name + '-%d-' % number + f for f in viewkeys(form.fields)]
                 _visible_fields = [fs_name + '-%d-' % number + f.name for f in form.visible_fields()]
                 _hidden_fields = [fs_name + '-%d-' % number + f.name for f in form.hidden_fields()]
                 fields.extend(_fields)
@@ -460,14 +465,14 @@ def get_randname(l=10, _type='a', length_of_chunk=10):
     else:
         text = ''
         letters_dict = {'d': string.digits,
-                        'w': string.letters,
+                        'w': string.ascii_letters,
                         'r': 'абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ',
                         'p': string.punctuation,
                         's': string.whitespace}
         for t in _type:
             text += letters_dict.get(t, t)
 
-    count_of_chunks = l / length_of_chunk
+    count_of_chunks = l // length_of_chunk
     n = ''.join([random.choice(text) for _ in xrange(length_of_chunk)]) * count_of_chunks + \
         ''.join([random.choice(text) for _ in xrange(l % length_of_chunk)])
     return n
@@ -662,7 +667,7 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
     if path:
         filename = os.path.basename(path)
         if os.path.exists(path) and not rewrite:
-            if abs(os.stat(path).st_size - size) / (size or 1) > 0.01:
+            if abs(os.stat(path).st_size - size) // (size or 1) > 0.01:
                 rewrite = True
             if not rewrite:
                 if return_opened:
@@ -715,7 +720,6 @@ def get_random_img_content(_format, size=10, width=1, height=1):
     size = convert_size_to_bytes(size)
     image = Image.new('RGB', (width, height), "#%06x" % random.randint(0, 0xFFFFFF))
     if getattr(Image, 'PILLOW_VERSION', getattr(Image, 'VERSION', '2.')).split('.')[0] == '1':
-        from StringIO import StringIO
         output = StringIO()
     else:
         output = io.BytesIO()
@@ -743,7 +747,6 @@ def get_random_svg_content(size=10, width=1, height=1):
     """
     generates svg content
     """
-    from StringIO import StringIO
     size = convert_size_to_bytes(size)
     doc = et.Element('svg', width=str(width), height=str(height), version='1.1', xmlns='http://www.w3.org/2000/svg')
     et.SubElement(doc, 'rect', width=str(width), height=str(height),
@@ -752,7 +755,7 @@ def get_random_svg_content(size=10, width=1, height=1):
     header = '<?xml version=\"1.0\" standalone=\"no\"?>\n' \
              '<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n'
     output.write(header)
-    output.write(et.tostring(doc))
+    output.write(str(et.tostring(doc)))
     content = output.getvalue()
     size -= len(content)
     if size > 0:
@@ -797,7 +800,7 @@ def get_url_for_negative(url, args=()):
         l.append(url[start:])
         while len(l_args) < len(l):
             l_args.append(l_args[-1])
-        return ''.join([item.decode('utf-8') if isinstance(item, str) else item
+        return ''.join([item.decode('utf-8') if isinstance(item, bytes) else item
                         for tup in zip(l, l_args) for item in tup][:-1])
 
     try:
@@ -875,20 +878,11 @@ def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
 
 
 def unicode_to_readable(text):
-    words = [el.strip() for el in re.findall(r'\\+u[\\u0-9a-f ]{4,}', text) if len(el.strip()) > 5]
-    unicode_symbol_path_regexp = r'\\+$|\\+u[0-9a-f]{0,3}$'
-    while words:
-        for el in words:
-            if re.findall(unicode_symbol_path_regexp, el):
-                _el = el[:-len(re.findall(unicode_symbol_path_regexp, el)[0])]
-            else:
-                _el = el
-            replace_to = (_el.decode('unicode-escape') if isinstance(_el, unicode)
-                          else _el.decode('unicode-escape').encode('utf-8'))
-            text = text.replace(_el, replace_to)
-        words = [el.strip() for el in re.findall(r'\\+u[\\u0-9a-f ]{4,}', text) if len(el.strip()) > 5]
-    text = re.sub(r'\\{2,}x', '\\x', text)
-    return text
+    if isinstance(text, bytes):
+        text = text.decode()
+    def unescape_one_match(matchObj):
+        return matchObj.group(0).encode().decode('unicode_escape')
+    return re.sub(r"\\u[0-9a-fA-F]{4}", unescape_one_match, text)
 
 
 def use_in_all_tests(decorator):
