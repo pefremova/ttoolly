@@ -33,6 +33,12 @@ from django.test import Client
 import rstr
 
 
+try:
+    FILE_TYPES = (file, io.IOBase)
+except NameError:
+    FILE_TYPES = (io.IOBase,)
+
+
 def convert_size_to_bytes(size):
     SYMBOLS = ['', 'K', 'M', 'G']
     size, symbol = re.findall(r'([\d\.]+)(\w?)', str(size))[0]
@@ -305,8 +311,7 @@ def get_captcha_codes():
 def get_error(tr_limit=getattr(settings, 'TEST_TRACEBACK_LIMIT', None)):
     etype, value, tb = sys.exc_info()
     if any([etype, value, tb]):
-        text = traceback.format_exception(etype, value, tb, limit=tr_limit)
-        err = ''.join([el.decode('utf-8') for el in traceback.format_exception(etype, value, tb, limit=tr_limit)])
+        err = ''.join([el for el in traceback.format_exception(etype, value, tb, limit=tr_limit)])
         result = unicode_to_readable(err)
     else:
         result = ''
@@ -755,7 +760,7 @@ def get_random_svg_content(size=10, width=1, height=1):
     header = '<?xml version=\"1.0\" standalone=\"no\"?>\n' \
              '<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">\n'
     output.write(header)
-    output.write(str(et.tostring(doc)))
+    output.write(et.tostring(doc).decode())
     content = output.getvalue()
     size -= len(content)
     if size > 0:
@@ -880,8 +885,9 @@ def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
 def unicode_to_readable(text):
     if isinstance(text, bytes):
         text = text.decode()
-    def unescape_one_match(matchObj):
-        return matchObj.group(0).encode().decode('unicode_escape')
+
+    def unescape_one_match(match_obj):
+        return match_obj.group(0).encode().decode('unicode_escape')
     return re.sub(r"\\u[0-9a-fA-F]{4}", unescape_one_match, text)
 
 

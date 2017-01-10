@@ -2,7 +2,7 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-# from builtins import str
+from builtins import str
 from future.utils import viewitems, viewkeys, viewvalues
 from past.builtins import xrange, basestring
 
@@ -38,7 +38,7 @@ from lxml.html import document_fromstring
 from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                     get_fields_list_from_response, get_all_form_errors, generate_random_obj,
-                    get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model)
+                    get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model, FILE_TYPES)
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
@@ -281,6 +281,7 @@ class GlobalTestMixIn(object):
     maxDiff = None
     non_field_error_key = '__all__'
     unique_fields = None
+    longMessage = False
 
     def __init__(self, *args, **kwargs):
         if self.additional_params is None:
@@ -372,13 +373,13 @@ class GlobalTestMixIn(object):
                                                      key, '\n'.join(errors)))
                 else:
                     d1_value = d1[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
-                                           (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) \
+                                           (isinstance(d1[key], bytes) and isinstance(d2[key], bytes))) \
                         else repr(d1[key])
-                    d1_value = d1_value if isinstance(d1_value, unicode) else d1_value.decode('utf-8')
+                    d1_value = d1_value if isinstance(d1_value, str) else d1_value.decode('utf-8')
                     d2_value = d2[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
-                                           (isinstance(d1[key], unicode) and isinstance(d2[key], unicode))) \
+                                           (isinstance(d1[key], bytes) and isinstance(d2[key], bytes))) \
                         else repr(d2[key])
-                    d2_value = d2_value if isinstance(d2_value, unicode) else d2_value.decode('utf-8')
+                    d2_value = d2_value if isinstance(d2_value, str) else d2_value.decode('utf-8')
                     text.append('%s[%s]: %s != %s' %
                                 (parent_key if parent_key else '',
                                  key, d1_value, d2_value))
@@ -461,7 +462,7 @@ class GlobalTestMixIn(object):
                 self.assertEqual(list1, list2)
             except:
                 _, v, _ = sys.exc_info()
-                errors.append(v.message)
+                errors.append(str(v))
 
         res = '\n'.join(errors)
         if not isinstance(res, str):
@@ -487,11 +488,8 @@ class GlobalTestMixIn(object):
             raise AssertionError('There are errors at form: ' + repr(form_errors))
 
     def assert_objects_equal(self, obj1, obj2, exclude=None, other_values=None):
-        if not other_values:
-            other_values = {}
-        if not exclude:
-            exclude = []
-        exclude = list(exclude)
+        other_values = other_values or {}
+        exclude = list(exclude or [])
         if (getattr(self, 'obj', None) and isinstance(obj1, self.obj)) or not getattr(self, 'obj', None):
             exclude.extend(getattr(self, 'exclude_from_check', []))
         local_errors = []
@@ -570,7 +568,7 @@ class GlobalTestMixIn(object):
                     try:
                         self.assertEqual(value.all().count(), count_for_check)
                     except Exception as e:
-                        local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, unicode)
+                        local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, str)
                                                               else field) + str(e))
                 for i, el in enumerate(value.all().order_by('pk')
                                        if value.__class__.__name__ in ('RelatedManager', 'QuerySet')
@@ -582,24 +580,24 @@ class GlobalTestMixIn(object):
                     try:
                         self.assert_object_fields(el, _params)
                     except Exception as e:
-                        local_errors.append('[%s]:%s' % (field.encode('utf-8') if isinstance(field, unicode)
+                        local_errors.append('[%s]:%s' % (field.encode('utf-8') if isinstance(field, str)
                                                          else field, '\n  '.join(str(e).splitlines())))
                 continue
 
             params_value = params[field]
             value, params_value = self.get_params_according_to_type(value, params_value)
 
-            if isinstance(value, unicode):
+            if isinstance(value, str):
                 value = value.encode('utf-8')
-            if isinstance(params_value, unicode):
+            if isinstance(params_value, str):
                 params_value = params_value.encode('utf-8')
             try:
                 self.assertEqual(value, params_value)
             except AssertionError:
                 text = '[%s]: %s != %s' %\
-                    (field.decode('utf-8') if isinstance(field, unicode) else field,
-                     repr(value) if not isinstance(value, str) else repr(value.decode('utf-8')),
-                     repr(params_value) if not isinstance(params_value, str) else repr(params_value.decode('utf-8')))
+                    (field.decode('utf-8') if isinstance(field, bytes) else field,
+                     repr(value) if not isinstance(value, bytes) else repr(value.decode('utf-8')),
+                     repr(params_value) if not isinstance(params_value, bytes) else repr(params_value.decode('utf-8')))
                 local_errors.append(text)
 
         if local_errors:
@@ -611,7 +609,7 @@ class GlobalTestMixIn(object):
             try:
                 self.assertEqual(first, second)
             except AssertionError as e:
-                full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(e.message).decode('utf-8')
+                full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(str(e)).decode('utf-8')
         first_length = len(first)
         second_length = len(second)
         for n in xrange(max(first_length, second_length)):
@@ -643,7 +641,7 @@ class GlobalTestMixIn(object):
         params = copy(params)
         keys = params.keys()
         for k in keys:
-            if hasattr(params[k], 'read'):
+            if isinstance(params[k], FILE_TYPES + (ContentFile,)):
                 content_file = params.pop(k)
                 content_file.seek(0)
                 tmp_params[k] = ContentFile(content_file.read(), content_file.name)
@@ -663,7 +661,7 @@ class GlobalTestMixIn(object):
         if errors is None:
             errors = self.errors
         text = (text + ':\n') if text else ''
-        if isinstance(text, str):
+        if isinstance(text, bytes):
             text = text.decode('utf-8')
         if getattr(settings, 'COLORIZE_TESTS', False) and text:
             text = "\x1B[38;5;%dm" % color + text + "\x1B[0m"
@@ -678,7 +676,7 @@ class GlobalTestMixIn(object):
         self.assertFalse(errors, format_errors(errors))
 
     def generate_random_obj(self, obj_model, additional_params=None, filename=None):
-        return genetest_get_random_file_with_img_filenamerate_random_obj(obj_model, additional_params, filename)
+        return generate_random_obj(obj_model, additional_params, filename)
 
     def get_all_form_messages(self, response):
         try:
@@ -724,11 +722,11 @@ class GlobalTestMixIn(object):
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
         verbose_obj = self.obj._meta.verbose_name if getattr(self, 'obj', None) else 'Объект'
-        if isinstance(verbose_obj, str):
+        if isinstance(verbose_obj, bytes):
             verbose_obj = verbose_obj.decode('utf-8')
         verbose_field = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field) if \
             (getattr(self, 'obj', None) and field in get_all_field_names_from_model(self.obj)) else field
-        if isinstance(verbose_field, str):
+        if isinstance(verbose_field, bytes):
             verbose_field = verbose_field.decode('utf-8')
         ERROR_MESSAGES = {'required': 'Обязательное поле.',
                           'max_length': 'Убедитесь, что это значение содержит не ' +
@@ -868,7 +866,7 @@ class GlobalTestMixIn(object):
         if params_value is None:
             params_value = ''
 
-        if isinstance(value, (basestring)) and isinstance(params_value, (str, unicode)):
+        if isinstance(value, basestring) and isinstance(params_value, basestring):
             if isinstance(value, str):
                 value = value.encode('utf-8')
             if isinstance(params_value, str):
@@ -936,8 +934,9 @@ class GlobalTestMixIn(object):
                 if isinstance(params_value, (int, float)):
                     params_value = repr(params_value)
                 params_value = Decimal(params_value)
-        elif (set([m.__name__ for m in value.__class__.__mro__]).intersection(['file', 'FieldFile', 'ImageFieldFile'])
-              or hasattr(params_value, 'read')):
+        elif (set([m.__name__ for m in value.__class__.__mro__]).intersection(['file', '_IOBase', 'FieldFile',
+                                                                               'ImageFieldFile'])
+              or isinstance(params_value, FILE_TYPES + (ContentFile,))):
             if value:
                 value = value if isinstance(value, basestring) else value.name
                 value = re.sub(r'_[a-zA-Z0-9]+(?=$|\.[\w\d]+$)', '', os.path.basename(value))
@@ -991,10 +990,16 @@ class GlobalTestMixIn(object):
         return obj_related_objects
 
     def get_value_for_compare(self, obj, field):
-        if not hasattr(obj, field):
-            value = None
-        elif getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager',
-                                                        'GenericRelatedObjectManager'):
+        # Because python2 return False on any exception, but python3 only on AttributeError.
+        # Django return ValueError if use empty many_to_many field
+        try:
+            if not hasattr(obj, field):
+                return None
+        except Exception:
+            return None
+
+        if getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager',
+                                                      'GenericRelatedObjectManager'):
             value = [v for v in getattr(obj, field).values_list('pk', flat=True).order_by('pk')]
         else:
             value = getattr(obj, field)
@@ -1039,7 +1044,7 @@ class GlobalTestMixIn(object):
             else:
                 return uniform(max(values_range['min_values']), min(values_range['max_values']))
         else:
-            return get_randname(length, 'w').decode('utf-8')
+            return get_randname(length, 'w')
 
     def get_value_for_error_message(self, field, value):
         if self.is_file_field(field):
@@ -1093,11 +1098,11 @@ class GlobalTestMixIn(object):
             params = getattr(self, name, None)
             if not params:
                 return False
-            if hasattr(params.get(field, None), 'read'):
+            if isinstance(params.get(field, None), FILE_TYPES + (ContentFile,)):
                 return True
             if (isinstance(params.get(field, None), (list, tuple))
                     and params.get(field)
-                    and all([hasattr(el, 'read') for el in params.get(field)])):
+                    and all([isinstance(el, FILE_TYPES + (ContentFile,)) for el in params.get(field)])):
                 return True
             return False
         return field not in getattr(self, 'not_file', []) and \
@@ -1297,7 +1302,7 @@ class FormTestMixIn(GlobalTestMixIn):
         if not default_params:
             return []
         result_all_fields = []
-        b = default_params.keys()
+        b = list(default_params.keys())
         b.sort()
         while b:
             el = b.pop(0)
@@ -1605,11 +1610,11 @@ class FormTestMixIn(GlobalTestMixIn):
             else:
                 min_values.append(-32767 - 1)
         elif 'Integer' in class_name:
-            max_values.extend([2147483647, sys.maxint])
+            max_values.extend([2147483647, sys.maxsize])
             if 'Positive' in class_name:
                 min_values.append(0)
             else:
-                min_values.extend([-2147483647 - 1, -sys.maxint - 1])
+                min_values.extend([-2147483647 - 1, -sys.maxsize - 1])
         elif 'Float' in class_name or 'Decimal' in class_name:
             max_values.append(sys.float_info.max)
             min_values.append(-sys.float_info.max)

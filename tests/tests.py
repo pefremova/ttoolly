@@ -3,6 +3,7 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 from builtins import str
+from past.builtins import xrange
 
 from collections import OrderedDict
 from datetime import date, datetime, time
@@ -25,6 +26,8 @@ from ttoolly.models import TEMP_DIR, FormTestMixIn, GlobalTestMixIn
 
 from test_project.test_app.models import OtherModel, SomeModel
 import xml.etree.cElementTree as et
+
+from ttoolly.utils import FILE_TYPES
 
 
 class TestGlobalTestMixInMethods(unittest.TestCase):
@@ -56,51 +59,51 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
     def test_assert_form_equal_not_need(self):
         fields_list_1 = ['test1', 'test2']
-        fields_list_2 = ['test2', ]
+        fields_list_2 = ['test2']
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        msg = "Fields [u'test1'] not need at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "Fields [%s] not need at form" % repr('test1')
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_not_need_2(self):
         fields_list_1 = ['test1', 'test2']
         fields_list_2 = []
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        msg = "Fields [u'test1', u'test2'] not need at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "Fields [%s, %s] not need at form" % (repr('test1'), repr('test2'))
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_not_at_form(self):
         fields_list_1 = ['test1']
-        fields_list_2 = ['test1', 'test2', ]
+        fields_list_2 = ['test1', 'test2']
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        msg = "Fields [u'test2'] not at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "Fields [%s] not at form" % repr('test2')
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_not_at_form_2(self):
         fields_list_1 = []
-        fields_list_2 = ['test1', 'test2', ]
+        fields_list_2 = ['test1', 'test2']
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        msg = "Fields [u'test1', u'test2'] not at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "Fields [%s, %s] not at form" % (repr('test1'), repr('test2'))
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_duplicate(self):
         fields_list_1 = ['test1', 'test2', 'test2']
-        fields_list_2 = ['test1', 'test2', ]
+        fields_list_2 = ['test1', 'test2']
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        msg = "Field u'test2' present at form 2 time(s) (should be 1)"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "Field %s present at form 2 time(s) (should be 1)" % repr('test2')
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_not_need_and_not_at_form(self):
         fields_list_1 = ['test1', 'test2']
-        fields_list_2 = ['test1', 'test3', ]
+        fields_list_2 = ['test1', 'test3']
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        msg = "Fields [u'test3'] not at form;\nFields [u'test2'] not need at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "Fields [%s] not at form;\nFields [%s] not need at form" % (repr('test3'), repr('test2'))
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_positive_with_custom_message(self):
         fields_list_1 = ['test1', 'test2']
@@ -112,143 +115,141 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
     def test_assert_form_equal_not_need_with_custom_message(self):
         fields_list_1 = ['test1', 'test2']
-        fields_list_2 = ['test2', ]
+        fields_list_2 = ['test2']
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        msg = "тест:\nFields [u'test1'] not need at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "тест:\nFields [%s] not need at form" % repr('test1')
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_not_need_with_custom_message_2(self):
         fields_list_1 = ['test1', 'test2']
         fields_list_2 = []
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        msg = "тест:\nFields [u'test1', u'test2'] not need at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "тест:\nFields [%s, %s] not need at form" % (repr('test1'), repr('test2'))
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_not_at_form_with_custom_message(self):
         fields_list_1 = ['test1']
         fields_list_2 = ['test1', 'test2', ]
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        msg = "тест:\nFields [u'test2'] not at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "тест:\nFields [%s] not at form" % repr('test2')
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_not_at_form_with_custom_message_2(self):
         fields_list_1 = []
         fields_list_2 = ['test1', 'test2', ]
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        msg = "тест:\nFields [u'test1', u'test2'] not at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "тест:\nFields [%s, %s] not at form" % (repr('test1'), repr('test2'))
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_duplicate_with_custom_message(self):
         fields_list_1 = ['test1', 'test2', 'test2']
         fields_list_2 = ['test1', 'test2', ]
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        msg = "тест:\nField u'test2' present at form 2 time(s) (should be 1)"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "тест:\nField %s present at form 2 time(s) (should be 1)" % repr('test2')
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_form_equal_not_need_and_not_at_form_with_custom_message(self):
         fields_list_1 = ['test1', 'test2']
         fields_list_2 = ['test1', 'test3', ]
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        msg = "тест:\nFields [u'test3'] not at form;\nFields [u'test2'] not need at form"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "тест:\nFields [%s] not at form;\nFields [%s] not need at form" % (repr('test3'), repr('test2'))
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_dict_equal(self):
-        for dict1, dict2, message in (('q', {}, 'First argument is not a dictionary'),
-                                      (1, {}, 'First argument is not a dictionary'),
-                                      ((), {}, 'First argument is not a dictionary'),
-                                      ([], {}, 'First argument is not a dictionary'),
-                                      ({}, 'q', 'Second argument is not a dictionary'),
-                                      ({}, 1, 'Second argument is not a dictionary'),
-                                      ({}, (), 'Second argument is not a dictionary'),
-                                      ({}, [], 'Second argument is not a dictionary'),
-                                      ({'qwe': 123}, {'qwe': {'a': 1, }}, "[qwe]: 123 != {u'a': 1}"),
-                                      ({'qwe': {'a': 1, }}, {'qwe': 123}, "[qwe]: {u'a': 1} != 123"),
-                                      ({'qwe': {'a': 1, }}, {'qwe': {'a': 1, 'b': 1}},
-                                       "[qwe]:\n  Not in first dict: [u'b']"),
-                                      ({'qwe': {'a': 1, 'b': 1}}, {'qwe': {'a': 1}},
-                                       "[qwe]:\n  Not in second dict: [u'b']"),
-                                      ({'qwe': {'a': 1, 'b': 2}}, {'qwe': {'a': 2, 'b': 1}},
-                                       "[qwe]:\n  [qwe][a]: 1 != 2\n  [qwe][b]: 2 != 1"),
-                                      ({'qwe': 'q', 'z': ''}, {'qwe': 1, },
-                                       "Not in second dict: [u'z']\n[qwe]: u'q' != 1"),
-                                      ({'qwe': 'й'}, {'qwe': 'йцу'}, "[qwe]: й != йцу"),
-                                      ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'.encode('utf-8')}, "[qwe]: й != йцу"),
-                                      ({'qwe': 'й'}, {'qwe': 'йцу'.encode('utf-8')},
-                                       "[qwe]: %s != %s" % (repr('й'), repr('йцу'.encode('utf-8')))),
-                                      ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'},
-                                       "[qwe]: %s != %s" % (repr('й'.encode('utf-8')), repr('йцу'))),
-                                      ({'qwe': ''}, {}, "Not in second dict: [u'qwe']"),
-                                      ({}, {'qwe': ''}, "Not in first dict: [u'qwe']"),):
+        data = (
+            ('q', {}, 'First argument is not a dictionary'),
+            (1, {}, 'First argument is not a dictionary'),
+            ((), {}, 'First argument is not a dictionary'),
+            ([], {}, 'First argument is not a dictionary'),
+            ({}, 'q', 'Second argument is not a dictionary'),
+            ({}, 1, 'Second argument is not a dictionary'),
+            ({}, (), 'Second argument is not a dictionary'),
+            ({}, [], 'Second argument is not a dictionary'),
+            ({'qwe': 123}, {'qwe': {'a': 1}}, "[qwe]: 123 != %s" % repr({'a': 1})),
+            ({'qwe': {'a': 1}}, {'qwe': 123}, "[qwe]: %s != 123" % repr({'a': 1})),
+            ({'qwe': {'a': 1}}, {'qwe': {'a': 1, 'b': 1}}, "[qwe]:\n  Not in first dict: [%s]" % repr('b')),
+            ({'qwe': {'a': 1, 'b': 1}}, {'qwe': {'a': 1}}, "[qwe]:\n  Not in second dict: [%s]" % repr('b')),
+            ({'qwe': {'a': 1, 'b': 2}}, {'qwe': {'a': 2, 'b': 1}}, "[qwe]:\n  [qwe][a]: 1 != 2\n  [qwe][b]: 2 != 1"),
+            ({'qwe': 'q', 'z': ''}, {'qwe': 1, }, "Not in second dict: [%s]\n[qwe]: %s != 1" % (repr('z'), repr('q'))),
+            ({'qwe': 'й'}, {'qwe': 'йцу'}, "[qwe]: й != йцу"),
+            ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'.encode('utf-8')}, "[qwe]: й != йцу"),
+            ({'qwe': 'й'}, {'qwe': 'йцу'.encode('utf-8')},
+             "[qwe]: %s != %s" % (repr('й'), repr('йцу'.encode('utf-8')))),
+            ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'},
+             "[qwe]: %s != %s" % (repr('й'.encode('utf-8')), repr('йцу'))),
+            ({'qwe': ''}, {}, "Not in second dict: [%s]" % repr('qwe')),
+            ({}, {'qwe': ''}, "Not in first dict: [%s]" % repr('qwe')),
+        )
+        for dict1, dict2, message in data:
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_dict_equal(dict1, dict2)
-            self.assertEqual(ar.exception.__unicode__(), message)
+            self.assertEqual(str(ar.exception), message)
 
     def test_assert_dict_equal_with_custom_message(self):
-        for dict1, dict2, message in (('q', {}, 'First argument is not a dictionary'),
-                                      (1, {}, 'First argument is not a dictionary'),
-                                      ((), {}, 'First argument is not a dictionary'),
-                                      ([], {}, 'First argument is not a dictionary'),
-                                      ({}, 'q', 'Second argument is not a dictionary'),
-                                      ({}, 1, 'Second argument is not a dictionary'),
-                                      ({}, (), 'Second argument is not a dictionary'),
-                                      ({}, [], 'Second argument is not a dictionary'),
-                                      ({'qwe': 123}, {'qwe': {'a': 1, }}, "[qwe]: 123 != {u'a': 1}"),
-                                      ({'qwe': {'a': 1, }}, {'qwe': 123}, "[qwe]: {u'a': 1} != 123"),
-                                      ({'qwe': {'a': 1, }}, {'qwe': {'a': 1, 'b': 1}},
-                                       "[qwe]:\n  Not in first dict: [u'b']"),
-                                      ({'qwe': {'a': 1, 'b': 1}}, {'qwe': {'a': 1}},
-                                       "[qwe]:\n  Not in second dict: [u'b']"),
-                                      ({'qwe': {'a': 1, 'b': 2}}, {'qwe': {'a': 2, 'b': 1}},
-                                       "[qwe]:\n  [qwe][a]: 1 != 2\n  [qwe][b]: 2 != 1"),
-                                      ({'qwe': 'q', 'z': ''}, {'qwe': 1, },
-                                       "Not in second dict: [u'z']\n[qwe]: u'q' != 1"),
-                                      ({'qwe': 'й'}, {'qwe': 'йцу'}, u"[qwe]: й != йцу"),
-                                      ({'qwe': 'й'.encode('utf-8')},
-                                       {'qwe': 'йцу'.encode('utf-8')}, u"[qwe]: й != йцу"),
-                                      ({'qwe': 'й'}, {'qwe': 'йцу'.encode('utf-8')},
-                                       u"[qwe]: %s != %s" % (repr('й'), repr('йцу'.encode('utf-8')))),
-                                      ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'},
-                                       u"[qwe]: %s != %s" % (repr('й'.encode('utf-8')), repr('йцу'))),
-                                      ({'qwe': ''}, {}, "Not in second dict: [u'qwe']"),
-                                      ({}, {'qwe': ''}, "Not in first dict: [u'qwe']")):
-
+        data = (
+            ('q', {}, 'First argument is not a dictionary'),
+            (1, {}, 'First argument is not a dictionary'),
+            ((), {}, 'First argument is not a dictionary'),
+            ([], {}, 'First argument is not a dictionary'),
+            ({}, 'q', 'Second argument is not a dictionary'),
+            ({}, 1, 'Second argument is not a dictionary'),
+            ({}, (), 'Second argument is not a dictionary'),
+            ({}, [], 'Second argument is not a dictionary'),
+            ({'qwe': 123}, {'qwe': {'a': 1}}, "[qwe]: 123 != %s" % repr({'a': 1})),
+            ({'qwe': {'a': 1, }}, {'qwe': 123}, "[qwe]: %s != 123" % repr({'a': 1})),
+            ({'qwe': {'a': 1, }}, {'qwe': {'a': 1, 'b': 1}}, "[qwe]:\n  Not in first dict: [%s]" % repr('b')),
+            ({'qwe': {'a': 1, 'b': 1}}, {'qwe': {'a': 1}}, "[qwe]:\n  Not in second dict: [%s]" % repr('b')),
+            ({'qwe': {'a': 1, 'b': 2}}, {'qwe': {'a': 2, 'b': 1}}, "[qwe]:\n  [qwe][a]: 1 != 2\n  [qwe][b]: 2 != 1"),
+            ({'qwe': 'q', 'z': ''}, {'qwe': 1, }, "Not in second dict: [%s]\n[qwe]: %s != 1" % (repr('z'), repr('q'))),
+            ({'qwe': 'й'}, {'qwe': 'йцу'}, "[qwe]: й != йцу"),
+            ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'.encode('utf-8')}, "[qwe]: й != йцу"),
+            ({'qwe': 'й'}, {'qwe': 'йцу'.encode('utf-8')},
+             "[qwe]: %s != %s" % (repr('й'), repr('йцу'.encode('utf-8')))),
+            ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'},
+             "[qwe]: %s != %s" % (repr('й'.encode('utf-8')), repr('йцу'))),
+            ({'qwe': ''}, {}, "Not in second dict: [%s]" % repr('qwe')),
+            ({}, {'qwe': ''}, "Not in first dict: [%s]" % repr('qwe')),
+        )
+        for dict1, dict2, message in data:
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_dict_equal(dict1, dict2, 'тест')
-            self.assertEqual(ar.exception.__unicode__(), 'тест:\n' + message)
+            self.assertEqual(str(ar.exception), 'тест:\n' + message)
 
     def test_assert_equal_dicts_equal(self):
         self.btc.assert_dict_equal({'q': 1, 'w': 2}, {'w': 2, 'q': 1})
         self.btc.assert_dict_equal({'q': 1, 'w': 2}, {'w': 2, 'q': 1}, 'Дополнительный текст')
 
     def test_assert_list_equal(self):
-        for list1, list2, message in (('q', [], 'First argument is not a list'),
-                                      ([], 'q', 'Second argument is not a list'),
-                                      ([1, ], [
-                                       1, 2], 'Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
-                                      ([{}, ], [{}, {'q': 1}], '[line 1]: Not in first list'),
-                                      ([{'q': 1}, {'z': 2}], [{'w': 1}, {'z': 2}],
-                                       "[line 0]: Not in first dict: [u'w']\nNot in second dict: [u'q']"),
-                                      ([[], [1, ]], [[], [
-                                       1, 2]], '[line 1]: Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
-                                      ([1, 2], [
-                                       1, ], 'Lists differ: [1, 2] != [1]\n\nFirst list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1, 2]\n+ [1]'),
-                                      ([{}, {'q': 1}], [{}, ], '[line 1]: Not in second list')):
+        data = (
+            ('q', [], 'First argument is not a list'),
+            ([], 'q', 'Second argument is not a list'),
+            ([1], [1, 2], 'Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
+            ([{}], [{}, {'q': 1}], '[line 1]: Not in first list'),
+            ([{'q': 1}, {'z': 2}], [{'w': 1}, {'z': 2}],
+             "[line 0]: Not in first dict: [%s]\nNot in second dict: [%s]" % (repr('w'), repr('q'))),
+            ([[], [1]], [[], [1, 2]],
+             '[line 1]: Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
+            ([1, 2], [1],
+             'Lists differ: [1, 2] != [1]\n\nFirst list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1, 2]\n+ [1]'),
+            ([{}, {'q': 1}], [{}], '[line 1]: Not in second list'),
+        )
+        for list1, list2, message in data:
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_list_equal(list1, list2)
-            self.assertEqual(ar.exception.__unicode__(), message)
+            self.assertEqual(str(ar.exception), message)
 
     def test_assert_equal_lists_equal(self):
         self.btc.assert_list_equal([], [])
         self.btc.assert_list_equal([1, 2], [1, 2])
-        self.btc.assert_list_equal([1, 2], [1, 2], u'Дополнительный текст')
+        self.btc.assert_list_equal([1, 2], [1, 2], 'Дополнительный текст')
         self.btc.assert_list_equal([{'q': 1}, {'w': 2}], [{'q': 1}, {'w': 2}])
-        self.btc.assert_list_equal([{'q': 1}, {'w': 2}], [{'q': 1}, {'w': 2}], u'Дополнительный текст')
+        self.btc.assert_list_equal([{'q': 1}, {'w': 2}], [{'q': 1}, {'w': 2}], 'Дополнительный текст')
         self.btc.assert_list_equal([{'q': 1}, [1, 2, 3], 4], [{'q': 1}, [1, 2, 3], 4])
 
     def test_get_random_file(self):
@@ -391,8 +392,8 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
         self.assertEqual(self.btc.get_params_according_to_type('1', 2), ('1', 2))
         self.assertEqual(self.btc.get_params_according_to_type(1, '2'), ('1', '2'))
-        self.assertEqual(self.btc.get_params_according_to_type(None, ''), ('', ''))
-        self.assertEqual(self.btc.get_params_according_to_type('', None), ('', ''))
+        self.assertEqual(self.btc.get_params_according_to_type(None, ''), (b'', b''))
+        self.assertEqual(self.btc.get_params_according_to_type('', None), (b'', b''))
         self.assertEqual(self.btc.get_params_according_to_type(1, None), ('1', ''))
         self.assertEqual(self.btc.get_params_according_to_type(None, 1), ('', 1))
 
@@ -448,7 +449,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         params = {'test_field': 'qwe'}
         self.btc.update_params(params)
         self.assertNotEqual(params['test_field'], 'qwe')
-        self.assertEqual(type(params['test_field']), unicode)
+        self.assertTrue(isinstance(params['test_field'], str))
 
     def test_update_params_with_unique_not_change(self):
         self.btc.all_unique = {('test_field',): 'test_field'}
@@ -461,25 +462,25 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_text_equal_by_symbol('qqwerty', 'qwerty')
         msg = "Not equal in position 1: 'qwerty' != 'werty'"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_text_equal_by_symbol_at_end(self):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_text_equal_by_symbol('qwertyy', 'qwerty')
         msg = "Not equal in position 6: 'y' != ''"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_text_equal_by_symbol_at_end_2(self):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_text_equal_by_symbol('qwerty', 'qwertyy')
         msg = "Not equal in position 6: '' != 'y'"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_text_equal_by_symbol_with_count(self):
         with self.assertRaises(AssertionError) as ar:
-            self.btc.assert_text_equal_by_symbol(u'текст для !сравнения', u'текст для сравнения', 3)
-        msg = u"Not equal in position 10: '!ср...' != 'сра...'"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+            self.btc.assert_text_equal_by_symbol('текст для !сравнения', u'текст для сравнения', 3)
+        msg = "Not equal in position 10: '!ср...' != 'сра...'"
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_mail_count_positive(self):
         class M():
@@ -498,8 +499,8 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                 self.to = to
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_mail_count([M(to='test@test.test')], 2)
-        msg = u"Sent 1 mails expect of 2. To test@test.test"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "Sent 1 mails expect of 2. To test@test.test"
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_mail_count_many_mails_negative(self):
         class M():
@@ -508,17 +509,17 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                 self.to = to
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_mail_count([M(to='test@test.test'), M(to='second_test@test.test')], 1)
-        msg = u"Sent 2 mails expect of 1. To second_test@test.test, test@test.test"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        msg = "Sent 2 mails expect of 1. To second_test@test.test, test@test.test"
+        self.assertEqual(str(ar.exception), msg)
 
     def test_get_value_for_field(self):
         res = self.btc.get_value_for_field(15, 'some_field_name')
-        self.assertEqual(type(res), unicode)
+        self.assertTrue(isinstance(res, str))
         self.assertEqual(len(res), 15)
 
     def test_get_value_for_email_field(self):
         res = self.btc.get_value_for_field(25, 'email_field_name')
-        self.assertEqual(type(res), unicode)
+        self.assertTrue(isinstance(res, str))
         self.assertIn('@', res)
         self.assertEqual(len(res), 25)
 
@@ -530,7 +531,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
     def test_get_value_for_digital_field(self):
         self.btc.digital_fields = ('some_field_name',)
         res = self.btc.get_value_for_field(5, 'some_field_name')
-        self.assertEqual(type(res), unicode)
+        self.assertTrue(isinstance(res, str))
         self.assertEqual(len(res), 5)
         self.assertTrue(int(res))
 
@@ -538,14 +539,14 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.choice_fields = ('some_field_name',)
         self.btc.choice_fields_values = {'some_field_name': ['qwe', 'rty']}
         res = self.btc.get_value_for_field(5, 'some_field_name')
-        self.assertEqual(type(res), unicode)
+        self.assertTrue(isinstance(res, str))
         self.assertIn(res, ['qwe', 'rty'])
 
     def test_get_value_for_multiselect_field(self):
         self.btc.multiselect_fields = ('some_field_name',)
         self.btc.choice_fields_values = {'some_field_name': ['qwe', 'rty']}
         res = self.btc.get_value_for_field(5, 'some_field_name')
-        self.assertEqual(type(res), list)
+        self.assertTrue(isinstance(res, list))
         self.assertTrue(set(res).intersection(['qwe', 'rty']))
 
     def test_get_value_for_foreign_field(self):
@@ -553,7 +554,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         OtherModel.objects.create()
         self.btc.digital_fields = ('foreign_key_field',)
         res = self.btc.get_value_for_field(5, 'foreign_key_field')
-        self.assertEqual(type(res), int)
+        self.assertTrue(isinstance(res, int))
         self.assertTrue(OtherModel.objects.filter(pk=res).exists())
 
     def test_get_value_for_datetime_field(self):
@@ -589,28 +590,28 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         try:
             self.btc.assert_xpath_count(response, '//a[@href="/qwe"]', 1)
         except Exception as e:
-            self.assertTrue(False, 'With raise: %s' % e.__unicode__())
+            self.assertTrue(False, 'With raise: %s' % str(e))
 
     def test_assert_xpath_count_wrong_status(self):
         response = HttpResponse('<html><a href="/qwe">тест</a><a href="test">тест2</a></html>', status=404)
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_xpath_count(response, '//a[@href="/qwe"]', 1)
         msg = "Response status code 404 != 200"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_xpath_count_wrong_status_2(self):
         response = HttpResponse('<html><a href="/qwe">тест</a><a href="test">тест2</a></html>')
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_xpath_count(response, '//a[@href="/qwe"]', 1, 404)
         msg = "Response status code 200 != 404"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_xpath_count_negative(self):
         response = HttpResponse('<html><a href="/qwe">тест</a><a href="test">тест2</a></html>')
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_xpath_count(response, '//a', 1)
         msg = "Found 2 instances of '//a' (Should be 1)"
-        self.assertEqual(ar.exception.__unicode__(), msg)
+        self.assertEqual(str(ar.exception), msg)
 
     def test_assert_xpath_count_xml_positive(self):
         response = HttpResponse('<?xml version="1.0"?><content><el><link>qwe</link><text>тест</text></el>'
@@ -666,7 +667,9 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_object_fields(el_1, {'text_field': 'other text'})
         self.assertEqual(
-            ar.exception.__unicode__(), "Values from object != expected values from dict:\n[text_field]: u'text' != u'other text'")
+            str(ar.exception),
+            "Values from object != expected values from dict:\n[text_field]: %s != %s" % (repr('text'), repr('other text'))
+        )
 
     def test_assert_object_fields_with_exclude(self):
         el_1 = SomeModel(text_field='текст 1')
@@ -689,7 +692,9 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             self.btc.assert_object_fields(el_1, {'text_field': 'text'},
                                           other_values={'file_field': 'test.test'})
         self.assertEqual(
-            ar.exception.__unicode__(), "Values from object != expected values from dict:\n[file_field]: u'' != u'test.test'", )
+            str(ar.exception),
+            "Values from object != expected values from dict:\n[file_field]: %s != %s" % (repr(''), repr('test.test'))
+        )
 
     def test_assert_object_fields_with_difference_with_other_values_in_class(self):
         el_1 = SomeModel(text_field='text')
@@ -697,7 +702,9 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_object_fields(el_1, {'text_field': 'text'},)
         self.assertEqual(
-            ar.exception.__unicode__(), "Values from object != expected values from dict:\n[file_field]: u'' != u'test.test'")
+            str(ar.exception),
+            "Values from object != expected values from dict:\n[file_field]: %s != %s" % (repr(''), repr('test.test'))
+        )
 
     def test_assert_object_fields_with_not_existing_other_values(self):
         el_1 = SomeModel(text_field='текст 1')
@@ -830,14 +837,14 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.errors = ['some error text']
         with self.assertRaises(AssertionError) as ar:
             self.btc.formatted_assert_errors()
-        self.assertEqual(ar.exception.__unicode__(), '\nsome error text')
+        self.assertEqual(str(ar.exception.args[0], 'utf-8'), '\nsome error text')
         self.assertEqual(self.btc.errors, [])
 
     def test_formatted_assert_errors_with_many_errors(self):
         self.btc.errors = ['some error text', 'other error']
         with self.assertRaises(AssertionError) as ar:
             self.btc.formatted_assert_errors()
-        self.assertEqual(ar.exception.__unicode__(), '\nsome error text\n\nother error')
+        self.assertEqual(str(ar.exception.args[0], 'utf-8'), '\nsome error text\n\nother error')
         self.assertEqual(self.btc.errors, [])
 
 
@@ -1083,13 +1090,18 @@ class TestFormTestMixInMethods(unittest.TestCase):
     def test_get_object_fields(self):
         some_element = SomeModel()
         other_element = OtherModel()
-        self.assertEqual(sorted(self.ftc.get_object_fields(some_element)),
-                         sorted(['char_field', 'digital_field', 'email_field', 'file_field', 'foreign_key_field', 'id',
-                                 'int_field', 'many_related_field', 'text_field', 'unique_int_field', 'bool_field',
-                                 'date_field', 'datetime_field', 'image_field', 'one_to_one_field', 'one_to_one_field2', ]))
-        self.assertEqual(sorted(self.ftc.get_object_fields(other_element)),
-                         sorted(['id', 'other_text_field', 'related_name', 'somemodel_set', 'somemodel',
-                                 'one_to_one_related_name']))
+        self.assertListEqual(
+            [str(x) for x in sorted(self.ftc.get_object_fields(some_element))],
+            [str(x) for x in sorted([
+                'char_field', 'digital_field', 'email_field', 'file_field', 'foreign_key_field', 'id',
+                'int_field', 'many_related_field', 'text_field', 'unique_int_field', 'bool_field',
+                'date_field', 'datetime_field', 'image_field', 'one_to_one_field', 'one_to_one_field2'])]
+        )
+        self.assertListEqual(
+            [str(x) for x in sorted(self.ftc.get_object_fields(other_element))],
+            [str(x) for x in sorted(['id', 'other_text_field', 'related_name', 'somemodel_set', 'somemodel',
+                                     'one_to_one_related_name'])]
+        )
 
     def test_fill_all_fields(self):
         params = {'a': 'test',
@@ -1119,12 +1131,13 @@ class TestFormTestMixInMethods(unittest.TestCase):
         el_2 = SomeModel(text_field='other text', int_field=1)
         with self.assertRaises(AssertionError) as ar:
             self.ftc.assert_objects_equal(el_1, el_2)
-        self.assertIn('"text_field":\n', ar.exception.__unicode__())
-        self.assertIn('"foreign_key_field":\n', ar.exception.__unicode__())
-        self.assertIn('"many_related_field":\n', ar.exception.__unicode__())
-        self.assertIn("AssertionError: u'text' != u'other text'", ar.exception.__unicode__())
-        self.assertIn("AssertionError: %s != None" % repr(om1), ar.exception.__unicode__())
-        self.assertIn("AssertionError: [%d, %d] != None" % (om2.pk, om3.pk), ar.exception.__unicode__())
+        self.assertIn('"text_field":\n', str(ar.exception.args[0], 'utf-8'))
+        self.assertIn('"foreign_key_field":\n', str(ar.exception.args[0], 'utf-8'))
+        self.assertIn('"many_related_field":\n', str(ar.exception.args[0], 'utf-8'))
+        self.assertIn("AssertionError: %s != %s" % (repr('text'), repr('other text')),
+                      str(ar.exception.args[0], 'utf-8'))
+        self.assertIn("AssertionError: %s != None" % repr(om1), str(ar.exception.args[0], 'utf-8'))
+        self.assertIn("AssertionError: [%d, %d] != None" % (om2.pk, om3.pk), str(ar.exception.args[0], 'utf-8'))
 
     def test_assert_objects_equal_with_difference_2(self):
         om1 = OtherModel.objects.create()
@@ -1134,8 +1147,8 @@ class TestFormTestMixInMethods(unittest.TestCase):
         el_1.save()
         with self.assertRaises(AssertionError) as ar:
             self.ftc.assert_objects_equal(om1, om2)
-        self.assertIn('"somemodel_set":\n', ar.exception.__unicode__())
-        self.assertIn("Lists differ: [%d] != []" % el_1.pk, ar.exception.__unicode__())
+        self.assertIn('"somemodel_set":\n', str(ar.exception.args[0], 'utf-8'))
+        self.assertIn("Lists differ: [%d] != []" % el_1.pk, str(ar.exception.args[0], 'utf-8'))
 
     def test_assert_objects_equal_with_exclude(self):
         el_1 = SomeModel(text_field='текст 1')
@@ -1150,7 +1163,7 @@ class TestFormTestMixInMethods(unittest.TestCase):
         el_2 = SomeModel(text_field='текст 2')
         self.ftc.exclude_from_check = ('text_field',)
         try:
-            self.ftc.assert_objects_equal(el_1, el_2,)
+            self.ftc.assert_objects_equal(el_1, el_2)
         except Exception as e:
             self.assertFalse(True, 'With exception: ' + str(e))
 
@@ -1163,39 +1176,39 @@ class TestFormTestMixInMethods(unittest.TestCase):
     def test_get_digital_values_range_int(self):
         self.ftc.obj = SomeModel
         self.assertEqual(self.ftc.get_digital_values_range('int_field'),
-                         {'max_values': set([sys.maxint, 2147483647, ]),
-                          'min_values': set([-sys.maxint - 1, -2147483648, ])})
+                         {'max_values': {sys.maxsize, 2147483647},
+                          'min_values': {-sys.maxsize - 1, -2147483648}})
 
     def test_get_digital_values_range_int_with_min(self):
         self.ftc.obj = SomeModel
         self.ftc.min_fields_length = (('int_field', 100),)
         self.assertEqual(self.ftc.get_digital_values_range('int_field'),
-                         {'max_values': set([sys.maxint, 2147483647, ]),
-                          'min_values': set([-sys.maxint - 1, -2147483648, 100])})
+                         {'max_values': {sys.maxsize, 2147483647},
+                          'min_values': {-sys.maxsize - 1, -2147483648, 100}})
 
     def test_get_digital_values_range_int_with_max(self):
         self.ftc.obj = SomeModel
         self.ftc.max_fields_length = (('int_field', 100),)
         self.assertEqual(self.ftc.get_digital_values_range('int_field'),
-                         {'max_values': set([sys.maxint, 2147483647, 100]),
-                          'min_values': set([-sys.maxint - 1, -2147483648, ])})
+                         {'max_values': {sys.maxsize, 2147483647, 100},
+                          'min_values': {-sys.maxsize - 1, -2147483648}})
 
     def test_get_digital_values_range_float(self):
         self.ftc.obj = SomeModel
         self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
-                         {'max_values': set([sys.float_info.max]), 'min_values': set([-sys.float_info.max])})
+                         {'max_values': {sys.float_info.max}, 'min_values': {-sys.float_info.max}})
 
-    def test_get_digital_values_range_float_with_float(self):
+    def test_get_digital_values_range_float_with_max(self):
         self.ftc.obj = SomeModel
         self.ftc.min_fields_length = (('digital_field', 100),)
         self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
-                         {'max_values': set([sys.float_info.max]), 'min_values': set([-sys.float_info.max, 100])})
+                         {'max_values': {sys.float_info.max}, 'min_values': {-sys.float_info.max, 100}})
 
-    def test_get_digital_values_range_float_with_float(self):
+    def test_get_digital_values_range_float_with_min(self):
         self.ftc.obj = SomeModel
         self.ftc.max_fields_length = (('digital_field', 100),)
         self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
-                         {'max_values': set([sys.float_info.max, 100]), 'min_values': set([-sys.float_info.max])})
+                         {'max_values': {sys.float_info.max, 100}, 'min_values': {-sys.float_info.max}})
 
 
 class TestUtils(unittest.TestCase):
@@ -1305,30 +1318,30 @@ class TestUtils(unittest.TestCase):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
         test_obj.int_field = None
         new_obj = utils.fill_all_obj_fields(test_obj)
-        self.assertEqual(type(new_obj.int_field), int)
+        self.assertTrue(isinstance(new_obj.int_field, int))
 
     def test_fill_all_obj_fields(self):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
         new_obj = utils.fill_all_obj_fields(test_obj,
                                             fields=('text_field', 'char_field', 'many_related_field',
                                                     'file_field', 'digital_field', 'email_field', 'foreign_key_field'))
-        self.assertEqual(type(new_obj.text_field), unicode)
+        self.assertTrue(isinstance(new_obj.text_field, str))
         self.assertTrue(new_obj.text_field)
-        self.assertEqual(type(new_obj.char_field), unicode)
+        self.assertTrue(isinstance(new_obj.char_field, str))
         self.assertTrue(new_obj.char_field)
         # self.assertTrue(new_obj.many_related_field.all())
-        self.assertEqual(type(new_obj.file_field), FieldFile)
+        self.assertTrue(isinstance(new_obj.file_field, FieldFile))
         self.assertTrue(new_obj.file_field.file)
-        self.assertEqual(type(new_obj.digital_field), float)
+        self.assertTrue(isinstance(new_obj.digital_field, float))
         self.assertTrue(new_obj.digital_field)
-        self.assertEqual(type(new_obj.int_field), int)
+        self.assertTrue(isinstance(new_obj.int_field, int))
         self.assertEqual(new_obj.int_field, 1)
-        self.assertEqual(type(new_obj.unique_int_field), int)
+        self.assertTrue(isinstance(new_obj.unique_int_field, int))
         self.assertEqual(new_obj.unique_int_field, 2)
-        self.assertEqual(type(new_obj.email_field), unicode)
+        self.assertTrue(isinstance(new_obj.email_field, str))
         self.assertTrue(new_obj.email_field)
         self.assertIn('@', new_obj.email_field)
-        self.assertEqual(type(new_obj.foreign_key_field), OtherModel)
+        self.assertTrue(isinstance(new_obj.foreign_key_field, OtherModel))
         self.assertEqual(OtherModel.objects.all().count(), 1)
         self.assertTrue(new_obj.foreign_key_field)
         self.assertEqual(SomeModel.objects.get(unique_int_field=2).text_field, test_obj.text_field)
@@ -1349,7 +1362,7 @@ class TestUtils(unittest.TestCase):
         initial_count = SomeModel.objects.all().count()
         new_obj = utils.generate_random_obj(SomeModel)
         self.assertEqual(SomeModel.objects.all().count(), initial_count + 1)
-        self.assertEqual(type(new_obj.int_field), int)
+        self.assertTrue(isinstance(new_obj.int_field, int))
 
     def test_generate_random_obj_with_additional_params(self):
         initial_count = SomeModel.objects.all().count()
@@ -1370,36 +1383,36 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_date_value(self):
         new_date = utils.get_random_date_value()
-        self.assertEqual(type(new_date), date)
+        self.assertTrue(isinstance(new_date, date))
         self.assertEqual(new_date.year, date.today().year)
         self.assertEqual(new_date.month, date.today().month)
 
-    def test_get_random_date_value(self):
+    def test_get_random_date_value2(self):
         new_date = utils.get_random_date_value(date(2010, 3, 2), date(2011, 4, 2))
-        self.assertEqual(type(new_date), date)
+        self.assertTrue(isinstance(new_date, date))
         self.assertGreaterEqual(new_date, date(2010, 3, 2))
         self.assertLess(new_date, date(2011, 4, 2))
 
     def test_get_random_datetime_value(self):
         new_date = utils.get_random_datetime_value()
-        self.assertEqual(type(new_date), datetime)
+        self.assertTrue(isinstance(new_date, datetime))
         self.assertEqual(new_date.year, date.today().year)
         self.assertEqual(new_date.month, date.today().month)
 
-    def test_get_random_datetime_value(self):
+    def test_get_random_datetime_value2(self):
         new_date = utils.get_random_datetime_value(datetime(2010, 3, 2, 12, 3, 5), datetime(2011, 4, 2, 1, 2, 4))
-        self.assertEqual(type(new_date), datetime)
+        self.assertTrue(isinstance(new_date, datetime))
         self.assertGreaterEqual(new_date, datetime(2010, 3, 2, 12, 3, 5))
         self.assertLess(new_date, datetime(2011, 4, 2, 1, 2, 4))
 
     def test_get_random_file(self):
         new_file = utils.get_random_file()
-        self.assertEqual(type(new_file), ContentFile)
+        self.assertTrue(isinstance(new_file, ContentFile))
         self.assertEqual(new_file.size, 10)
 
     def test_get_random_file_with_path(self):
         new_file = utils.get_random_file(path='/tmp/test', )
-        self.assertTrue(hasattr(new_file, 'read'))
+        self.assertTrue(isinstance(new_file, FILE_TYPES))
         self.assertEqual(len(new_file.read()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
@@ -1408,15 +1421,15 @@ class TestUtils(unittest.TestCase):
     def test_get_random_file_with_path_with_rewrite(self):
         new_file = utils.get_random_file(path='/tmp/test')
         hasher = hashlib.md5()
-        hasher.update(new_file.read())
+        hasher.update(new_file.read().encode())
         last_file_hash = hasher.hexdigest()
         new_file = utils.get_random_file(path='/tmp/test', rewrite=True)
         hasher = hashlib.md5()
-        hasher.update(new_file.read())
+        hasher.update(new_file.read().encode())
         self.assertNotEqual(hasher.hexdigest(), last_file_hash)
-        self.assertTrue(hasattr(new_file, 'read'))
+        self.assertTrue(isinstance(new_file, FILE_TYPES))
         new_file.seek(0)
-        self.assertEqual(len(new_file.read()), 10)
+        self.assertEqual(len(new_file.read().encode()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
         self.assertEqual(new_file.mode, 'r')
@@ -1426,7 +1439,7 @@ class TestUtils(unittest.TestCase):
         last_change_time = os.stat('/tmp/test').st_mtime
         new_file = utils.get_random_file(path='/tmp/test', rewrite=False)
         self.assertEqual(os.stat('/tmp/test').st_mtime, last_change_time)
-        self.assertTrue(hasattr(new_file, 'read'))
+        self.assertTrue(isinstance(new_file, FILE_TYPES))
         self.assertEqual(len(new_file.read()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
@@ -1434,7 +1447,7 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_file_with_path_return_closed(self):
         new_file = utils.get_random_file(path='/tmp/test', return_opened=False)
-        self.assertEqual(type(new_file), file)
+        self.assertTrue(isinstance(new_file, FILE_TYPES))
         self.assertTrue(new_file.closed)
         self.assertTrue(os.path.exists('/tmp/test'))
         f = open('/tmp/test')
@@ -1442,12 +1455,12 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_file_with_size(self):
         new_file = utils.get_random_file(size=100)
-        self.assertEqual(type(new_file), ContentFile)
+        self.assertTrue(isinstance(new_file, ContentFile))
         self.assertEqual(len(new_file.read()), 100)
 
     def test_get_random_file_with_filename(self):
         new_file = utils.get_random_file(filename='test.qwe')
-        self.assertEqual(type(new_file), ContentFile)
+        self.assertTrue(isinstance(new_file, ContentFile))
         self.assertEqual(new_file.name, 'test.qwe')
 
     def test_get_random_file_with_img_filename(self):
@@ -1479,24 +1492,24 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_file_with_extensions(self):
         new_file = utils.get_random_file(extensions=('zzz',))
-        self.assertEqual(type(new_file), ContentFile)
+        self.assertTrue(isinstance(new_file, ContentFile))
         self.assertEqual(os.path.splitext(new_file.name)[1], '.zzz')
 
     def test_get_random_file_fake_size(self):
         settings.TEST_GENERATE_REAL_SIZE_FILE = False
         new_file = utils.get_random_file(size=100, filename='test.qwe')
         settings.TEST_GENERATE_REAL_SIZE_FILE = True
-        self.assertEqual(type(new_file), ContentFile)
+        self.assertTrue(isinstance(new_file, ContentFile))
         self.assertEqual(new_file.size, 10)
         self.assertEqual(new_file.name, '_size_100_.qwe')
 
     def test_prepare_file_for_tests(self):
-        sm = SomeModel.objects.create(file_field='test', int_field=1)
+        SomeModel.objects.create(file_field='test', int_field=1)
         utils.prepare_file_for_tests(SomeModel, 'file_field')
         self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')))
 
     def test_prepare_image_for_tests(self):
-        sm = SomeModel.objects.create(image_field='test', int_field=1)
+        SomeModel.objects.create(image_field='test', int_field=1)
         utils.prepare_file_for_tests(SomeModel, 'image_field')
         self.assertTrue(os.path.exists(os.path.join(settings.MEDIA_ROOT, 'test')))
         with open(os.path.join(settings.MEDIA_ROOT, 'test'), 'rb') as f:
