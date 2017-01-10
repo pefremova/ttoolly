@@ -3,7 +3,8 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 from builtins import str
-from future.utils import viewitems, viewkeys, viewvalues
+
+from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
 from past.builtins import xrange, basestring
 
 import inspect
@@ -268,10 +269,7 @@ class Ring(list):
         return res
 
 
-class GlobalTestMixIn(object):
-
-    __metaclass__ = MetaCheckFailures
-
+class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     additional_params = None
     all_unique = None
     choice_fields_values = None
@@ -343,7 +341,7 @@ class GlobalTestMixIn(object):
                 return super(GlobalTestMixIn, self).assertEqual(*args, **kwargs)
             except Exception as e:
                 if warn:
-                    message = warn[0].message.message + '\n' + e.message
+                    message = str(warn[0].message) + '\n' + str(e)
                     e.args = (message,)
                 raise e
 
@@ -360,8 +358,7 @@ class GlobalTestMixIn(object):
             errors = []
             if d1[key] != d2[key]:
                 if isinstance(d1[key], dict) and isinstance(d2[key], dict):
-                    res = self._assert_dict_equal(d1[key], d2[key],
-                                                  parent_key + '[%s]' % key)
+                    res = self._assert_dict_equal(d1[key], d2[key], parent_key + '[%s]' % key)
                     if res:
                         text.append(parent_key + '[%s]:\n  ' % key + '\n  '.join(res.splitlines()))
                 elif isinstance(d1[key], list) and isinstance(d2[key], list):
@@ -369,8 +366,7 @@ class GlobalTestMixIn(object):
                         self.assert_list_equal(d1[key], d2[key])
                     except:
                         self.errors_append(errors)
-                        text.append('%s[%s]:\n%s' % (parent_key if parent_key else '',
-                                                     key, '\n'.join(errors)))
+                        text.append('%s[%s]:\n%s' % (parent_key if parent_key else '', key, '\n'.join(errors)))
                 else:
                     d1_value = d1[key] if ((isinstance(d1[key], str) and isinstance(d2[key], str)) or
                                            (isinstance(d1[key], bytes) and isinstance(d2[key], bytes))) \
@@ -380,9 +376,7 @@ class GlobalTestMixIn(object):
                                            (isinstance(d1[key], bytes) and isinstance(d2[key], bytes))) \
                         else repr(d2[key])
                     d2_value = d2_value if isinstance(d2_value, str) else d2_value.decode('utf-8')
-                    text.append('%s[%s]: %s != %s' %
-                                (parent_key if parent_key else '',
-                                 key, d1_value, d2_value))
+                    text.append('%s[%s]: %s != %s' % (parent_key if parent_key else '', key, d1_value, d2_value))
         res = '\n'.join(text)
 
         return res
@@ -639,7 +633,7 @@ class GlobalTestMixIn(object):
         tmp_params = {}
         old_params = params
         params = copy(params)
-        keys = params.keys()
+        keys = list(params.keys())
         for k in keys:
             if isinstance(params[k], FILE_TYPES + (ContentFile,)):
                 content_file = params.pop(k)
@@ -707,7 +701,7 @@ class GlobalTestMixIn(object):
                 error_message = field_dict.get(message_type, error_message)
 
         if isinstance(error_message, dict):
-            error_field = error_message.keys()[0]
+            error_field = list(error_message.keys())[0]
         return error_field
 
     def get_error_message(self, message_type, field, *args, **kwargs):
@@ -995,7 +989,7 @@ class GlobalTestMixIn(object):
         try:
             if not hasattr(obj, field):
                 return None
-        except Exception:
+        except (AttributeError, ValueError):
             return None
 
         if getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager',
@@ -2945,7 +2939,7 @@ class FormAddTestMixIn(FormTestMixIn):
         @note: Create obj with file size == max one file size
         """
         new_object = None
-        fields_for_check = self.file_fields_params_add.keys()
+        fields_for_check = list(self.file_fields_params_add.keys())
         max_size_params = {}
         for field in fields_for_check:
             field_dict = self.file_fields_params_add[field]
@@ -4544,7 +4538,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: Edit obj with file size == max one file size
         """
         obj_for_edit = self.get_obj_for_edit()
-        fields_for_check = self.file_fields_params_edit.keys()
+        fields_for_check = list(self.file_fields_params_edit.keys())
         max_size_params = {}
         for field in fields_for_check:
             field_dict = self.file_fields_params_edit[field]

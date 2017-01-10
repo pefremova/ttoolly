@@ -6,7 +6,6 @@ from future.utils import viewvalues, viewitems, viewkeys
 from past.builtins import xrange
 from builtins import str
 
-import chardet
 from datetime import datetime, date, time
 import decimal
 import io
@@ -69,15 +68,10 @@ def fill_all_obj_fields(obj, fields=(), save=True):
 
 def format_errors(errors, space_count=0):
     joined_errors = '\n\n'.join(errors)
-    if isinstance(joined_errors, bytes):
-        if chardet.detect(joined_errors)['encoding'] == 'utf-8':
-            joined_errors = joined_errors.decode('utf-8')
-    if not joined_errors:
-        return ''
     if space_count > 0:
         spaces = ' ' * space_count
         joined_errors = spaces + ('\n' + spaces).join(joined_errors.splitlines())
-    return ('\n%s' % joined_errors).encode('utf-8')
+    return '\n%s' % joined_errors
 
 
 def generate_random_obj(obj_model, additional_params=None, filename=None, with_save=True):
@@ -247,9 +241,7 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
     for entry in urllist:
         url = prefix + entry.regex.pattern.strip('^$')
         if hasattr(entry, 'url_patterns'):
-            get_all_urls(entry.url_patterns, depth + 1,
-                         prefix=url,
-                         result=result)
+            get_all_urls(entry.url_patterns, depth + 1, prefix=url, result=result)
         else:
             if not url.startswith('/'):
                 url = '/' + url
@@ -323,7 +315,7 @@ def get_fields_list_from_response(response, only_success=True):
         raise Exception('Response status code %s (expect 200 for getting fields list)' % response.status_code)
 
     def get_form_fields(form):
-        fields = form.fields.keys()
+        fields = list(form.fields.keys())
         visible_fields = set(fields).intersection([f.name for f in form.visible_fields()])
         hidden_fields = [f.name for f in form.hidden_fields()]
         disabled_fields = [k for k, v in viewitems(form.fields) if v.widget.attrs.get('readonly', False)]
