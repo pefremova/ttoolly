@@ -857,7 +857,6 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             params_value = ''
 
         if isinstance(value, basestring) and isinstance(params_value, basestring):
-
             return to_str(value), to_str(params_value)
         if isinstance(value, bool):
             params_value = bool(params_value)
