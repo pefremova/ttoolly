@@ -41,28 +41,26 @@ MIDDLEWARE_CLASSES = (
 ROOT_URLCONF = 'test_project.urls'
 
 
-if DJANGO_VERSION < (1, 8):
-    TEMPLATE_DIRS = [os.path.join(BASE_DIR, 'test_project/templates')]
-else:
-    MIDDLEWARE_CLASSES += (
-        'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
-        'django.middleware.security.SecurityMiddleware'
-    )
-    TEMPLATES = [
-        {
-            'BACKEND': 'django.template.backends.django.DjangoTemplates',
-            'DIRS': [os.path.join(BASE_DIR, 'test_project/templates')],
-            'APP_DIRS': True,
-            'OPTIONS': {
-                'context_processors': [
-                    'django.template.context_processors.debug',
-                    'django.template.context_processors.request',
-                    'django.contrib.auth.context_processors.auth',
-                    'django.contrib.messages.context_processors.messages',
-                ],
-            },
+MIDDLEWARE_CLASSES += (
+    'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
+    'django.middleware.security.SecurityMiddleware'
+)
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'test_project/templates')],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
         },
-    ]
+    },
+]
 
 WSGI_APPLICATION = 'test_project.wsgi.application'
 
