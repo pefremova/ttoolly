@@ -2,26 +2,20 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-from builtins import str
-
-from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
-from past.builtins import xrange, basestring
-
-import inspect
-import json
 from copy import copy, deepcopy
+from datetime import datetime, date, time
 from decimal import Decimal
 from random import choice, randint, uniform
 from shutil import rmtree
 from unittest import SkipTest
-
-import sys
-from datetime import datetime, date, time
-
+import inspect
+import json
 import os
-import psycopg2.extensions
 import re
+import sys
 import warnings
+
+from builtins import str
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -35,11 +29,16 @@ from django.db.models.fields import FieldDoesNotExist
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
+from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
 from lxml.html import document_fromstring
+from past.builtins import xrange, basestring
+import psycopg2.extensions
+
 from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                     get_fields_list_from_response, get_all_form_errors, generate_random_obj,
-                    get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model, FILE_TYPES)
+                    get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model, FILE_TYPES, to_str)
+
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
@@ -603,7 +602,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             try:
                 self.assertEqual(first, second)
             except AssertionError as e:
-                full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(str(e)).decode('utf-8')
+                full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(str(e))
         first_length = len(first)
         second_length = len(second)
         for n in xrange(max(first_length, second_length)):
@@ -654,7 +653,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def errors_append(self, errors=None, text='', color=231):
         if errors is None:
             errors = self.errors
-        text = (text + ':\n') if text else ''
+        text = (to_str(text) + ':\n') if text else ''
         if isinstance(text, bytes):
             text = text.decode('utf-8')
         if getattr(settings, 'COLORIZE_TESTS', False) and text:
@@ -841,15 +840,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def get_object_fields(self, obj):
         object_fields = []
-        if DJANGO_VERSION < (1, 8):
-            fields = [self.get_field_by_name(obj, name) for name in get_all_field_names_from_model(obj)]
-        else:
-            fields = obj._meta.get_fields()
-        for field in set(fields):
+        fields = obj._meta.get_fields()
+        for field in fields:
             if field.__class__.__name__ in ('RelatedObject', 'ManyToOneRel', 'OneToOneRel'):
-                object_fields.append(field.get_accessor_name())
+                object_fields.append(to_str(field.get_accessor_name()))
             else:
-                object_fields.append(field.name)
+                object_fields.append(to_str(field.name))
         return object_fields
 
     def get_params_according_to_type(self, value, params_value):
@@ -861,11 +857,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             params_value = ''
 
         if isinstance(value, basestring) and isinstance(params_value, basestring):
-            if isinstance(value, str):
-                value = value.encode('utf-8')
-            if isinstance(params_value, str):
-                params_value = params_value.encode('utf-8')
-            return value, params_value
+
+            return to_str(value), to_str(params_value)
         if isinstance(value, bool):
             params_value = bool(params_value)
             return value, params_value

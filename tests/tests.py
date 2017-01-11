@@ -241,7 +241,8 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         data = (
             ('q', [], 'First argument is not a list'),
             ([], 'q', 'Second argument is not a list'),
-            ([1], [1, 2], 'Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
+            ([1], [
+             1, 2], 'Lists differ: [1] != [1, 2]\n\nSecond list contains 1 additional elements.\nFirst extra element 1:\n2\n\n- [1]\n+ [1, 2]'),
             ([{}], [{}, {'q': 1}], '[line 1]: Not in first list'),
             ([{'q': 1}, {'z': 2}], [{'w': 1}, {'z': 2}],
              "[line 0]: Not in first dict: [%s]\nNot in second dict: [%s]" % (repr('w'), repr('q'))),
@@ -384,9 +385,9 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(self.btc.get_params_according_to_type(True, False), (True, False))
         self.assertEqual(self.btc.get_params_according_to_type(None, None), (None, None))
         self.assertEqual(self.btc.get_params_according_to_type('текст1', 'текст2'), ('текст1', 'текст2'))
-        self.assertEqual(self.btc.get_params_according_to_type(u'текст1', u'текст2'), (u'текст1', u'текст2'))
-        self.assertEqual(self.btc.get_params_according_to_type(u'текст1', 'текст2'), ('текст1', 'текст2'))
-        self.assertEqual(self.btc.get_params_according_to_type('текст1', u'текст2'), ('текст1', 'текст2'))
+        self.assertEqual(self.btc.get_params_according_to_type(b'текст1', b'текст2'), (b'текст1', b'текст2'))
+        self.assertEqual(self.btc.get_params_according_to_type('текст1', b'текст2'), ('текст1', 'текст2'))
+        self.assertEqual(self.btc.get_params_according_to_type(b'текст1', 'текст2'), ('текст1', 'текст2'))
 
         self.assertEqual(self.btc.get_params_according_to_type('текст1', 'on'), ('текст1', 'on'))
         self.assertEqual(self.btc.get_params_according_to_type(True, 'on'), (True, True))
@@ -490,7 +491,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
     def test_assert_text_equal_by_symbol_with_count(self):
         with self.assertRaises(AssertionError) as ar:
-            self.btc.assert_text_equal_by_symbol('текст для !сравнения', u'текст для сравнения', 3)
+            self.btc.assert_text_equal_by_symbol('текст для !сравнения', 'текст для сравнения', 3)
         msg = "Not equal in position 10: '!ср...' != 'сра...'"
         self.assertEqual(str(ar.exception), msg)
 
@@ -680,7 +681,8 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             self.btc.assert_object_fields(el_1, {'text_field': 'other text'})
         self.assertEqual(
             str(ar.exception),
-            "Values from object != expected values from dict:\n[text_field]: %s != %s" % (repr('text'), repr('other text'))
+            "Values from object != expected values from dict:\n[text_field]: %s != %s" % (
+                repr('text'), repr('other text'))
         )
 
     def test_assert_object_fields_with_exclude(self):
@@ -756,7 +758,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             self.btc.errors_append(text='Тестовый текст')
         self.assertEqual(len(self.btc.errors), 1)
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", self.btc.errors[0])
-        self.assertTrue(self.btc.errors[0].startswith(u'Тестовый текст:\n'))
+        self.assertTrue(self.btc.errors[0].startswith('Тестовый текст:\n'))
 
     def test_errors_append_with_text_and_colorize(self):
         self.btc.errors = []
@@ -882,237 +884,237 @@ class TestFormTestMixInMethods(unittest.TestCase):
     def test_get_error_message_for_max_length(self):
         self.assertEqual(self.ftc.get_error_message('max_length', 'text_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'text_field': [u'Убедитесь, что это значение содержит не более 20 символов (сейчас 21).']})
+                         {'text_field': ['Убедитесь, что это значение содержит не более 20 символов (сейчас 21).']})
 
     def test_get_error_message_for_max_file_filed_length(self):
         self.assertEqual(self.ftc.get_error_message('max_length', 'file_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'file_field': [u'Убедитесь, что это имя файла содержит не более 20 символов (сейчас 21).']})
+                         {'file_field': ['Убедитесь, что это имя файла содержит не более 20 символов (сейчас 21).']})
 
     def test_get_error_message_for_max_length_file(self):
         self.assertEqual(self.ftc.get_error_message('max_length_file', 'some_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'some_field': [u'Убедитесь, что это имя файла содержит не более 20 символов (сейчас 21).']})
+                         {'some_field': ['Убедитесь, что это имя файла содержит не более 20 символов (сейчас 21).']})
 
     def test_get_error_message_for_max_length_digital(self):
         self.assertEqual(self.ftc.get_error_message('max_length_digital', 'digital_field',
                                                     locals={'max_value': 20}),
-                         {'digital_field': [u'Убедитесь, что это значение меньше либо равно 20.']})
+                         {'digital_field': ['Убедитесь, что это значение меньше либо равно 20.']})
 
     def test_get_error_message_for_min_length_digital(self):
         self.assertEqual(self.ftc.get_error_message('min_length_digital', 'digital_field',
                                                     locals={'min_value': 20}),
-                         {'digital_field': [u'Убедитесь, что это значение больше либо равно 20.']})
+                         {'digital_field': ['Убедитесь, что это значение больше либо равно 20.']})
 
     def test_get_error_message_for_wrong_value(self):
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field',),
-                         {'some_field': [u'Выберите корректный вариант. Вашего варианта нет среди допустимых значений.']})
+                         {'some_field': ['Выберите корректный вариант. Вашего варианта нет среди допустимых значений.']})
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', locals={'value': 'qwe'}),
-                         {'some_field': [u'Выберите корректный вариант. qwe нет среди допустимых значений.']})
+                         {'some_field': ['Выберите корректный вариант. qwe нет среди допустимых значений.']})
 
     def test_get_error_message_for_wrong_value_int(self):
         self.assertEqual(self.ftc.get_error_message('wrong_value_int', 'int_field'),
-                         {'int_field': [u'Введите целое число.']})
+                         {'int_field': ['Введите целое число.']})
 
     def test_get_error_message_for_wrong_value_digital(self):
         self.assertEqual(self.ftc.get_error_message('wrong_value_digital', 'digital_field'),
-                         {'digital_field': [u'Введите число.']})
+                         {'digital_field': ['Введите число.']})
 
     def test_get_error_message_for_unique_field(self):
         self.assertEqual(self.ftc.get_error_message('unique', 'some_field'),
-                         {'some_field': [u'Объект с таким some_field уже существует.']})
+                         {'some_field': ['Объект с таким some_field уже существует.']})
 
     def test_get_error_message_for_max_length_with_custom(self):
-        self.ftc.custom_error_messages = {'text_field': {'max_length': u'Тестовое сообщение об ошибке'}}
+        self.ftc.custom_error_messages = {'text_field': {'max_length': 'Тестовое сообщение об ошибке'}}
         self.assertEqual(self.ftc.get_error_message('max_length', 'text_field',),
-                         {'text_field': [u'Тестовое сообщение об ошибке']})
+                         {'text_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('max_length', 'text_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'text_field': [u'Тестовое сообщение об ошибке']})
-        self.assertEqual(self.ftc.get_error_message('max_length', 'text_field', u'й'),
-                         {'text_field': [u'Тестовое сообщение об ошибке']})
+                         {'text_field': ['Тестовое сообщение об ошибке']})
+        self.assertEqual(self.ftc.get_error_message('max_length', 'text_field', 'й'),
+                         {'text_field': ['Тестовое сообщение об ошибке']})
         self.ftc.custom_error_messages = {'text_field': {'max_length':
-                                                         u'Тестовое сообщение об ошибке {length}, {current_length}'}}
+                                                         'Тестовое сообщение об ошибке {length}, {current_length}'}}
         self.assertEqual(self.ftc.get_error_message('max_length', 'text_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'text_field': [u'Тестовое сообщение об ошибке 20, 21']})
+                         {'text_field': ['Тестовое сообщение об ошибке 20, 21']})
 
     def test_get_error_message_for_max_file_field_length_with_custom(self):
-        self.ftc.custom_error_messages = {'file_field': {'max_length_file': u'Тестовое сообщение об ошибке'}}
+        self.ftc.custom_error_messages = {'file_field': {'max_length_file': 'Тестовое сообщение об ошибке'}}
         self.assertEqual(self.ftc.get_error_message('max_length', 'file_field',),
-                         {'file_field': [u'Тестовое сообщение об ошибке']})
+                         {'file_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('max_length', 'file_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'file_field': [u'Тестовое сообщение об ошибке']})
-        self.assertEqual(self.ftc.get_error_message('max_length', 'file_field', u'й'),
-                         {'file_field': [u'Тестовое сообщение об ошибке']})
+                         {'file_field': ['Тестовое сообщение об ошибке']})
+        self.assertEqual(self.ftc.get_error_message('max_length', 'file_field', 'й'),
+                         {'file_field': ['Тестовое сообщение об ошибке']})
         self.ftc.custom_error_messages = {'file_field': {'max_length_file':
-                                                         u'Тестовое сообщение об ошибке {length}, {current_length}'}}
+                                                         'Тестовое сообщение об ошибке {length}, {current_length}'}}
         self.assertEqual(self.ftc.get_error_message('max_length', 'file_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'file_field': [u'Тестовое сообщение об ошибке 20, 21']})
+                         {'file_field': ['Тестовое сообщение об ошибке 20, 21']})
 
-        self.ftc.custom_error_messages = {'file_field': {'max_length': u'Тестовое сообщение об ошибке'}}
+        self.ftc.custom_error_messages = {'file_field': {'max_length': 'Тестовое сообщение об ошибке'}}
         self.assertEqual(self.ftc.get_error_message('max_length', 'file_field',),
-                         {'file_field': [u'Тестовое сообщение об ошибке']})
+                         {'file_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('max_length', 'file_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'file_field': [u'Тестовое сообщение об ошибке']})
-        self.assertEqual(self.ftc.get_error_message('max_length', 'file_field', u'й'),
-                         {'file_field': [u'Тестовое сообщение об ошибке']})
+                         {'file_field': ['Тестовое сообщение об ошибке']})
+        self.assertEqual(self.ftc.get_error_message('max_length', 'file_field', 'й'),
+                         {'file_field': ['Тестовое сообщение об ошибке']})
         self.ftc.custom_error_messages = {'file_field': {'max_length':
-                                                         u'Тестовое сообщение об ошибке {length}, {current_length}'}}
+                                                         'Тестовое сообщение об ошибке {length}, {current_length}'}}
         self.assertEqual(self.ftc.get_error_message('max_length', 'file_field',
                                                     locals={'length': 20, 'current_length': 21}),
-                         {'file_field': [u'Тестовое сообщение об ошибке 20, 21']})
+                         {'file_field': ['Тестовое сообщение об ошибке 20, 21']})
 
     def test_get_error_message_for_max_length_digital_with_custom(self):
         self.ftc.custom_error_messages = {
             'digital_field': {
-                'max_length_digital': u'Тестовое сообщение об ошибке'
+                'max_length_digital': 'Тестовое сообщение об ошибке'
             }
         }
         self.assertEqual(self.ftc.get_error_message('max_length_digital', 'digital_field',),
-                         {'digital_field': [u'Тестовое сообщение об ошибке']})
+                         {'digital_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('max_length_digital', 'digital_field',
                                                     locals={'max_value': 20}),
-                         {'digital_field': [u'Тестовое сообщение об ошибке']})
-        self.assertEqual(self.ftc.get_error_message('max_length_digital', 'digital_field', u'й'),
-                         {'digital_field': [u'Тестовое сообщение об ошибке']})
+                         {'digital_field': ['Тестовое сообщение об ошибке']})
+        self.assertEqual(self.ftc.get_error_message('max_length_digital', 'digital_field', 'й'),
+                         {'digital_field': ['Тестовое сообщение об ошибке']})
 
         self.ftc.custom_error_messages = {
             'digital_field': {
-                'max_length_digital': u'Тестовое сообщение об ошибке {max_value}'
+                'max_length_digital': 'Тестовое сообщение об ошибке {max_value}'
             }
         }
         self.assertEqual(self.ftc.get_error_message('max_length_digital', 'digital_field',
                                                     locals={'max_value': 20}),
-                         {'digital_field': [u'Тестовое сообщение об ошибке 20']})
+                         {'digital_field': ['Тестовое сообщение об ошибке 20']})
 
     def test_get_error_message_for_min_length_digital_with_custom(self):
         self.ftc.custom_error_messages = {
             'digital_field': {
-                'min_length_digital': u'Тестовое сообщение об ошибке'
+                'min_length_digital': 'Тестовое сообщение об ошибке'
             }
         }
         self.assertEqual(self.ftc.get_error_message('min_length_digital', 'digital_field',),
-                         {'digital_field': [u'Тестовое сообщение об ошибке']})
+                         {'digital_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('min_length_digital', 'digital_field',
                                                     locals={'min_value': 20}),
-                         {'digital_field': [u'Тестовое сообщение об ошибке']})
-        self.assertEqual(self.ftc.get_error_message('min_length_digital', 'digital_field', u'й'),
-                         {'digital_field': [u'Тестовое сообщение об ошибке']})
+                         {'digital_field': ['Тестовое сообщение об ошибке']})
+        self.assertEqual(self.ftc.get_error_message('min_length_digital', 'digital_field', 'й'),
+                         {'digital_field': ['Тестовое сообщение об ошибке']})
 
         self.ftc.custom_error_messages = {
             'digital_field': {
-                'min_length_digital': u'Тестовое сообщение об ошибке {min_value}'
+                'min_length_digital': 'Тестовое сообщение об ошибке {min_value}'
             }
         }
         self.assertEqual(self.ftc.get_error_message('min_length_digital', 'digital_field',
                                                     locals={'min_value': 20}),
-                         {'digital_field': [u'Тестовое сообщение об ошибке 20']})
+                         {'digital_field': ['Тестовое сообщение об ошибке 20']})
 
     def test_get_error_message_for_wrong_value_with_custom(self):
-        self.ftc.custom_error_messages = {'some_field': {'wrong_value': u'Тестовое сообщение об ошибке'}}
+        self.ftc.custom_error_messages = {'some_field': {'wrong_value': 'Тестовое сообщение об ошибке'}}
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field',),
-                         {'some_field': [u'Тестовое сообщение об ошибке']})
+                         {'some_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', 'qwe'),
-                         {'some_field': [u'Тестовое сообщение об ошибке']})
+                         {'some_field': ['Тестовое сообщение об ошибке']})
 
-        self.ftc.custom_error_messages = {'some_field': {'wrong_value': u'Тестовое сообщение об ошибке {test_value}'}}
+        self.ftc.custom_error_messages = {'some_field': {'wrong_value': 'Тестовое сообщение об ошибке {test_value}'}}
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', locals={'test_value': 'qwe'}),
-                         {'some_field': [u'Тестовое сообщение об ошибке qwe']})
+                         {'some_field': ['Тестовое сообщение об ошибке qwe']})
 
     def test_get_error_message_for_wrong_value_int_with_custom(self):
-        self.ftc.custom_error_messages = {'int_field': {'wrong_value_int': u'Тестовое сообщение об ошибке'}}
+        self.ftc.custom_error_messages = {'int_field': {'wrong_value_int': 'Тестовое сообщение об ошибке'}}
         self.assertEqual(self.ftc.get_error_message('wrong_value_int', 'int_field',),
-                         {'int_field': [u'Тестовое сообщение об ошибке']})
+                         {'int_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('wrong_value_int', 'int_field', 'qwe'),
-                         {'int_field': [u'Тестовое сообщение об ошибке']})
+                         {'int_field': ['Тестовое сообщение об ошибке']})
 
     def test_get_error_message_for_wrong_value_digital_with_custom(self):
-        self.ftc.custom_error_messages = {'digital_field': {'wrong_value_digital': u'Тестовое сообщение об ошибке'}}
+        self.ftc.custom_error_messages = {'digital_field': {'wrong_value_digital': 'Тестовое сообщение об ошибке'}}
         self.assertEqual(self.ftc.get_error_message('wrong_value_digital', 'digital_field',),
-                         {'digital_field': [u'Тестовое сообщение об ошибке']})
+                         {'digital_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('wrong_value_digital', 'digital_field', 'qwe'),
-                         {'digital_field': [u'Тестовое сообщение об ошибке']})
+                         {'digital_field': ['Тестовое сообщение об ошибке']})
 
     def test_get_error_message_for_unique_field_with_custom(self):
-        self.ftc.custom_error_messages = {'some_field': {'unique': u'Тестовое сообщение об ошибке'}}
+        self.ftc.custom_error_messages = {'some_field': {'unique': 'Тестовое сообщение об ошибке'}}
         self.assertEqual(self.ftc.get_error_message('unique', 'some_field',),
-                         {'some_field': [u'Тестовое сообщение об ошибке']})
+                         {'some_field': ['Тестовое сообщение об ошибке']})
         self.assertEqual(self.ftc.get_error_message('unique', 'some_field', locals={'test_value': 'qwe'}),
-                         {'some_field': [u'Тестовое сообщение об ошибке']})
+                         {'some_field': ['Тестовое сообщение об ошибке']})
 
-        self.ftc.custom_error_messages = {'some_field': {'unique': u'Тестовое сообщение об ошибке {test_value}'}}
+        self.ftc.custom_error_messages = {'some_field': {'unique': 'Тестовое сообщение об ошибке {test_value}'}}
         self.assertEqual(self.ftc.get_error_message('unique', 'some_field', locals={'test_value': 'qwe'}),
-                         {'some_field': [u'Тестовое сообщение об ошибке qwe']})
+                         {'some_field': ['Тестовое сообщение об ошибке qwe']})
 
     def test_get_error_message_for_required_field_with_custom_error_field(self):
         self.assertEqual(self.ftc.get_error_message('required', 'some_field', error_field='other_field'),
-                         {'other_field': [u'Обязательное поле.']})
+                         {'other_field': ['Обязательное поле.']})
         self.assertEqual(self.ftc.get_error_message('required', ('some_field_1', 'some_field_2'), error_field='other_field'),
-                         {'other_field': [u'Обязательное поле.']})
+                         {'other_field': ['Обязательное поле.']})
 
     def test_get_error_message_for_required_field_with_multiple_field(self):
         self.assertEqual(self.ftc.get_error_message('required', ('some_field_1', 'some_field_2'),),
-                         {'__all__': [u'Обязательное поле.']})
+                         {'__all__': ['Обязательное поле.']})
 
     def test_get_error_message_for_wrong_value_with_custom_in_list(self):
-        self.ftc.custom_error_messages = {'some_field': {'wrong_value': [u'Тестовое сообщение об ошибке',
-                                                                         u'Второе сообщение']}}
+        self.ftc.custom_error_messages = {'some_field': {'wrong_value': ['Тестовое сообщение об ошибке',
+                                                                         'Второе сообщение']}}
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field',),
-                         {'some_field': [u'Тестовое сообщение об ошибке', u'Второе сообщение']})
+                         {'some_field': ['Тестовое сообщение об ошибке', 'Второе сообщение']})
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', 'qwe'),
-                         {'some_field': [u'Тестовое сообщение об ошибке', u'Второе сообщение']})
+                         {'some_field': ['Тестовое сообщение об ошибке', 'Второе сообщение']})
 
-        self.ftc.custom_error_messages = {'some_field': {'wrong_value': [u'Тестовое сообщение об ошибке {test_value}',
-                                                                         u'Второе сообщение']}}
+        self.ftc.custom_error_messages = {'some_field': {'wrong_value': ['Тестовое сообщение об ошибке {test_value}',
+                                                                         'Второе сообщение']}}
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', locals={'test_value': 'qwe'}),
-                         {'some_field': [u'Тестовое сообщение об ошибке qwe', u'Второе сообщение']})
+                         {'some_field': ['Тестовое сообщение об ошибке qwe', 'Второе сообщение']})
 
     def test_get_error_message_for_wrong_value_with_custom_in_dict(self):
-        self.ftc.custom_error_messages = {'some_field': {'wrong_value': {'field1': u'Тестовое сообщение об ошибке',
-                                                                         'field2': u'Второе сообщение'}}}
+        self.ftc.custom_error_messages = {'some_field': {'wrong_value': {'field1': 'Тестовое сообщение об ошибке',
+                                                                         'field2': 'Второе сообщение'}}}
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field',),
-                         {'field1': [u'Тестовое сообщение об ошибке'], 'field2': [u'Второе сообщение']})
+                         {'field1': ['Тестовое сообщение об ошибке'], 'field2': ['Второе сообщение']})
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', 'qwe'),
-                         {'field1': [u'Тестовое сообщение об ошибке'], 'field2': [u'Второе сообщение']})
+                         {'field1': ['Тестовое сообщение об ошибке'], 'field2': ['Второе сообщение']})
 
         self.ftc.custom_error_messages = {'some_field': {'wrong_value':
-                                                         {'field1': u'Тестовое сообщение об ошибке {test_value}',
-                                                          'field2': u'Второе сообщение'}}}
+                                                         {'field1': 'Тестовое сообщение об ошибке {test_value}',
+                                                          'field2': 'Второе сообщение'}}}
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', locals={'test_value': 'qwe'}),
-                         {'field1': [u'Тестовое сообщение об ошибке qwe'], 'field2': [u'Второе сообщение']})
+                         {'field1': ['Тестовое сообщение об ошибке qwe'], 'field2': ['Второе сообщение']})
 
     def test_get_error_message_for_wrong_value_with_custom_in_dict_with_list(self):
-        self.ftc.custom_error_messages = {'some_field': {'wrong_value': {'field1': [u'Тестовое сообщение об ошибке'],
-                                                                         'field2': u'Второе сообщение'}}}
+        self.ftc.custom_error_messages = {'some_field': {'wrong_value': {'field1': ['Тестовое сообщение об ошибке'],
+                                                                         'field2': 'Второе сообщение'}}}
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field',),
-                         {'field1': [u'Тестовое сообщение об ошибке'], 'field2': [u'Второе сообщение']})
+                         {'field1': ['Тестовое сообщение об ошибке'], 'field2': ['Второе сообщение']})
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', 'qwe'),
-                         {'field1': [u'Тестовое сообщение об ошибке'], 'field2': [u'Второе сообщение']})
+                         {'field1': ['Тестовое сообщение об ошибке'], 'field2': ['Второе сообщение']})
 
         self.ftc.custom_error_messages = {'some_field': {'wrong_value':
-                                                         {'field1': [u'Тестовое сообщение об ошибке {test_value}'],
-                                                          'field2': u'Второе сообщение'}}}
+                                                         {'field1': ['Тестовое сообщение об ошибке {test_value}'],
+                                                          'field2': 'Второе сообщение'}}}
         self.assertEqual(self.ftc.get_error_message('wrong_value', 'some_field', locals={'test_value': 'qwe'}),
-                         {'field1': [u'Тестовое сообщение об ошибке qwe'], 'field2': [u'Второе сообщение']})
+                         {'field1': ['Тестовое сообщение об ошибке qwe'], 'field2': ['Второе сообщение']})
 
     def test_get_object_fields(self):
         some_element = SomeModel()
         other_element = OtherModel()
         self.assertListEqual(
-            [str(x) for x in sorted(self.ftc.get_object_fields(some_element))],
-            [str(x) for x in sorted([
+            sorted(self.ftc.get_object_fields(some_element)),
+            sorted([
                 'char_field', 'digital_field', 'email_field', 'file_field', 'foreign_key_field', 'id',
                 'int_field', 'many_related_field', 'text_field', 'unique_int_field', 'bool_field',
-                'date_field', 'datetime_field', 'image_field', 'one_to_one_field', 'one_to_one_field2'])]
+                'date_field', 'datetime_field', 'image_field', 'one_to_one_field', 'one_to_one_field2',
+                'somemodel'])
         )
         self.assertListEqual(
-            [str(x) for x in sorted(self.ftc.get_object_fields(other_element))],
-            [str(x) for x in sorted(['id', 'other_text_field', 'related_name', 'somemodel_set', 'somemodel',
-                                     'one_to_one_related_name'])]
+            sorted(self.ftc.get_object_fields(other_element)),
+            sorted(['id', 'other_text_field', 'related_name', 'somemodel_set', 'one_to_one_related_name'])
         )
 
     def test_fill_all_fields(self):
@@ -1378,8 +1380,8 @@ class TestUtils(unittest.TestCase):
 
     def test_generate_random_obj_with_additional_params(self):
         initial_count = SomeModel.objects.all().count()
-        params = {'text_field': u'тест text_field',
-                  'char_field': u'тест char_field',
+        params = {'text_field': 'тест text_field',
+                  'char_field': 'тест char_field',
                   'digital_field': 543,
                   'int_field': 321,
                   'unique_int_field': 100,

@@ -15,7 +15,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('label')
-        parser.add_argument('-f', '--file', dest='path_to_file', help='Specifies the output file path.')
+        parser.add_argument('-f', '--file', dest='path_to_file', help='Specifies the output file path.', required=True)
 
     def handle(self, *label, **kwargs):
         path_to_file = kwargs.get('path_to_file')
@@ -24,6 +24,5 @@ class Command(BaseCommand):
         text = unicode_to_readable(serializers.serialize('json',
                                                          obj_model.objects.all(), indent=4,
                                                          use_natural_foreign_keys=True))
-        f = open(path_to_file, 'a')
-        f.write(text.encode('utf-8'))
-        f.close()
+        with open(path_to_file, 'ab') as f:
+            f.write(text.encode('utf-8'))

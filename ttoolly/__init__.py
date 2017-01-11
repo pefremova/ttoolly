@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from future.utils import PY2
+from unittest import TextTestResult
 
 from django.conf import settings
-
+from future.utils import PY2
 from ttoolly.utils import unicode_to_readable
 
+
 if getattr(settings, 'COLORIZE_TESTS', False):
-    from unittest import TextTestResult
 
     def _getDescription(self, test):
         doc_first_line = test.shortDescription()

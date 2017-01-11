@@ -29,9 +29,9 @@ class Command(BaseCommand):
         obj = generate_random_obj(obj_model, filename=kwargs.get('path_to_random_file'), with_save=False)
         text = unicode_to_readable(
             serializers.serialize('json', [obj, ], indent=4, use_natural_foreign_keys=True))
+
         if path_to_file:
-            f = open(path_to_file, 'a')
-            f.write(text)
-            f.close()
+            with open(path_to_file, 'ab') as f:
+                f.write(text.encode('utf-8'))
         else:
             print(text)

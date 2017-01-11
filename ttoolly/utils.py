@@ -302,11 +302,10 @@ def get_captcha_codes():
 
 def get_error(tr_limit=getattr(settings, 'TEST_TRACEBACK_LIMIT', None)):
     etype, value, tb = sys.exc_info()
+    result = ''
     if any([etype, value, tb]):
-        err = ''.join([el for el in traceback.format_exception(etype, value, tb, limit=tr_limit)])
+        err = ''.join([to_str(el) for el in traceback.format_exception(etype, value, tb, limit=tr_limit)])
         result = unicode_to_readable(err)
-    else:
-        result = ''
     return result
 
 
@@ -427,9 +426,8 @@ def get_fields_list_from_response(response, only_success=True):
 
 
 def get_fixtures_data(filename):
-    f = open(filename)
-    data = json.loads(f.read())
-    f.close()
+    with open(filename) as f:
+        data = json.loads(f.read())
     for element in data:
         element['pk'] = [k for k in element.keys() if k not in ('model', 'fields')][0]
     return data
@@ -476,10 +474,9 @@ def get_randname(l=10, _type='a', length_of_chunk=10):
 
 
 def get_randname_from_file(filename, l=100):
-    f = open(filename)
-    text = f.read().decode('utf-8')
+    with open(filename, 'rb') as f:
+        text = f.read().decode('utf-8')
     text = text.split(' ')
-    f.close()
     result = random.choice(text)
     while len(result) < l:
         result = ' '.join([result, random.choice(text)])
@@ -647,9 +644,8 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
     if not path and return_opened:
         return ContentFile(content, filename)
 
-    f = open(path, 'a')
-    f.write(content)
-    f.close()
+    with open(path, 'a') as f:
+        f.write(content)
     if return_opened:
         f = open(path, 'r')
     return f
@@ -694,9 +690,8 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
             content = get_random_jpg_content(size, width, height)
     if not path and return_opened:
         return ContentFile(content, filename)
-    f = open(path, 'ab')
-    f.write(content)
-    f.close()
+    with open(path, 'ab') as f:
+        f.write(content)
     if return_opened:
         f = open(path, 'r')
     return f
@@ -790,15 +785,14 @@ def get_url_for_negative(url, args=()):
                 pass
         start = 0
         l = []
-        l_args = ['/%s/' % a for a in args]
+        l_args = ['/%s/' % to_str(a) for a in args]
         for m in re.finditer(r'/\d+/', url):
             l.append(url[start:m.start()])
             start = m.end()
         l.append(url[start:])
         while len(l_args) < len(l):
             l_args.append(l_args[-1])
-        return ''.join([item.decode('utf-8') if isinstance(item, bytes) else item
-                        for tup in zip(l, l_args) for item in tup][:-1])
+        return ''.join([to_str(item) for tup in zip(l, l_args) for item in tup][:-1])
 
     try:
         res = resolve(url)
@@ -875,12 +869,9 @@ def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
 
 
 def unicode_to_readable(text):
-    if isinstance(text, bytes):
-        text = text.decode()
-
     def unescape_one_match(match_obj):
-        return match_obj.group(0).encode().decode('unicode_escape')
-    return re.sub(r"\\u[0-9a-fA-F]{4}", unescape_one_match, text)
+        return match_obj.group(0).encode('utf-8').decode('unicode_escape')
+    return re.sub(r"\\u[0-9a-fA-F]{4}", unescape_one_match, to_str(text))
 
 
 def use_in_all_tests(decorator):
@@ -912,3 +903,15 @@ class FakeSizeMemoryFileUploadHandler(MemoryFileUploadHandler):
         if re_size:
             file_size = int(re_size.group(1))
         return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)
+
+
+def to_str(s):
+    if isinstance(s, bytes):
+        return s.decode('utf-8')
+    return s
+
+
+def to_bytes(s):
+    if isinstance(s, str):
+        return s.encode('utf-8')
+    return s
