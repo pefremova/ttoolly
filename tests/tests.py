@@ -2,6 +2,7 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
+import ast
 from builtins import str
 from past.builtins import xrange
 
@@ -70,8 +71,9 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         fields_list_2 = []
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        msg = "Fields %s not need at form" % repr(list({'test1', 'test2'}))
-        self.assertEqual(str(ar.exception), msg)
+        matched = re.match(r'Fields (\[.*\]) not need at form$', str(ar.exception))
+        msg_fields = ast.literal_eval(matched.group(1))
+        self.assertListEqual(sorted(msg_fields), sorted(fields_list_1))
 
     def test_assert_form_equal_not_at_form(self):
         fields_list_1 = ['test1']
@@ -86,8 +88,9 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         fields_list_2 = ['test1', 'test2']
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        msg = "Fields %s not at form" % repr(list({'test1', 'test2'}))
-        self.assertEqual(str(ar.exception), msg)
+        matched = re.match(r'Fields (\[.*\]) not at form$', str(ar.exception))
+        msg_fields = ast.literal_eval(matched.group(1))
+        self.assertListEqual(sorted(msg_fields), sorted(fields_list_2))
 
     def test_assert_form_equal_duplicate(self):
         fields_list_1 = ['test1', 'test2', 'test2']
@@ -126,8 +129,9 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         fields_list_2 = []
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        msg = "тест:\nFields %s not need at form" % repr(list({'test1', 'test2'}))
-        self.assertEqual(str(ar.exception), msg)
+        matched = re.match(r'тест:\nFields (\[.*\]) not need at form$', str(ar.exception))
+        msg_fields = ast.literal_eval(matched.group(1))
+        self.assertListEqual(sorted(msg_fields), sorted(fields_list_1))
 
     def test_assert_form_equal_not_at_form_with_custom_message(self):
         fields_list_1 = ['test1']
@@ -142,8 +146,9 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         fields_list_2 = ['test1', 'test2']
         with self.assertRaises(AssertionError) as ar:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        msg = "тест:\nFields %s not at form" % repr(list({'test1', 'test2'}))
-        self.assertEqual(str(ar.exception), msg)
+        matched = re.match(r'тест:\nFields (\[.*\]) not at form$', str(ar.exception))
+        msg_fields = ast.literal_eval(matched.group(1))
+        self.assertListEqual(sorted(msg_fields), sorted(fields_list_2))
 
     def test_assert_form_equal_duplicate_with_custom_message(self):
         fields_list_1 = ['test1', 'test2', 'test2']
@@ -162,12 +167,6 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(str(ar.exception), msg)
 
     def test_assert_dict_equal(self):
-        multi_dict_1 = {'qwe': {'a': 1, 'b': 2}}
-        multi_dict_2 = {'qwe': {'a': 2, 'b': 1}}
-        multi_dict_msg = ["[qwe]:"]
-        for k in set(multi_dict_1['qwe'].keys()):
-            multi_dict_msg += ['[qwe][%s]: %s != %s' % (k, repr(multi_dict_1['qwe'][k]), repr(multi_dict_2['qwe'][k]))]
-        multi_dict_msg = '\n  '.join(multi_dict_msg)
         data = (
             ('q', {}, 'First argument is not a dictionary'),
             (1, {}, 'First argument is not a dictionary'),
@@ -181,7 +180,6 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             ({'qwe': {'a': 1, }}, {'qwe': 123}, "[qwe]: %s != 123" % repr({'a': 1})),
             ({'qwe': {'a': 1, }}, {'qwe': {'a': 1, 'b': 1}}, "[qwe]:\n  Not in first dict: [%s]" % repr('b')),
             ({'qwe': {'a': 1, 'b': 1}}, {'qwe': {'a': 1}}, "[qwe]:\n  Not in second dict: [%s]" % repr('b')),
-            (multi_dict_1, multi_dict_2, multi_dict_msg),
             ({'qwe': 'q', 'z': ''}, {'qwe': 1, }, "Not in second dict: [%s]\n[qwe]: %s != 1" % (repr('z'), repr('q'))),
             ({'qwe': 'й'}, {'qwe': 'йцу'}, "[qwe]: й != йцу"),
             ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'.encode('utf-8')}, "[qwe]: й != йцу"),
@@ -197,13 +195,13 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
                 self.btc.assert_dict_equal(dict1, dict2)
             self.assertEqual(str(ar.exception), message)
 
+        with self.assertRaises(AssertionError) as ar:
+            self.btc.assert_dict_equal({'qwe': {'a': 1, 'b': 2}}, {'qwe': {'a': 2, 'b': 1}})
+            matched = re.match(r'[qwe]:\n  (.*)\n  (.*)', str(ar.exception))
+            msg_list = [matched.group(1), matched.group(2)]
+            self.assertEqual(sorted(msg_list), ['[qwe][a] 1 != 2', '[qwe][b] 2 != 1'])
+
     def test_assert_dict_equal_with_custom_message(self):
-        multi_dict_1 = {'qwe': {'a': 1, 'b': 2}}
-        multi_dict_2 = {'qwe': {'a': 2, 'b': 1}}
-        multi_dict_msg = ["[qwe]:"]
-        for k in set(multi_dict_1['qwe'].keys()):
-            multi_dict_msg += ['[qwe][%s]: %s != %s' % (k, repr(multi_dict_1['qwe'][k]), repr(multi_dict_2['qwe'][k]))]
-        multi_dict_msg = '\n  '.join(multi_dict_msg)
         data = (
             ('q', {}, 'First argument is not a dictionary'),
             (1, {}, 'First argument is not a dictionary'),
@@ -217,7 +215,6 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             ({'qwe': {'a': 1, }}, {'qwe': 123}, "[qwe]: %s != 123" % repr({'a': 1})),
             ({'qwe': {'a': 1, }}, {'qwe': {'a': 1, 'b': 1}}, "[qwe]:\n  Not in first dict: [%s]" % repr('b')),
             ({'qwe': {'a': 1, 'b': 1}}, {'qwe': {'a': 1}}, "[qwe]:\n  Not in second dict: [%s]" % repr('b')),
-            (multi_dict_1, multi_dict_2, multi_dict_msg),
             ({'qwe': 'q', 'z': ''}, {'qwe': 1, }, "Not in second dict: [%s]\n[qwe]: %s != 1" % (repr('z'), repr('q'))),
             ({'qwe': 'й'}, {'qwe': 'йцу'}, "[qwe]: й != йцу"),
             ({'qwe': 'й'.encode('utf-8')}, {'qwe': 'йцу'.encode('utf-8')}, "[qwe]: й != йцу"),
@@ -232,6 +229,12 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
             with self.assertRaises(AssertionError) as ar:
                 self.btc.assert_dict_equal(dict1, dict2, 'тест')
             self.assertEqual(str(ar.exception), 'тест:\n' + message)
+
+        with self.assertRaises(AssertionError) as ar:
+            self.btc.assert_dict_equal({'qwe': {'a': 1, 'b': 2}}, {'qwe': {'a': 2, 'b': 1}})
+            matched = re.match(r'тест:\n[qwe]:\n  (.*)\n  (.*)', str(ar.exception))
+            msg_list = [matched.group(1), matched.group(2)]
+            self.assertEqual(sorted(msg_list), ['[qwe][a] 1 != 2', '[qwe][b] 2 != 1'])
 
     def test_assert_equal_dicts_equal(self):
         self.btc.assert_dict_equal({'q': 1, 'w': 2}, {'w': 2, 'q': 1})
