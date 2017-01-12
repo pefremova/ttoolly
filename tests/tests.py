@@ -27,7 +27,7 @@ from ttoolly.models import TEMP_DIR, FormTestMixIn, GlobalTestMixIn
 from test_project.test_app.models import OtherModel, SomeModel
 import xml.etree.cElementTree as et
 
-from ttoolly.utils import FILE_TYPES
+from ttoolly.utils import FILE_TYPES, to_bytes
 
 
 class TestGlobalTestMixInMethods(unittest.TestCase):
@@ -165,7 +165,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         multi_dict_1 = {'qwe': {'a': 1, 'b': 2}}
         multi_dict_2 = {'qwe': {'a': 2, 'b': 1}}
         multi_dict_msg = ["[qwe]:"]
-        for k in {'a', 'b'}:
+        for k in set(multi_dict_1['qwe'].keys()):
             multi_dict_msg += ['[qwe][%s]: %s != %s' % (k, repr(multi_dict_1['qwe'][k]), repr(multi_dict_2['qwe'][k]))]
         multi_dict_msg = '\n  '.join(multi_dict_msg)
         data = (
@@ -201,7 +201,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         multi_dict_1 = {'qwe': {'a': 1, 'b': 2}}
         multi_dict_2 = {'qwe': {'a': 2, 'b': 1}}
         multi_dict_msg = ["[qwe]:"]
-        for k in {'a', 'b'}:
+        for k in set(multi_dict_1['qwe'].keys()):
             multi_dict_msg += ['[qwe][%s]: %s != %s' % (k, repr(multi_dict_1['qwe'][k]), repr(multi_dict_2['qwe'][k]))]
         multi_dict_msg = '\n  '.join(multi_dict_msg)
         data = (
@@ -358,13 +358,13 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
     def test_get_field_by_name(self):
         self.assertEqual(self.btc.get_field_by_name(SomeModel, 'text_field'),
-                         SomeModel._meta.get_field_by_name('text_field')[0])
+                         SomeModel._meta.get_field('text_field'))
         self.assertEqual(self.btc.get_field_by_name(SomeModel, 'many_related_field-0-other_text_field'),
-                         OtherModel._meta.get_field_by_name('other_text_field')[0])
+                         OtherModel._meta.get_field('other_text_field'))
         self.assertEqual(self.btc.get_field_by_name(SomeModel, 'foreign_key_field-0-other_text_field'),
-                         OtherModel._meta.get_field_by_name('other_text_field')[0])
+                         OtherModel._meta.get_field('other_text_field'))
         self.assertEqual(self.btc.get_field_by_name(OtherModel, 'related_name-0-text_field'),
-                         SomeModel._meta.get_field_by_name('text_field')[0])
+                         SomeModel._meta.get_field('text_field'))
 
     def test_get_params_according_to_type(self):
         el_1 = SomeModel(id=1)
@@ -385,9 +385,12 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(self.btc.get_params_according_to_type(True, False), (True, False))
         self.assertEqual(self.btc.get_params_according_to_type(None, None), (None, None))
         self.assertEqual(self.btc.get_params_according_to_type('текст1', 'текст2'), ('текст1', 'текст2'))
-        self.assertEqual(self.btc.get_params_according_to_type(b'текст1', b'текст2'), (b'текст1', b'текст2'))
-        self.assertEqual(self.btc.get_params_according_to_type('текст1', b'текст2'), ('текст1', 'текст2'))
-        self.assertEqual(self.btc.get_params_according_to_type(b'текст1', 'текст2'), ('текст1', 'текст2'))
+        self.assertEqual(
+            self.btc.get_params_according_to_type(to_bytes('текст1'), to_bytes('текст2')),
+            (to_bytes('текст1'), to_bytes('текст2'))
+        )
+        self.assertEqual(self.btc.get_params_according_to_type('текст1', to_bytes('текст2')), ('текст1', 'текст2'))
+        self.assertEqual(self.btc.get_params_according_to_type(to_bytes('текст1'), 'текст2'), ('текст1', 'текст2'))
 
         self.assertEqual(self.btc.get_params_according_to_type('текст1', 'on'), ('текст1', 'on'))
         self.assertEqual(self.btc.get_params_according_to_type(True, 'on'), (True, True))
@@ -405,8 +408,8 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
         self.assertEqual(self.btc.get_params_according_to_type('1', 2), ('1', 2))
         self.assertEqual(self.btc.get_params_according_to_type(1, '2'), ('1', '2'))
-        self.assertEqual(self.btc.get_params_according_to_type(None, ''), (b'', b''))
-        self.assertEqual(self.btc.get_params_according_to_type('', None), (b'', b''))
+        self.assertEqual(self.btc.get_params_according_to_type(None, ''), ('', ''))
+        self.assertEqual(self.btc.get_params_according_to_type('', None), ('', ''))
         self.assertEqual(self.btc.get_params_according_to_type(1, None), ('1', ''))
         self.assertEqual(self.btc.get_params_according_to_type(None, 1), ('', 1))
 
@@ -583,7 +586,12 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(re.findall('\d{2}\:\d{2}', res), [res])
 
     def test_set_empty_value_for_field(self):
-        from django.db.models.query import ValuesListQuerySet
+        try:
+            # for django 1.8
+            from django.db.models.query import ValuesListQuerySet
+        except ImportError:
+            from django.db.models import QuerySet as ValuesListQuerySet
+
         params = {'str_field': 'test',
                   'int_field': 1,
                   'list_field': [1, 2, 3],
@@ -1405,7 +1413,7 @@ class TestUtils(unittest.TestCase):
         new_date = utils.get_random_date_value(date(2010, 3, 2), date(2011, 4, 2))
         self.assertTrue(isinstance(new_date, date))
         self.assertGreaterEqual(new_date, date(2010, 3, 2))
-        self.assertLess(new_date, date(2011, 4, 2))
+        self.assertLessEqual(new_date, date(2011, 4, 2))
 
     def test_get_random_datetime_value(self):
         new_date = utils.get_random_datetime_value()
@@ -1417,7 +1425,7 @@ class TestUtils(unittest.TestCase):
         new_date = utils.get_random_datetime_value(datetime(2010, 3, 2, 12, 3, 5), datetime(2011, 4, 2, 1, 2, 4))
         self.assertTrue(isinstance(new_date, datetime))
         self.assertGreaterEqual(new_date, datetime(2010, 3, 2, 12, 3, 5))
-        self.assertLess(new_date, datetime(2011, 4, 2, 1, 2, 4))
+        self.assertLessEqual(new_date, datetime(2011, 4, 2, 1, 2, 4))
 
     def test_get_random_file(self):
         new_file = utils.get_random_file()
