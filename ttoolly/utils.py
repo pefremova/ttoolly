@@ -75,23 +75,19 @@ def format_errors(errors, space_count=0):
 
 
 def generate_random_obj(obj_model, additional_params=None, filename=None, with_save=True):
-    if additional_params is None:
-        additional_params = {}
-    fields = obj_model._meta.fields
+    additional_params = additional_params or {}
     params = {}
-    for f in fields:
+    for f in obj_model._meta.fields:
         if f.auto_created or f.name in additional_params.keys():
             continue
-        if f.null and f.blank:
-            if random.randint(0, 1):
-                continue
+        if f.null and f.blank and random.randint(0, 1):
+            continue
         params[f.name] = get_value_for_obj_field(f, filename)
 
     params.update(additional_params)
     if with_save:
         return obj_model.objects.create(**params)
-    else:
-        return obj_model(**params)
+    return obj_model(**params)
 
 
 def generate_sql(data):
