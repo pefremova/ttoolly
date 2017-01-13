@@ -941,7 +941,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def get_random_file(self, field, length=10, count=1, *args, **kwargs):
         self.with_files = True
-        filename = get_randname(length, 'wrd ')
+        filename = get_randname(length, 'wrd')
         file_dict = self.deepcopy(getattr(self, 'file_fields_params', {}).get(field, {}) or
                                   getattr(self, 'file_fields_params_add', {}).get(field, {}) or
                                   getattr(self, 'file_fields_params_edit', {}).get(field, {}))
