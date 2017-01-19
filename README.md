@@ -1,5 +1,5 @@
 # ttoolly
-[![Build Status](https://travis-ci.org/pefremova/ttoolly.svg?branch=tests)](https://travis-ci.org/pefremova/ttoolly) [![Coverage Status](https://coveralls.io/repos/github/pefremova/ttoolly/badge.svg?branch=tests)](https://coveralls.io/github/pefremova/ttoolly?branch=django1.10)
+[![Build Status](https://travis-ci.org/pefremova/ttoolly.svg?branch=django1.10)](https://travis-ci.org/pefremova/ttoolly) [![Coverage Status](https://coveralls.io/repos/github/pefremova/ttoolly/badge.svg?branch=django1.10)](https://coveralls.io/github/pefremova/ttoolly?branch=django1.10)
 
 Django test tools
 
