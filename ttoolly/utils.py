@@ -75,23 +75,19 @@ def format_errors(errors, space_count=0):
 
 
 def generate_random_obj(obj_model, additional_params=None, filename=None, with_save=True):
-    if additional_params is None:
-        additional_params = {}
-    fields = obj_model._meta.fields
+    additional_params = additional_params or {}
     params = {}
-    for f in fields:
+    for f in obj_model._meta.fields:
         if f.auto_created or f.name in additional_params.keys():
             continue
-        if f.null and f.blank:
-            if random.randint(0, 1):
-                continue
+        if f.null and f.blank and random.randint(0, 1):
+            continue
         params[f.name] = get_value_for_obj_field(f, filename)
 
     params.update(additional_params)
     if with_save:
         return obj_model.objects.create(**params)
-    else:
-        return obj_model(**params)
+    return obj_model(**params)
 
 
 def generate_sql(data):
@@ -601,15 +597,15 @@ def get_value_for_obj_field(f, filename=None):
         else:
             dir_path_length = 0
         length = random.randint(1, f.max_length - 4 - dir_path_length - 1)
-        name = get_randname(length) + '.jpg'
+        name = get_randname(length, 'wrd ') + '.jpg'
         return ContentFile(content, name=name)
-    elif mro_names.intersection(['JSONField', ]):
+    elif mro_names.intersection(['JSONField']):
         return {get_randname(10, 'wd'): get_randname(10) for i in xrange(random.randint(0, 5))}
 
 
 def get_random_contentfile(size=10, filename=None):
     if not filename:
-        filename = get_randname(10, 'wd')
+        filename = get_randname(10, 'wrd ')
     size = convert_size_to_bytes(size)
     return ContentFile(get_randname(size), filename)
 
@@ -700,7 +696,7 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
 def get_random_image_contentfile(size=10, width=1, height=1, filename=None):
     data = get_random_jpg_content(size, width, height)
     if not filename:
-        filename = get_randname(10, 'wd')
+        filename = get_randname(10, 'wrd ')
     return ContentFile(data, filename)
 
 

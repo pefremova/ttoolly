@@ -271,7 +271,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
     def test_get_random_file(self):
         self.btc.with_files = False
         res = self.btc.get_random_file('some_file_field', 20)
-        self.assertTrue(isinstance(res, File))
+        self.assertIsInstance(res, File)
         self.assertEqual(len(os.path.basename(res.name)), 20)
         self.assertEqual(res.name.split('.'), [res.name])
         self.assertTrue(self.btc.with_files)
@@ -280,7 +280,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.with_files = False
         self.btc.default_params = {}
         res = self.btc.get_random_file('some_file_field', 20)
-        self.assertTrue(isinstance(res, File))
+        self.assertIsInstance(res, File)
         self.assertEqual(len(os.path.basename(res.name)), 20)
         self.assertEqual(res.name.split('.'), [res.name])
         self.assertTrue(self.btc.with_files)
@@ -293,7 +293,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.file_fields_params = {'test': {'extensions': ('jpg',)},
                                        'some_image_field': {'extensions': ('jpg',)}}
         res = self.btc.get_random_file('some_image_field', 20)
-        self.assertTrue(isinstance(res, File))
+        self.assertIsInstance(res, File)
         self.assertEqual(len(os.path.basename(res.name)), 20)
         self.assertEqual(os.path.splitext(os.path.basename(res.name))[1], '.jpg')
         self.assertTrue(self.btc.with_files)
@@ -468,7 +468,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         params = {'test_field': 'qwe'}
         self.btc.update_params(params)
         self.assertNotEqual(params['test_field'], 'qwe')
-        self.assertTrue(isinstance(params['test_field'], str))
+        self.assertIsInstance(params['test_field'], str)
 
     def test_update_params_with_unique_not_change(self):
         self.btc.all_unique = {('test_field',): 'test_field'}
@@ -533,24 +533,24 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
     def test_get_value_for_field(self):
         res = self.btc.get_value_for_field(15, 'some_field_name')
-        self.assertTrue(isinstance(res, str))
+        self.assertIsInstance(res, str)
         self.assertEqual(len(res), 15)
 
     def test_get_value_for_email_field(self):
         res = self.btc.get_value_for_field(25, 'email_field_name')
-        self.assertTrue(isinstance(res, str))
+        self.assertIsInstance(res, str)
         self.assertIn('@', res)
         self.assertEqual(len(res), 25)
 
     def test_get_value_for_file_field(self):
         res = self.btc.get_value_for_field(25, 'file_field_name')
-        self.assertTrue(isinstance(res, File))
+        self.assertIsInstance(res, File)
         self.assertEqual(len(os.path.basename(res.name)), 25)
 
     def test_get_value_for_digital_field(self):
         self.btc.digital_fields = ('some_field_name',)
         res = self.btc.get_value_for_field(5, 'some_field_name')
-        self.assertTrue(isinstance(res, str))
+        self.assertIsInstance(res, str)
         self.assertEqual(len(res), 5)
         self.assertTrue(int(res))
 
@@ -558,14 +558,14 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.choice_fields = ('some_field_name',)
         self.btc.choice_fields_values = {'some_field_name': ['qwe', 'rty']}
         res = self.btc.get_value_for_field(5, 'some_field_name')
-        self.assertTrue(isinstance(res, str))
+        self.assertIsInstance(res, str)
         self.assertIn(res, ['qwe', 'rty'])
 
     def test_get_value_for_multiselect_field(self):
         self.btc.multiselect_fields = ('some_field_name',)
         self.btc.choice_fields_values = {'some_field_name': ['qwe', 'rty']}
         res = self.btc.get_value_for_field(5, 'some_field_name')
-        self.assertTrue(isinstance(res, list))
+        self.assertIsInstance(res, list)
         self.assertTrue(set(res).intersection(['qwe', 'rty']))
 
     def test_get_value_for_foreign_field(self):
@@ -573,7 +573,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         OtherModel.objects.create()
         self.btc.digital_fields = ('foreign_key_field',)
         res = self.btc.get_value_for_field(5, 'foreign_key_field')
-        self.assertTrue(isinstance(res, int))
+        self.assertIsInstance(res, int)
         self.assertTrue(OtherModel.objects.filter(pk=res).exists())
 
     def test_get_value_for_datetime_field(self):
@@ -1343,33 +1343,38 @@ class TestUtils(unittest.TestCase):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
         test_obj.int_field = None
         new_obj = utils.fill_all_obj_fields(test_obj)
-        self.assertTrue(isinstance(new_obj.int_field, int))
+        self.assertIsInstance(new_obj.int_field, int)
 
     def test_fill_all_obj_fields(self):
         test_obj = SomeModel.objects.create(int_field=1, unique_int_field=2)
         new_obj = utils.fill_all_obj_fields(test_obj,
                                             fields=('text_field', 'char_field', 'many_related_field',
                                                     'file_field', 'digital_field', 'email_field', 'foreign_key_field'))
-        self.assertTrue(isinstance(new_obj.text_field, str))
+        self.assertIsInstance(new_obj.text_field, str)
         self.assertTrue(new_obj.text_field)
-        self.assertTrue(isinstance(new_obj.char_field, str))
+        self.assertIsInstance(new_obj.char_field, str)
         self.assertTrue(new_obj.char_field)
         # self.assertTrue(new_obj.many_related_field.all())
-        self.assertTrue(isinstance(new_obj.file_field, FieldFile))
+        self.assertIsInstance(new_obj.file_field, FieldFile)
         self.assertTrue(new_obj.file_field.file)
-        self.assertTrue(isinstance(new_obj.digital_field, float))
+        self.assertIsInstance(new_obj.digital_field, float)
         self.assertTrue(new_obj.digital_field)
-        self.assertTrue(isinstance(new_obj.int_field, int))
+        self.assertIsInstance(new_obj.int_field, int)
         self.assertEqual(new_obj.int_field, 1)
-        self.assertTrue(isinstance(new_obj.unique_int_field, int))
+        self.assertIsInstance(new_obj.unique_int_field, int)
         self.assertEqual(new_obj.unique_int_field, 2)
-        self.assertTrue(isinstance(new_obj.email_field, str))
+        self.assertIsInstance(new_obj.email_field, str)
         self.assertTrue(new_obj.email_field)
         self.assertIn('@', new_obj.email_field)
-        self.assertTrue(isinstance(new_obj.foreign_key_field, OtherModel))
+        self.assertIsInstance(new_obj.foreign_key_field, OtherModel)
         self.assertEqual(OtherModel.objects.all().count(), 1)
         self.assertTrue(new_obj.foreign_key_field)
         self.assertEqual(SomeModel.objects.get(unique_int_field=2).text_field, test_obj.text_field)
+        # for auto created
+        test_obj = OtherModel.objects.create()
+        test_obj.id = None
+        new_obj = utils.fill_all_obj_fields(test_obj, fields=('id',), save=False)
+        self.assertFalse(new_obj.id)
 
     def test_fill_all_obj_fields_with_other_model_exists(self):
         OtherModel.objects.create()
@@ -1383,11 +1388,17 @@ class TestUtils(unittest.TestCase):
         new_obj = utils.fill_all_obj_fields(test_obj, fields=('text_field', ), save=True)
         self.assertEqual(SomeModel.objects.get(unique_int_field=3).text_field, new_obj.text_field)
 
-    def test_generate_random_obj(self):
+    def test_generate_random_obj_wo_save(self):
+        initial_count = SomeModel.objects.all().count()
+        new_obj = utils.generate_random_obj(SomeModel, with_save=False)
+        self.assertEqual(SomeModel.objects.all().count(), initial_count)
+        self.assertIsInstance(new_obj.int_field, int)
+
+    def test_generate_random_obj_with_save(self):
         initial_count = SomeModel.objects.all().count()
         new_obj = utils.generate_random_obj(SomeModel)
         self.assertEqual(SomeModel.objects.all().count(), initial_count + 1)
-        self.assertTrue(isinstance(new_obj.int_field, int))
+        self.assertIsInstance(new_obj.int_field, int)
 
     def test_generate_random_obj_with_additional_params(self):
         initial_count = SomeModel.objects.all().count()
@@ -1408,36 +1419,36 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_date_value(self):
         new_date = utils.get_random_date_value()
-        self.assertTrue(isinstance(new_date, date))
+        self.assertIsInstance(new_date, date)
         self.assertEqual(new_date.year, date.today().year)
         self.assertEqual(new_date.month, date.today().month)
 
     def test_get_random_date_value2(self):
         new_date = utils.get_random_date_value(date(2010, 3, 2), date(2011, 4, 2))
-        self.assertTrue(isinstance(new_date, date))
+        self.assertIsInstance(new_date, date)
         self.assertGreaterEqual(new_date, date(2010, 3, 2))
         self.assertLessEqual(new_date, date(2011, 4, 2))
 
     def test_get_random_datetime_value(self):
         new_date = utils.get_random_datetime_value()
-        self.assertTrue(isinstance(new_date, datetime))
+        self.assertIsInstance(new_date, datetime)
         self.assertEqual(new_date.year, date.today().year)
         self.assertEqual(new_date.month, date.today().month)
 
     def test_get_random_datetime_value2(self):
         new_date = utils.get_random_datetime_value(datetime(2010, 3, 2, 12, 3, 5), datetime(2011, 4, 2, 1, 2, 4))
-        self.assertTrue(isinstance(new_date, datetime))
+        self.assertIsInstance(new_date, datetime)
         self.assertGreaterEqual(new_date, datetime(2010, 3, 2, 12, 3, 5))
         self.assertLessEqual(new_date, datetime(2011, 4, 2, 1, 2, 4))
 
     def test_get_random_file(self):
         new_file = utils.get_random_file()
-        self.assertTrue(isinstance(new_file, ContentFile))
+        self.assertIsInstance(new_file, ContentFile)
         self.assertEqual(new_file.size, 10)
 
     def test_get_random_file_with_path(self):
         new_file = utils.get_random_file(path='/tmp/test', )
-        self.assertTrue(isinstance(new_file, FILE_TYPES))
+        self.assertIsInstance(new_file, FILE_TYPES)
         self.assertEqual(len(new_file.read()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
@@ -1452,7 +1463,7 @@ class TestUtils(unittest.TestCase):
         hasher = hashlib.md5()
         hasher.update(new_file.read().encode())
         self.assertNotEqual(hasher.hexdigest(), last_file_hash)
-        self.assertTrue(isinstance(new_file, FILE_TYPES))
+        self.assertIsInstance(new_file, FILE_TYPES)
         new_file.seek(0)
         self.assertEqual(len(new_file.read().encode()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
@@ -1464,7 +1475,7 @@ class TestUtils(unittest.TestCase):
         last_change_time = os.stat('/tmp/test').st_mtime
         new_file = utils.get_random_file(path='/tmp/test', rewrite=False)
         self.assertEqual(os.stat('/tmp/test').st_mtime, last_change_time)
-        self.assertTrue(isinstance(new_file, FILE_TYPES))
+        self.assertIsInstance(new_file, FILE_TYPES)
         self.assertEqual(len(new_file.read()), 10)
         self.assertEqual(new_file.name, '/tmp/test')
         self.assertEqual(new_file.closed, False)
@@ -1472,20 +1483,25 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_file_with_path_return_closed(self):
         new_file = utils.get_random_file(path='/tmp/test', return_opened=False)
-        self.assertTrue(isinstance(new_file, FILE_TYPES))
+        self.assertIsInstance(new_file, FILE_TYPES)
         self.assertTrue(new_file.closed)
         self.assertTrue(os.path.exists('/tmp/test'))
         f = open('/tmp/test')
         self.assertEqual(len(f.read()), 10)
 
+    def test_get_random_file_with_path_without_rewrite_without_return(self):
+        utils.get_random_file(path='/tmp/test')
+        new_file = utils.get_random_file(path='/tmp/test', rewrite=False, return_opened=False)
+        self.assertIsNone(new_file)
+
     def test_get_random_file_with_size(self):
         new_file = utils.get_random_file(size=100)
-        self.assertTrue(isinstance(new_file, ContentFile))
+        self.assertIsInstance(new_file, ContentFile)
         self.assertEqual(len(new_file.read()), 100)
 
     def test_get_random_file_with_filename(self):
         new_file = utils.get_random_file(filename='test.qwe')
-        self.assertTrue(isinstance(new_file, ContentFile))
+        self.assertIsInstance(new_file, ContentFile)
         self.assertEqual(new_file.name, 'test.qwe')
 
     def test_get_random_file_with_img_filename(self):
@@ -1517,14 +1533,14 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_file_with_extensions(self):
         new_file = utils.get_random_file(extensions=('zzz',))
-        self.assertTrue(isinstance(new_file, ContentFile))
+        self.assertIsInstance(new_file, ContentFile)
         self.assertEqual(os.path.splitext(new_file.name)[1], '.zzz')
 
     def test_get_random_file_fake_size(self):
         settings.TEST_GENERATE_REAL_SIZE_FILE = False
         new_file = utils.get_random_file(size=100, filename='test.qwe')
         settings.TEST_GENERATE_REAL_SIZE_FILE = True
-        self.assertTrue(isinstance(new_file, ContentFile))
+        self.assertIsInstance(new_file, ContentFile)
         self.assertEqual(new_file.size, 10)
         self.assertEqual(new_file.name, '_size_100_.qwe')
 
@@ -1542,7 +1558,7 @@ class TestUtils(unittest.TestCase):
 
     def test_get_random_url_value(self):
         v = utils.get_random_url_value(100)
-        self.assertTrue(isinstance(v, str))
+        self.assertIsInstance(v, str)
         self.assertLessEqual(len(v.split('/')[0]), 62)
         self.assertEqual(re.findall(r'^[^/]{4,62}/.+$', v), [v])
 

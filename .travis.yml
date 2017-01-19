@@ -2,6 +2,7 @@ language: python
 python:
   - "2.7"
   - "3.5"
+  - "3.6"
 env:
   - DJANGO_VERSION=1.8.17
   - DJANGO_VERSION=1.9.12
@@ -14,4 +15,3 @@ after_script:
   coveralls
 script: 
   coverage run --source=ttoolly manage.py test tests;
-
