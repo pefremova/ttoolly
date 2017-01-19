@@ -245,7 +245,7 @@ class MetaCheckFailures(type):
         def decorate(cls, bases, dct):
             for attr in cls.__dict__:
                 if callable(getattr(cls, attr)) and attr.startswith('test_') and \
-                        check_errors not in getattr(getattr(cls, attr), 'decorators', ()):
+                        'check_errors' not in [d.__name__ for d in getattr(getattr(cls, attr), 'decorators', ())]:
                     setattr(cls, attr, check_errors(getattr(cls, attr)))
             bases = cls.__bases__
             for base in bases:
