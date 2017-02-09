@@ -1117,27 +1117,29 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def update_params(self, params):
         unique_keys = [k for el in self.all_unique.keys() for k in el if not k.endswith(self.non_field_error_key)]
-        for key, v in viewitems(params):
-            if key in unique_keys:
-                default_value = v or (getattr(self, 'default_params', {}) or
-                                      getattr(self, 'default_params_add', {}) or
-                                      getattr(self, 'default_params_edit', {}) or {}).get(key, None)
-                key_for_get_values = key
-                if '-' in key:
-                    key_for_get_values = '__'.join([key.split('-')[0].replace('_set', ''), key.split('-')[-1]])
+        for key in set(params.keys()).intersection(unique_keys):
+            default_value = params[key] or (getattr(self, 'default_params', {}) or
+                                            getattr(self, 'default_params_add', {}) or
+                                            getattr(self, 'default_params_edit', {}) or {}).get(key, None)
+            key_for_get_values = key
+            if '-' in key:
+                key_for_get_values = '__'.join([key.split('-')[0].replace('_set', ''), key.split('-')[-1]])
 
-                existing_values = [default_value]
-                try:
-                    existing_values = self.obj.objects.values_list(key_for_get_values, flat=True)
-                except:
-                    # FIXME: self.obj does not exists or FieldError
-                    pass
-                n = 0
-                if default_value != '' and default_value is not None:
-                    while n < 3 and params[key] in existing_values:
-                        n += 1
-                        params[key] = self.get_value_for_field(10, key)
-            elif v and self.is_file_field(key):
+            existing_values = [default_value]
+            try:
+                existing_values = [str(el) for el in self.obj.objects.values_list(key_for_get_values, flat=True)]
+                # Нельзя использовать exists, т.к. будет падать для некоторых типов, например UUID
+            except:
+                # FIXME: self.obj does not exists or FieldError
+                pass
+            n = 0
+            if default_value != '' and default_value is not None:
+                while n < 3 and str(params[key]) in existing_values:
+                    n += 1
+                    params[key] = self.get_value_for_field(10, key)
+
+        for key, v in viewitems(params):
+            if v and self.is_file_field(key):
                 if isinstance(v, (list, tuple)):
                     file_value = self.get_value_for_field(10, key)
                     if not isinstance(file_value, list):
@@ -2186,7 +2188,6 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assert_objects_count_on_add(False, initial_obj_count)
                     _locals = {'field': field,
                                'value': value if field in self.choice_fields_add_with_value_in_error else ''}
-                    self.get_all_form_errors(response)
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message(message_type, field, locals=_locals))
                     self.assertEqual(response.status_code, self.status_code_error,
@@ -2215,7 +2216,6 @@ class FormAddTestMixIn(FormTestMixIn):
                     response = self.client.post(self.get_url(self.url_add), params, **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
                     _locals = {'field': field, 'value': value}
-                    self.get_all_form_errors(response)
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message(message_type, field, locals=_locals))
                     self.assertEqual(response.status_code, self.status_code_error,

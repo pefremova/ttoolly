@@ -1421,7 +1421,7 @@ class TestUtils(unittest.TestCase):
         new_date = utils.get_random_date_value()
         self.assertIsInstance(new_date, date)
         self.assertEqual(new_date.year, date.today().year)
-        self.assertEqual(new_date.month, date.today().month)
+        self.assertLessEqual(new_date.month, date.today().month)
 
     def test_get_random_date_value2(self):
         new_date = utils.get_random_date_value(date(2010, 3, 2), date(2011, 4, 2))
@@ -1433,7 +1433,7 @@ class TestUtils(unittest.TestCase):
         new_date = utils.get_random_datetime_value()
         self.assertIsInstance(new_date, datetime)
         self.assertEqual(new_date.year, date.today().year)
-        self.assertEqual(new_date.month, date.today().month)
+        self.assertLessEqual(new_date.month, date.today().month)
 
     def test_get_random_datetime_value2(self):
         new_date = utils.get_random_datetime_value(datetime(2010, 3, 2, 12, 3, 5), datetime(2011, 4, 2, 1, 2, 4))
