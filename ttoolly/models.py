@@ -919,7 +919,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 value = value
                 if isinstance(params_value, (int, float)):
                     params_value = repr(params_value)
-                params_value = Decimal(params_value)
+                params_value = Decimal(params_value) if params_value != '' else params_value
         elif (set([m.__name__ for m in value.__class__.__mro__]).intersection(['file', '_IOBase', 'FieldFile',
                                                                                'ImageFieldFile'])
               or isinstance(params_value, FILE_TYPES + (ContentFile,))):
@@ -3275,14 +3275,16 @@ class FormEditTestMixIn(FormTestMixIn):
                 filters &= ~Q(**{'%s__isnull' % field: True})
                 field_class = self.get_field_by_name(self.obj, field)
                 if not set([c.__name__ for c in field_class.__class__.__mro__])\
-                        .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
+                        .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DecimalField',
+                                       'DateField', 'BooleanField')):
                     filters &= ~Q(**{field: ''})
             else:
                 related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
                 filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
                 field_class = self.get_field_by_name(self.obj, field)
                 if not set([c.__name__ for c in field_class.__class__.__mro__])\
-                        .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DateField')):
+                        .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DecimalField',
+                                       'DateField', 'BooleanField')):
                     filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.obj.objects.filter(filters)
 
