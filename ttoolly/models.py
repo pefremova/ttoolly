@@ -580,17 +580,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             params_value = params[field]
             value, params_value = self.get_params_according_to_type(value, params_value)
 
-            if isinstance(value, str):
-                value = value.encode('utf-8')
-            if isinstance(params_value, str):
-                params_value = params_value.encode('utf-8')
             try:
                 self.assertEqual(value, params_value)
             except AssertionError:
-                text = '[%s]: %s != %s' %\
-                    (field.decode('utf-8') if isinstance(field, bytes) else field,
-                     repr(value) if not isinstance(value, bytes) else repr(value.decode('utf-8')),
-                     repr(params_value) if not isinstance(params_value, bytes) else repr(params_value.decode('utf-8')))
+                text = '[%s]: %s != %s' % (to_str(field), to_str(repr(value)), to_str(repr(params_value)))
                 local_errors.append(text)
 
         if local_errors:
