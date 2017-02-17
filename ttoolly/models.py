@@ -2084,7 +2084,11 @@ class FormAddTestMixIn(FormTestMixIn):
                     params.update(get_captcha_codes())
                 params[field] = max_length_params[field]
                 if self.is_file_field(field):
-                    params[field].seek(0)
+                    if self.is_file_list(field):
+                        for f in params[field]:
+                            f.seek(0)
+                    else:
+                        params[field].seek(0)
                 value = self.get_value_for_error_message(field, params[field])
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
@@ -3663,7 +3667,11 @@ class FormEditTestMixIn(FormTestMixIn):
                     params.update(get_captcha_codes())
                 params[field] = max_length_params[field]
                 if field in file_fields:
-                    params[field].seek(0)
+                    if self.is_file_list(field):
+                        for f in params[field]:
+                            f.seek(0)
+                    else:
+                        params[field].seek(0)
                 value = self.get_value_for_error_message(field, params[field])
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
