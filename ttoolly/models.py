@@ -611,8 +611,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def assert_xpath_count(self, response, path, count=1, status_code=200):
         self.assertEqual(response.status_code, status_code, "Response status code %s != %s" %
                          (response.status_code, status_code))
-
-        res = response.content
+        if not ('xml' in to_str(response.content) and 'encoding' in to_str(response.content)):
+            res = to_str(response.content)
+        else:
+            res = response.content
         self.assert_xpath_count_in_html(res, path, count)
 
     def assert_xpath_count_in_html(self, html, path, count):
