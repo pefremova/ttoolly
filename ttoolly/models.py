@@ -222,7 +222,7 @@ class JsonResponseErrorsMixIn(object):
     def get_all_form_errors(self, response):
         if response.status_code not in (200, 201):
             try:
-                return json.loads(response.content)
+                return json.loads(to_str(response.content))
             except:
                 return super(JsonResponseErrorsMixIn, self).get_all_form_errors(response)
         try:
