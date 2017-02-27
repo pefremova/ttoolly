@@ -896,7 +896,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 value = value.strftime(format_str)
             return value, params_value
 
-        if isinstance(value, Model):
+        if isinstance(value, Model) and not isinstance(params_value, Model):
             value = value.pk
             params_value = int(params_value) if params_value else params_value
         elif value.__class__.__name__ in ('ManyRelatedManager', 'GenericRelatedObjectManager'):
