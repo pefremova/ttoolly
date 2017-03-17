@@ -802,6 +802,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 and message_type not in custom_errors.keys():
             custom_errors[message_type] = custom_errors['min_length']
 
+        if message_type == 'without_required':
+            if 'required' in custom_errors.keys() and message_type not in custom_errors.keys():
+                custom_errors[message_type] = custom_errors['required']
+            elif message_type not in custom_errors.keys():
+                message_type = 'required'
+
         ERROR_MESSAGES.update(custom_errors)
         error_message = ERROR_MESSAGES.get(message_type, '')
         if field is None:
@@ -1979,7 +1985,7 @@ class FormAddTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try create object: required fields are not exists in params
         """
-        message_type = 'required'
+        message_type = 'without_required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
             initial_obj_count = self.obj.objects.count()
@@ -3510,7 +3516,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @author: Polina Efremova
         @note: Try edit object: required fields are not exists in params
         """
-        message_type = 'required'
+        message_type = 'without_required'
         for field in [f for f in self.required_fields_edit if 'FORMS' not in f and not re.findall(r'.+?\-\d+\-.+?', f)]:
             sp = transaction.savepoint()
             try:
