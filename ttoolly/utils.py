@@ -678,12 +678,10 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
         height = height or random.randint(kwargs.get('min_height', 1),
                                           max(kwargs.get('max_height', 100),
                                               kwargs.get('min_height', 0) + 100))
-        if os.path.splitext(filename)[1] in ('.gif',):
-            content = get_random_gif_content(size, width, height)
-        elif os.path.splitext(filename)[1] in ('.svg',):
-            content = get_random_svg_content(size, width, height)
-        else:
-            content = get_random_jpg_content(size, width, height)
+        content = {'.gif': get_random_gif_content,
+                   '.svg': get_random_svg_content,
+                   '.png': get_random_png_content}.get(os.path.splitext(filename)[1].lower(),
+                                                       get_random_jpg_content)(size, width, height)
     if not path and return_opened:
         return ContentFile(content, filename)
     with open(path, 'ab') as f:
@@ -719,6 +717,10 @@ def get_random_img_content(_format, size=10, width=1, height=1):
     return content
 
 
+def get_random_bmp_content(size=10, width=1, height=1):
+    return get_random_img_content('BMP', size, width, height)
+
+
 def get_random_gif_content(size=10, width=1, height=1):
     return get_random_img_content('GIF', size, width, height)
 
@@ -727,8 +729,8 @@ def get_random_jpg_content(size=10, width=1, height=1):
     return get_random_img_content('JPEG', size, width, height)
 
 
-def get_random_bmp_content(size=10, width=1, height=1):
-    return get_random_img_content('BMP', size, width, height)
+def get_random_png_content(size=10, width=1, height=1):
+    return get_random_img_content('PNG', size, width, height)
 
 
 def get_random_svg_content(size=10, width=1, height=1):
