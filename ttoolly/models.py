@@ -805,7 +805,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if message_type in ('without_required', 'empty_required'):
             if 'required' in custom_errors.keys() and message_type not in custom_errors.keys():
                 custom_errors[message_type] = custom_errors['required']
-            elif message_type not in custom_errors.keys():
+            elif message_type not in custom_errors.keys() and message_type not in ERROR_MESSAGES.keys():
                 message_type = 'required'
 
         ERROR_MESSAGES.update(custom_errors)
