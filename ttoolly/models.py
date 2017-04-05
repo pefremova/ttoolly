@@ -597,17 +597,21 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 self.assertEqual(first, second)
             except AssertionError as e:
                 full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(force_text(e))
+        if first == second:
+            return
         first_length = len(first)
         second_length = len(second)
         for n in xrange(max(first_length, second_length)):
+
+            text = ('Not equal in position %d: ' % n +
+                    "'%s%s' != '%s%s'" % (first[n: n + additional] if isinstance(first[n: n + additional], str) else repr(first[n: n + additional]),
+                                          '...' if (n + additional < first_length) else '',
+                                          second[
+                                              n: n + additional] if isinstance(second[n: n + additional], str) else repr(second[n: n + additional]),
+                                          '...' if (n + additional < second_length) else ''))
             self.assertEqual(first[n:n + 1],
                              second[n:n + 1],
-                             ('Not equal in position %d: ' % n +
-                              "'%s%s' != '%s%s'" % (first[n: n + additional],
-                                                    '...' if (n + additional < first_length) else '',
-                                                    second[n: n + additional],
-                                                    '...' if (n + additional < second_length) else '')) +
-                             full_error_text)
+                             text + full_error_text)
 
     def assert_xpath_count(self, response, path, count=1, status_code=200):
         self.assertEqual(response.status_code, status_code, "Response status code %s != %s" %
