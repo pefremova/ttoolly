@@ -2,25 +2,22 @@
 from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
-from future.utils import viewvalues, viewitems, viewkeys
-from past.builtins import xrange
-from builtins import str
-
 from datetime import datetime, date, time
+from io import StringIO
+from shutil import copyfile, rmtree
+from time import mktime
+from xml.etree import ElementTree as et
 import decimal
 import io
 import json
 import os
 import random
 import re
-from shutil import copyfile, rmtree
 import string
 import sys
-from time import mktime
 import traceback
-from xml.etree import ElementTree as et
-from io import StringIO
 
+from builtins import str
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
@@ -29,6 +26,9 @@ from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMat
 from django.forms.forms import NON_FIELD_ERRORS
 from django.template.context import Context
 from django.test import Client
+from django.utils.encoding import force_text
+from future.utils import viewvalues, viewitems, viewkeys
+from past.builtins import xrange
 import rstr
 
 
@@ -40,7 +40,7 @@ except NameError:
 
 def convert_size_to_bytes(size):
     SYMBOLS = ['', 'K', 'M', 'G']
-    size, symbol = re.findall(r'([\d\.]+)(\w?)', str(size))[0]
+    size, symbol = re.findall(r'([\d\.]+)(\w?)', force_text(size))[0]
     size = float(size) * 1024 ** SYMBOLS.index(symbol if symbol in SYMBOLS else '')
     return int(size)
 
@@ -104,7 +104,7 @@ def generate_sql(data):
                 if value is None:
                     value = 'null'
                 elif isinstance(value, bool):
-                    value = str(value)
+                    value = force_text(value)
                 else:
                     value = "'%s'" % value
                 values.append(value)
@@ -300,7 +300,7 @@ def get_error(tr_limit=getattr(settings, 'TEST_TRACEBACK_LIMIT', None)):
     etype, value, tb = sys.exc_info()
     result = ''
     if any([etype, value, tb]):
-        err = ''.join([to_str(el) for el in traceback.format_exception(etype, value, tb, limit=tr_limit)])
+        err = ''.join([force_text(el) for el in traceback.format_exception(etype, value, tb, limit=tr_limit)])
         result = unicode_to_readable(err)
     return result
 
@@ -576,7 +576,7 @@ def get_value_for_obj_field(f, filename=None):
         if getattr(f, 'decimal_places', None):
             value = round(value, f.decimal_places)
         if mro_names.intersection(['DecimalField', ]):
-            value = decimal.Decimal(str(value))
+            value = decimal.Decimal(force_text(value))
         return value
     elif 'ArrayField' in mro_names:
         if getattr(f, '_choices', None) or f.choices:
@@ -738,8 +738,9 @@ def get_random_svg_content(size=10, width=1, height=1):
     generates svg content
     """
     size = convert_size_to_bytes(size)
-    doc = et.Element('svg', width=str(width), height=str(height), version='1.1', xmlns='http://www.w3.org/2000/svg')
-    et.SubElement(doc, 'rect', width=str(width), height=str(height),
+    doc = et.Element('svg', width=force_text(width), height=force_text(
+        height), version='1.1', xmlns='http://www.w3.org/2000/svg')
+    et.SubElement(doc, 'rect', width=force_text(width), height=force_text(height),
                   fill='rgb(%s, %s, %s)' % (random.randint(1, 255), random.randint(1, 255), random.randint(1, 255)))
     output = StringIO()
     header = '<?xml version=\"1.0\" standalone=\"no\"?>\n' \
@@ -783,14 +784,14 @@ def get_url_for_negative(url, args=()):
                 pass
         start = 0
         l = []
-        l_args = ['/%s/' % to_str(a) for a in args]
+        l_args = ['/%s/' % force_text(a) for a in args]
         for m in re.finditer(r'/\d+/', url):
             l.append(url[start:m.start()])
             start = m.end()
         l.append(url[start:])
         while len(l_args) < len(l):
             l_args.append(l_args[-1])
-        return ''.join([to_str(item) for tup in zip(l, l_args) for item in tup][:-1])
+        return ''.join([force_text(item) for tup in zip(l, l_args) for item in tup][:-1])
 
     try:
         res = resolve(url)
@@ -869,7 +870,7 @@ def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
 def unicode_to_readable(text):
     def unescape_one_match(match_obj):
         return match_obj.group(0).encode('utf-8').decode('unicode_escape')
-    return re.sub(r"\\u[0-9a-fA-F]{4}", unescape_one_match, to_str(text))
+    return re.sub(r"\\u[0-9a-fA-F]{4}", unescape_one_match, force_text(text))
 
 
 def use_in_all_tests(decorator):
@@ -901,12 +902,6 @@ class FakeSizeMemoryFileUploadHandler(MemoryFileUploadHandler):
         if re_size:
             file_size = int(re_size.group(1))
         return super(FakeSizeMemoryFileUploadHandler, self).file_complete(file_size)
-
-
-def to_str(s):
-    if isinstance(s, bytes):
-        return s.decode('utf-8')
-    return s
 
 
 def to_bytes(s):

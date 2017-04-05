@@ -5,6 +5,7 @@ from __future__ import (absolute_import, division,
 from copy import copy, deepcopy
 from datetime import datetime, date, time
 from decimal import Decimal
+from lxml.html import document_fromstring
 from random import choice, randint, uniform
 from shutil import rmtree
 from unittest import SkipTest
@@ -29,15 +30,15 @@ from django.db.models.fields import FieldDoesNotExist
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
+from django.utils.encoding import force_text
 from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
-from lxml.html import document_fromstring
 from past.builtins import xrange, basestring
 import psycopg2.extensions
 
 from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                     get_fields_list_from_response, get_all_form_errors, generate_random_obj,
-                    get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model, FILE_TYPES, to_str)
+                    get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model, FILE_TYPES)
 
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
@@ -93,7 +94,7 @@ def only_with_files_params(param_names=None):
                 return all([param_name in field_dict.keys() for param_name in param_names])
             if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
                 if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                    warnings.warn('%s not set for all fields' % str(param_names))
+                    warnings.warn('%s not set for all fields' % force_text(param_names))
                 return fn(self)
             else:
                 raise SkipTest("Need all these params: %s" % repr(param_names))
@@ -116,7 +117,7 @@ def only_with_any_files_params(param_names=None):
                 return any([param_name in field_dict.keys() for param_name in param_names])
             if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
                 if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                    warnings.warn('%s not set for all fields' % str(param_names))
+                    warnings.warn('%s not set for all fields' % force_text(param_names))
                 return fn(self)
             else:
                 raise SkipTest("Need all these params: %s" % repr(param_names))
@@ -222,7 +223,7 @@ class JsonResponseErrorsMixIn(object):
     def get_all_form_errors(self, response):
         if response.status_code not in (200, 201):
             try:
-                return json.loads(to_str(response.content))
+                return json.loads(force_text(response.content))
             except:
                 return super(JsonResponseErrorsMixIn, self).get_all_form_errors(response)
         try:
@@ -340,7 +341,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 return super(GlobalTestMixIn, self).assertEqual(*args, **kwargs)
             except Exception as e:
                 if warn:
-                    message = str(warn[0].message) + '\n' + str(e)
+                    message = force_text(warn[0].message) + '\n' + force_text(e)
                     e.args = (message,)
                 raise e
 
@@ -396,10 +397,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         errors = []
         not_present_fields = set(etalon_fields).difference(form_fields)
         if not_present_fields:
-            errors.append('Fields %s not at form' % str(list(not_present_fields)))
+            errors.append('Fields %s not at form' % force_text(list(not_present_fields)))
         present_fields = set(form_fields).difference(etalon_fields)
         if present_fields:
-            errors.append("Fields %s not need at form" % str(list(present_fields)))
+            errors.append("Fields %s not need at form" % force_text(list(present_fields)))
         count_dict_form = {k: form_fields.count(k) for k in form_fields}
         count_dict_etalon = {k: etalon_fields.count(k) for k in etalon_fields}
         for field, count_in_etalon in viewitems(count_dict_etalon):
@@ -455,7 +456,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 self.assertEqual(list1, list2)
             except:
                 _, v, _ = sys.exc_info()
-                errors.append(str(v))
+                errors.append(force_text(v))
 
         res = '\n'.join(errors)
         if not isinstance(res, str):
@@ -469,7 +470,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if mails_count != count:
             error = 'Sent %d mails expect of %d.' % (mails_count, count)
         if mails_count > 0:
-            m_to = [str(m.to) for m in mails]
+            m_to = [force_text(m.to) for m in mails]
             m_to.sort()
             error += ' To %s' % ', '.join(m_to)
         if error:
@@ -562,7 +563,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                         self.assertEqual(value.all().count(), count_for_check)
                     except Exception as e:
                         local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, str)
-                                                              else field) + str(e))
+                                                              else field) + force_text(e))
                 for i, el in enumerate(value.all().order_by('pk')
                                        if value.__class__.__name__ in ('RelatedManager', 'QuerySet')
                                        else [value, ]):
@@ -574,7 +575,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                         self.assert_object_fields(el, _params)
                     except Exception as e:
                         local_errors.append('[%s]:%s' % (field.encode('utf-8') if isinstance(field, str)
-                                                         else field, '\n  '.join(str(e).splitlines())))
+                                                         else field, '\n  '.join(force_text(e).splitlines())))
                 continue
 
             params_value = params[field]
@@ -583,7 +584,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             try:
                 self.assertEqual(value, params_value)
             except AssertionError:
-                text = '[%s]: %s != %s' % (to_str(field), to_str(repr(value)), to_str(repr(params_value)))
+                text = '[%s]: %s != %s' % (force_text(field), force_text(repr(value)), force_text(repr(params_value)))
                 local_errors.append(text)
 
         if local_errors:
@@ -595,7 +596,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             try:
                 self.assertEqual(first, second)
             except AssertionError as e:
-                full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(str(e))
+                full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(force_text(e))
         first_length = len(first)
         second_length = len(second)
         for n in xrange(max(first_length, second_length)):
@@ -611,8 +612,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def assert_xpath_count(self, response, path, count=1, status_code=200):
         self.assertEqual(response.status_code, status_code, "Response status code %s != %s" %
                          (response.status_code, status_code))
-        if not ('xml' in to_str(response.content) and 'encoding' in to_str(response.content)):
-            res = to_str(response.content)
+        if not ('xml' in force_text(response.content) and 'encoding' in force_text(response.content)):
+            res = force_text(response.content)
         else:
             res = response.content
         self.assert_xpath_count_in_html(res, path, count)
@@ -648,7 +649,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def errors_append(self, errors=None, text='', color=231):
         if errors is None:
             errors = self.errors
-        text = (to_str(text) + ':\n') if text else ''
+        text = (force_text(text) + ':\n') if text else ''
         if isinstance(text, bytes):
             text = text.decode('utf-8')
         if getattr(settings, 'COLORIZE_TESTS', False) and text:
@@ -844,9 +845,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         fields = obj._meta.get_fields()
         for field in fields:
             if field.__class__.__name__ in ('RelatedObject', 'ManyToOneRel', 'OneToOneRel'):
-                object_fields.append(to_str(field.get_accessor_name()))
+                object_fields.append(force_text(field.get_accessor_name()))
             else:
-                object_fields.append(to_str(field.name))
+                object_fields.append(force_text(field.name))
         return object_fields
 
     def get_params_according_to_type(self, value, params_value):
@@ -858,7 +859,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             params_value = ''
 
         if isinstance(value, basestring) and isinstance(params_value, basestring):
-            return to_str(value), to_str(params_value)
+            return force_text(value), force_text(params_value)
         if isinstance(value, bool):
             params_value = bool(params_value)
             return value, params_value
@@ -906,15 +907,15 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             value = value.pk
             params_value = int(params_value) if params_value else params_value
         elif value.__class__.__name__ in ('ManyRelatedManager', 'GenericRelatedObjectManager'):
-            value = [str(v) for v in value.values_list('pk', flat=True)]
+            value = [force_text(v) for v in value.values_list('pk', flat=True)]
             value.sort()
             if isinstance(params_value, list):
-                params_value = [str(pv) for pv in params_value]
+                params_value = [force_text(pv) for pv in params_value]
                 params_value.sort()
         elif isinstance(value, (int, float)) and not isinstance(value, bool):
             if isinstance(params_value, (int, float, basestring)) and not isinstance(params_value, bool):
-                value = str(value)
-                params_value = str(params_value)
+                value = force_text(value)
+                params_value = force_text(params_value)
         elif isinstance(value, Decimal) and not isinstance(value, bool):
             if isinstance(params_value, (int, Decimal, float, basestring)) and not isinstance(params_value, bool):
                 value = value
@@ -1128,14 +1129,14 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
             existing_values = [default_value]
             try:
-                existing_values = [str(el) for el in self.obj.objects.values_list(key_for_get_values, flat=True)]
+                existing_values = [force_text(el) for el in self.obj.objects.values_list(key_for_get_values, flat=True)]
                 # Нельзя использовать exists, т.к. будет падать для некоторых типов, например UUID
             except:
                 # FIXME: self.obj does not exists or FieldError
                 pass
             n = 0
             if default_value != '' and default_value is not None:
-                while n < 3 and str(params[key]) in existing_values:
+                while n < 3 and force_text(params[key]) in existing_values:
                     n += 1
                     params[key] = self.get_value_for_field(10, key)
 
@@ -1614,7 +1615,7 @@ class FormTestMixIn(GlobalTestMixIn):
                 (isinstance(value, int) and value < 1.0e+10):
             return value + 1
         elif value < 1.0e+10:
-            digits_count = len(str(value).split('.')[1])
+            digits_count = len(force_text(value).split('.')[1])
             return value + round(0.1 ** digits_count, digits_count)
         else:
             value = value * 10
@@ -1630,7 +1631,7 @@ class FormTestMixIn(GlobalTestMixIn):
                 (isinstance(value, int) and value > -1.0e+10):
             return value - 1
         elif value > -1.0e+10:
-            digits_count = len(str(value).split('.')[1])
+            digits_count = len(force_text(value).split('.')[1])
             return value - round(0.1 ** digits_count, digits_count)
         else:
             value = value * 10
@@ -1927,7 +1928,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
                     self.errors_append(text='For filled field %s from group "%s"' %
-                                       (field, str(group)))
+                                       (field, force_text(group)))
 
     @only_with_obj
     def test_add_object_empty_required_fields_negative(self):
@@ -1977,7 +1978,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For empty group "%s"' % str(group))
+                self.errors_append(text='For empty group "%s"' % force_text(group))
 
     @only_with_obj
     def test_add_object_without_required_fields_negative(self):
@@ -2027,7 +2028,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For params without group "%s"' % str(group))
+                self.errors_append(text='For params without group "%s"' % force_text(group))
 
     @only_with_obj
     @only_with('max_fields_length')
@@ -2639,7 +2640,8 @@ class FormAddTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
-                    self.errors_append(text='For filled %s fields from group %s' % (str(filled_group), str(group)))
+                    self.errors_append(text='For filled %s fields from group %s' %
+                                       (force_text(filled_group), force_text(group)))
 
     @only_with_obj
     @only_with('max_blocks')
@@ -3455,7 +3457,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
                     self.errors_append(text='For filled field %s from group "%s"' %
-                                       (field, str(group)))
+                                       (field, force_text(group)))
 
     @only_with_obj
     def test_edit_object_empty_required_fields_negative(self):
@@ -3508,7 +3510,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For empty group "%s"' % str(group))
+                self.errors_append(text='For empty group "%s"' % force_text(group))
 
     @only_with_obj
     def test_edit_object_without_required_fields_negative(self):
@@ -3561,7 +3563,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For params without group "%s"' % str(group))
+                self.errors_append(text='For params without group "%s"' % force_text(group))
 
     @only_with_obj
     def test_edit_not_exists_object_negative(self):
@@ -4247,7 +4249,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
                     self.savepoint_rollback(sp)
-                    self.errors_append(text='For filled %s fields from group %s' % (str(filled_group), str(group)))
+                    self.errors_append(text='For filled %s fields from group %s' %
+                                       (force_text(filled_group), force_text(group)))
 
     @only_with_obj
     @only_with('max_blocks')
@@ -5152,8 +5155,8 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 if '.' in res.url_name:
                     result += (aa,)
                 else:
-                    res_kwargs = {k: v if str(v) != '123' else 1 for k, v in viewitems(res.kwargs)}
-                    res_args = tuple([v if str(v) != '123' else 1 for v in res.args])
+                    res_kwargs = {k: v if force_text(v) != '123' else 1 for k, v in viewitems(res.kwargs)}
+                    res_args = tuple([v if force_text(v) != '123' else 1 for v in res.args])
                     result += ((':'.join([el for el in [res.namespace, res.url_name] if el]),
                                 res_kwargs or res_args),)
             except:
@@ -5386,7 +5389,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                     try:
                         cursor.execute(sql)
                     except Exception as e:
-                        sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
+                        sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, force_text(e)))
                         transaction.rollback_unless_managed(using=db)
                     else:
                         transaction.commit_unless_managed(using=db)
@@ -5535,7 +5538,7 @@ class CustomTestCaseNew(CustomTestCase):
                         try:
                             cursor.execute(sql)
                         except Exception as e:
-                            sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, str(e)))
+                            sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, force_text(e)))
 
                     for element in data:
                         sequence_sql.append(("SELECT setval(pg_get_serial_sequence('%s','%s'), coalesce(max(%s), 1), "
