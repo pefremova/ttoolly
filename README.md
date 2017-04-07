@@ -17,7 +17,7 @@ __GlobalTestMixIn__
 |errors | [] | не переопределять (хранит значения ошибок для текущего теста) | |
 |files | [] | список файлов в текущем тесте (используется для закрытия файлов в конце каждого теста) | f = open(filename); self.fields.append(f) |
 |maxDiff|None| unittest.TestCase.maxDiff||
-|non_field_error_key| '\__all\__' | поле, в котором возвращаются общие (не привязанные к конкретному полю) для формы ошибки ||
+|non_field_error_key| '\_\_all\_\_' | поле, в котором возвращаются общие (не привязанные к конкретному полю) для формы ошибки ||
 |unique_fields| None | список уникальных полей | unique_fields = ('field1', ('field2', 'field3'), 'field4')|
 
 
