@@ -1235,6 +1235,80 @@ class TestFormTestMixInMethods(unittest.TestCase):
         self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
                          {'max_values': {sys.float_info.max, 100}, 'min_values': {-sys.float_info.max}})
 
+    def test_get_value_for_field(self):
+        res = self.ftc.get_value_for_field(15, 'some_field_name')
+        self.assertIsInstance(res, str)
+        self.assertEqual(len(res), 15)
+
+    def test_get_value_for_email_field(self):
+        self.ftc.email_fields = ('email_field_name',)
+        res = self.ftc.get_value_for_field(25, 'email_field_name')
+        self.assertIsInstance(res, str)
+        self.assertIn('@', res)
+        self.assertEqual(len(res), 25)
+
+    def test_get_value_for_file_field(self):
+        res = self.ftc.get_value_for_field(25, 'file_field_name')
+        self.assertIsInstance(res, File)
+        self.assertEqual(len(os.path.basename(res.name)), 25)
+
+    def test_get_value_for_digital_field(self):
+        self.ftc.obj = SomeModel
+        self.ftc.digital_fields = ('digital_field',)
+        res = self.ftc.get_value_for_field(5, 'digital_field')
+        self.assertIsInstance(res, float)
+
+    def test_get_value_for_digital_with_decimal_places_field(self):
+        self.ftc.obj = SomeModel
+        self.ftc.digital_fields = ('digital_field',)
+        self.ftc.min_fields_length = (('digital_field', 2.234),)
+        self.ftc.max_fields_length = (('digital_field', 20.34),)
+        self.ftc.max_decimal_places = {'digital_field': 1}
+        res = self.ftc.get_value_for_field(5, 'digital_field')
+        self.assertIsInstance(res, float)
+        self.assertEqual(str(res)[::-1].find('.'), 1)
+
+    def test_get_value_for_int_field(self):
+        self.ftc.obj = SomeModel
+        self.ftc.digital_fields = ('int_field',)
+        self.ftc.int_fields = ('int_field',)
+        res = self.ftc.get_value_for_field(5, 'int_field')
+        self.assertIsInstance(res, int)
+
+    def test_get_value_for_choice_field(self):
+        self.ftc.choice_fields = ('some_field_name',)
+        self.ftc.choice_fields_values = {'some_field_name': ['qwe', 'rty']}
+        res = self.ftc.get_value_for_field(5, 'some_field_name')
+        self.assertIsInstance(res, str)
+        self.assertIn(res, ['qwe', 'rty'])
+
+    def test_get_value_for_multiselect_field(self):
+        self.ftc.multiselect_fields = ('some_field_name',)
+        self.ftc.choice_fields_values = {'some_field_name': ['qwe', 'rty']}
+        res = self.ftc.get_value_for_field(5, 'some_field_name')
+        self.assertIsInstance(res, list)
+        self.assertTrue(set(res).intersection(['qwe', 'rty']))
+
+    def test_get_value_for_foreign_field(self):
+        self.ftc.obj = SomeModel
+        OtherModel.objects.create()
+        self.ftc.digital_fields = ('foreign_key_field',)
+        res = self.ftc.get_value_for_field(5, 'foreign_key_field')
+        self.assertIsInstance(res, int)
+        self.assertTrue(OtherModel.objects.filter(pk=res).exists())
+
+    def test_get_value_for_datetime_field(self):
+        self.ftc.date_fields = ('some_field_name_0',)
+        settings.DATE_INPUT_FORMATS = ('%Y-%m-%d',)
+        res = self.ftc.get_value_for_field(5, 'some_field_name_0')
+        self.assertEqual(re.findall('\d{4}\-\d{2}\-\d{2}', res), [res])
+
+    def test_get_value_for_datetime_field_2(self):
+        self.ftc.date_fields = ('some_field_name_1',)
+        settings.DATE_INPUT_FORMATS = ('%Y-%m-%d',)
+        res = self.ftc.get_value_for_field(5, 'some_field_name_1')
+        self.assertEqual(re.findall('\d{2}\:\d{2}', res), [res])
+
 
 class TestUtils(unittest.TestCase):
 

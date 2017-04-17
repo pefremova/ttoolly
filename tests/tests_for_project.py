@@ -26,6 +26,7 @@ class TestSomeModel(FormAddTestMixIn, FormAddFileTestMixIn, FormEditTestMixIn, F
                           'file_field': {}}
     fixtures = ('tests/fixture.json',)
     int_fields = ('unique_int_field', 'int_field')
+    max_decimal_places = {'digital_field': 2}
     max_fields_length = (('char_field', 120),
                          ('digital_field', 250.1),
                          ('int_field', 500),

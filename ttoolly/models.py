@@ -1034,7 +1034,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if self.is_int_field(field_name):
                 return randint(max(values_range['min_values']), min(values_range['max_values']))
             else:
-                return uniform(max(values_range['min_values']), min(values_range['max_values']))
+                value = uniform(max(values_range['min_values']), min(values_range['max_values']))
+                if getattr(self, 'max_decimal_places', {}).get(field_name, None):
+                    value = round(value, self.max_decimal_places[field_name])
+                return value
         else:
             return get_randname(length, 'w')
 
@@ -1884,8 +1887,8 @@ class FormAddTestMixIn(FormTestMixIn):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params.get(field, None) not in (None, '') else \
-                self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
-                                                 dict(self.max_fields_length).get(field, 10)), field)
+                self.get_value_for_field(randint(int(dict(self.min_fields_length).get(field, 1)),
+                                                 int(dict(self.max_fields_length).get(field, 10))), field)
         if self.with_captcha:
             self.client.get(self.get_url(self.url_add), **self.additional_params)
             params.update(get_captcha_codes())
@@ -1918,8 +1921,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = params[field] if params.get(field, None) not in (None, '') else \
-                    self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
-                                                     dict(self.max_fields_length).get(field, 10)), field)
+                    self.get_value_for_field(randint(int(dict(self.min_fields_length).get(field, 1)),
+                                                     int(dict(self.max_fields_length).get(field, 10))), field)
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
@@ -3421,8 +3424,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params.get(field, None) not in (None, '') else \
-                self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
-                                                 dict(self.max_fields_length).get(field, 10)), field)
+                self.get_value_for_field(randint(int(dict(self.min_fields_length).get(field, 1)),
+                                                 int(dict(self.max_fields_length).get(field, 10))), field)
         try:
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
@@ -3448,8 +3451,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = params[field] if params.get(field, None) not in (None, '') else \
-                    self.get_value_for_field(randint(dict(self.min_fields_length).get(field, 1),
-                                                     dict(self.max_fields_length).get(field, 10)), field)
+                    self.get_value_for_field(randint(int(dict(self.min_fields_length).get(field, 1)),
+                                                     int(dict(self.max_fields_length).get(field, 10))), field)
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
