@@ -527,6 +527,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                       self.get_field_by_name(obj, name).__class__.__name__ in ('RelatedObject',
                                                                                                'ManyToOneRel',
                                                                                                'OneToOneField',
+                                                                                               'OneToOneRel',
                                                                                                'ManyToManyField')]
         fields_for_check = set(params.keys()).intersection(object_fields)
         fields_for_check.update([k.split('-')[0] for k in params.keys() if k.split('-')[0]
@@ -541,9 +542,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         for field in fields_for_check:
             # TODO: refactor me
             if field in one_to_one_fields:
+
                 cls = self.get_field_by_name(obj, field)
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
-                value = _model.objects.filter(**{cls.related_query_name(): obj})
+                """OneToOneField.related_query_name() или OneToOneRel.remote_field.name"""
+                value = _model.objects.filter(**{cls.related_query_name and cls.related_query_name()
+                                                 or cls.remote_field.name: obj})
                 if value:
                     value = value[0]
                 else:
@@ -551,7 +555,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             else:
                 value = getattr(obj, field)
 
-            if field in obj_related_objects.keys() or field in obj_related_objects.values() and \
+            if value is not None and field in obj_related_objects.keys() or field in obj_related_objects.values() and \
                 (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
                  set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase'])):
                 if isinstance(params.get(field, None), list):
