@@ -1226,8 +1226,8 @@ class FormTestMixIn(GlobalTestMixIn):
     int_fields_add = None
     int_fields_edit = None
     max_blocks = None
-    max_fields_length = []
-    min_fields_length = []
+    max_fields_length = {}
+    min_fields_length = {}
     multiselect_fields = None
     multiselect_fields_add = None
     multiselect_fields_edit = None
@@ -1283,6 +1283,13 @@ class FormTestMixIn(GlobalTestMixIn):
                                    any([field in self.all_fields_edit for field in el])]
 
         self._prepare_file_fields_params()
+
+        if not isinstance(self.min_fields_length, dict):
+            warnings.warn('min_fields_length should be dict', FutureWarning)
+            self.min_fields_length = dict(self.min_fields_length)
+        if not isinstance(self.max_fields_length, dict):
+            warnings.warn('max_fields_length should be dict', FutureWarning)
+        self.max_fields_length = dict(self.max_fields_length)
         super(FormTestMixIn, self).__init__(*args, **kwargs)
 
     def _divide_common_and_related_fields(self, fields_list):
@@ -1596,9 +1603,9 @@ class FormTestMixIn(GlobalTestMixIn):
 
     def get_digital_values_range(self, field):
         class_name = self.get_field_by_name(self.obj, field).__class__.__name__
-        max_value_from_params = dict(getattr(self, 'max_fields_length', ())).get(field, None)
+        max_value_from_params = getattr(self, 'max_fields_length', {}).get(field, None)
         max_values = [max_value_from_params] if max_value_from_params is not None else []
-        min_value_from_params = dict(getattr(self, 'min_fields_length', ())).get(field, None)
+        min_value_from_params = getattr(self, 'min_fields_length', {}).get(field, None)
         min_values = [min_value_from_params] if min_value_from_params is not None else []
         if 'SmallInteger' in class_name:
             max_values.append(32767)
@@ -1887,8 +1894,8 @@ class FormAddTestMixIn(FormTestMixIn):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params.get(field, None) not in (None, '') else \
-                self.get_value_for_field(randint(int(dict(self.min_fields_length).get(field, 1)),
-                                                 int(dict(self.max_fields_length).get(field, 10))), field)
+                self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
+                                                 int(self.max_fields_length.get(field, 10))), field)
         if self.with_captcha:
             self.client.get(self.get_url(self.url_add), **self.additional_params)
             params.update(get_captcha_codes())
@@ -1921,8 +1928,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = params[field] if params.get(field, None) not in (None, '') else \
-                    self.get_value_for_field(randint(int(dict(self.min_fields_length).get(field, 1)),
-                                                     int(dict(self.max_fields_length).get(field, 10))), field)
+                    self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
+                                                     int(self.max_fields_length.get(field, 10))), field)
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
@@ -2046,8 +2053,8 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         new_object = None
         other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
-        fields_for_check = [el for el in self.max_fields_length if el[0] in
-                            self.all_fields_add and el[0] not in other_fields]
+        fields_for_check = [(k, v) for k, v in self.max_fields_length.items() if k in
+                            self.all_fields_add and k not in other_fields]
         max_length_params = {}
         for field, length in fields_for_check:
             max_length_params[field] = self.get_value_for_field(length, field)
@@ -2125,8 +2132,8 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'max_length'
         other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
-        for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.all_fields_add and el[0] not in other_fields]:
+        for field, length in [(k, v) for k, v in self.max_fields_length.items() if k in
+                              self.all_fields_add and k not in other_fields]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -2157,8 +2164,8 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'min_length'
         other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
-        for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.all_fields_add and el[0] not in other_fields]:
+        for field, length in [(k, v) for k, v in self.min_fields_length.items() if k in
+                              self.all_fields_add and k not in other_fields]:
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
@@ -3424,8 +3431,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params.get(field, None) not in (None, '') else \
-                self.get_value_for_field(randint(int(dict(self.min_fields_length).get(field, 1)),
-                                                 int(dict(self.max_fields_length).get(field, 10))), field)
+                self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
+                                                 int(self.max_fields_length.get(field, 10))), field)
         try:
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
@@ -3451,8 +3458,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = params[field] if params.get(field, None) not in (None, '') else \
-                    self.get_value_for_field(randint(int(dict(self.min_fields_length).get(field, 1)),
-                                                     int(dict(self.max_fields_length).get(field, 10))), field)
+                    self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
+                                                     int(self.max_fields_length.get(field, 10))), field)
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
@@ -3608,8 +3615,8 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         obj_for_edit = self.get_obj_for_edit()
         other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
-        fields_for_check = [el for el in self.max_fields_length if el[0] in
-                            self.all_fields_edit and el[0] not in other_fields]
+        fields_for_check = [(k, v) for k, v in self.max_fields_length.items() if k in
+                            self.all_fields_edit and k not in other_fields]
         max_length_params = {}
         file_fields = []
         for field, length in fields_for_check:
@@ -3733,8 +3740,8 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'max_length'
         other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
-        for field, length in [el for el in self.max_fields_length if el[0] in
-                              self.all_fields_edit and el[0] not in other_fields]:
+        for field, length in [(k, v) for k, v in self.max_fields_length.items() if k in
+                              self.all_fields_edit and k not in other_fields]:
             current_length = length + 1
             sp = transaction.savepoint()
             try:
@@ -3767,8 +3774,8 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         message_type = 'min_length'
         other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
-        for field, length in [el for el in self.min_fields_length if el[0] in
-                              self.all_fields_edit and el[0] not in other_fields]:
+        for field, length in [(k, v) for k, v in self.min_fields_length.items() if k in
+                              self.all_fields_edit and k not in other_fields]:
             current_length = length - 1
             sp = transaction.savepoint()
             try:

@@ -1206,14 +1206,14 @@ class TestFormTestMixInMethods(unittest.TestCase):
 
     def test_get_digital_values_range_int_with_min(self):
         self.ftc.obj = SomeModel
-        self.ftc.min_fields_length = (('int_field', 100),)
+        self.ftc.min_fields_length = {'int_field': 100}
         self.assertEqual(self.ftc.get_digital_values_range('int_field'),
                          {'max_values': {sys.maxsize, 2147483647},
                           'min_values': {-sys.maxsize - 1, -2147483648, 100}})
 
     def test_get_digital_values_range_int_with_max(self):
         self.ftc.obj = SomeModel
-        self.ftc.max_fields_length = (('int_field', 100),)
+        self.ftc.max_fields_length = {'int_field': 100}
         self.assertEqual(self.ftc.get_digital_values_range('int_field'),
                          {'max_values': {sys.maxsize, 2147483647, 100},
                           'min_values': {-sys.maxsize - 1, -2147483648}})
@@ -1225,13 +1225,13 @@ class TestFormTestMixInMethods(unittest.TestCase):
 
     def test_get_digital_values_range_float_with_max(self):
         self.ftc.obj = SomeModel
-        self.ftc.min_fields_length = (('digital_field', 100),)
+        self.ftc.min_fields_length = {'digital_field': 100}
         self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
                          {'max_values': {sys.float_info.max}, 'min_values': {-sys.float_info.max, 100}})
 
     def test_get_digital_values_range_float_with_min(self):
         self.ftc.obj = SomeModel
-        self.ftc.max_fields_length = (('digital_field', 100),)
+        self.ftc.max_fields_length = {'digital_field': 100}
         self.assertEqual(self.ftc.get_digital_values_range('digital_field'),
                          {'max_values': {sys.float_info.max, 100}, 'min_values': {-sys.float_info.max}})
 
@@ -1261,8 +1261,8 @@ class TestFormTestMixInMethods(unittest.TestCase):
     def test_get_value_for_digital_with_decimal_places_field(self):
         self.ftc.obj = SomeModel
         self.ftc.digital_fields = ('digital_field',)
-        self.ftc.min_fields_length = (('digital_field', 2.234),)
-        self.ftc.max_fields_length = (('digital_field', 20.34),)
+        self.ftc.min_fields_length = {'digital_field': 2.234}
+        self.ftc.max_fields_length = {'digital_field': 20.34}
         self.ftc.max_decimal_places = {'digital_field': 1}
         res = self.ftc.get_value_for_field(5, 'digital_field')
         self.assertIsInstance(res, float)

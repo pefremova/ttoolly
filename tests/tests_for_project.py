@@ -27,13 +27,13 @@ class TestSomeModel(FormAddTestMixIn, FormAddFileTestMixIn, FormEditTestMixIn, F
     fixtures = ('tests/fixture.json',)
     int_fields = ('unique_int_field', 'int_field')
     max_decimal_places = {'digital_field': 2}
-    max_fields_length = (('char_field', 120),
-                         ('digital_field', 250.1),
-                         ('int_field', 500),
-                         ('unique_int_field', 9999999))
-    min_fields_length = (('digital_field', -100.5),
-                         ('int_field', -5),
-                         ('unique_int_field', 0))
+    max_fields_length = {'char_field': 120,
+                         'digital_field': 250.1,
+                         'int_field': 500,
+                         'unique_int_field': 9999999}
+    min_fields_length = {'digital_field': -100.5,
+                         'int_field': -5,
+                         'unique_int_field': 0}
     multiselect_fields = ('many_related_field',)
     obj = SomeModel
     required_fields = ('digital_field', 'int_field')
