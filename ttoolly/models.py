@@ -1445,7 +1445,7 @@ class FormTestMixIn(GlobalTestMixIn):
                 self.disabled_fields_edit = copy(self.disabled_fields)
 
     def _prepare_filter_params(self):
-        if self.filter_params is None:
+        if self.filter_params is None or isinstance(self.filter_params, dict):
             return
         _filter_params = {}
         for param in self.filter_params:
