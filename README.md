@@ -153,3 +153,21 @@ __FormRemoveTestMixIn(FormTestMixIn)__
 | url_recovery | '' | URL, по которому выполняется восстановление объекта | url_recovery = 'modelname:url_name_recovery' или url_recovery = '/path/to/recovery/1/' |
 | url_edit_in_trash | '' | URL, по которому открывается страница редактирования объекта в корзине | url_edit_in_trash = 'modelname:url_name_trash_edit' или url_edit_in_trash = '/path/to/trash/edit/1/' |
 
+
+__ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn)__
+
+Тесты смены пароля пользователя
+
+| название поля | значение по умолчанию | описание | пример использования |
+| --- | --- | --- | --- |
+| current_password | 'qwerty' | Пароль редактируемого пользователя | current_password = 'qwerty' |
+| field_old_password | None | Поле для ввода старого пароля | field_old_password = 'old_password' |
+| field_password | None | Поле для ввода нового пароля | field_password = 'password1' |
+| field_password_repeat | None | Поле для ввода подтверждения нового пароля | field_password_repeat = 'password2' |
+| password_max_length | 128 | Максимальная допустимая длина пароля | password_max_length = 128 |
+| password_min_length | 6 | Минимальная допустимая длина пароля | password_min_length = 6 |
+| password_params | default_params или {field_old_password: current_password, field_password: some_new_value, field_password_repeat: some_new_value} | Параметры по умолчанию, которые используются для смены пароля | password_params = {'password1': 'qwe123', 'password2': 'qwe123'} |
+| obj | None | Модель пользователя | obj = User |
+| password_positive_values | [get_randname(10, 'w') + str(randint(0, 9)), str(randint(0, 9)) + get_randname(10, 'w'), get_randname(10, 'w').upper() + str(randint(0, 9)), ] | Допустимые значения для пароля | password_positive_values = ['qwe+', 'qwe*', 'QwE1'] |
+| url_change_password | '' | URL, по которому выполняется смена пароля. Если не содержит pk пользователя, задавать как /url/, иначе - можно задавать через urlname | url_change_password = 'admin:auth_user_password_change' |
+ | password_wrong_values | ['йцукенг', ] | Недопустимые значения для пароля (с допустимой длиной) | password_wrong_values = ['qwerty', 'йцукен', '123456'] |

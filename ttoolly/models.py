@@ -5327,6 +5327,357 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
 
+class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
+
+    fixtures = []
+    all_fields = None
+    current_password = 'qwerty'
+    disabled_fields = ()
+    field_old_password = None
+    field_password = None
+    field_password_repeat = None
+    hidden_fields = ()
+    password_max_length = 128
+    password_min_length = 6
+    password_params = {}
+    obj = None
+    password_positive_values = [get_randname(10, 'w') + str(randint(0, 9)),
+                                str(randint(0, 9)) + get_randname(10, 'w'),
+                                get_randname(10, 'w').upper() + str(randint(0, 9)), ]
+    url_change_password = ''
+    with_captcha = False
+    password_wrong_values = ['йцукенг', ]
+
+    def __init__(self, *args, **kwargs):
+        super(ChangePasswordMixIn, self).__init__(*args, **kwargs)
+        if self.all_fields is None:
+            self.all_fields = filter(None, [self.field_old_password, self.field_password, self.field_password_repeat])
+        value = self.get_value_for_field(10, 'password')
+        self.password_params = (self.password_params
+                                or self.deepcopy(getattr(self, 'default_params', {}))
+                                or {k: v for k, v in {self.field_old_password: self.current_password,
+                                                      self.field_password: value,
+                                                      self.field_password_repeat: value}.items() if k})
+        for k, v in {self.field_old_password: self.current_password,
+                     self.field_password: value,
+                     self.field_password_repeat: value}.items():
+            if k:
+                self.password_params[k] = self.password_params.get(k, v) or v
+
+    def get_obj_for_edit(self):
+        user = choice(self.obj.objects.all())
+        self.user_login(user.email, self.current_password)
+        user.refresh_from_db()
+        return user
+
+    def get_login_name(self, user):
+        return user.email
+
+    @only_with_obj
+    def test_change_password_page_fields_list(self):
+        """
+        @note: Check fields list on change password form
+        """
+        user = self.get_obj_for_edit()
+        response = self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+        form_fields = self.get_fields_list_from_response(response)
+        try:
+            self.assert_form_equal(form_fields['visible_fields'], self.all_fields)
+        except:
+            self.errors_append(text='For visible fields')
+
+        try:
+            self.assert_form_equal(form_fields['disabled_fields'], self.disabled_fields)
+        except:
+            self.errors_append(text='For disabled fields')
+
+        try:
+            self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields)
+        except:
+            self.errors_append(text='For hidden fields')
+
+    @only_with_obj
+    def test_change_password_positive(self):
+        """
+        @note: Change password
+        """
+        for value in self.password_positive_values or [self.password_params[self.field_password], ]:
+            user = self.get_obj_for_edit()
+            params = self.deepcopy(self.password_params)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params[self.field_password] = value
+            params[self.field_password_repeat] = value
+            try:
+                response = self.client.post(
+                    self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+                self.assert_no_form_errors(response)
+                new_user = self.obj.objects.get(pk=user.pk)
+                self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
+                self.assertTrue(new_user.check_password(params[self.field_password]),
+                                'Password not changed to "%s"' % params[self.field_password])
+            except:
+                self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with_obj
+    def test_change_password_empty_required_fields_negative(self):
+        """
+        @note: Try change password: empty required fields
+        """
+        message_type = 'empty_required'
+        for field in filter(None, [self.field_old_password, self.field_password, self.field_password_repeat]):
+            user = self.get_obj_for_edit()
+            try:
+                params = self.deepcopy(self.password_params)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                self.set_empty_value_for_field(params, field)
+                response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
+                                            params, follow=True, **self.additional_params)
+                error_message = self.get_error_message(message_type, field)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
+                new_user = self.obj.objects.get(pk=user.pk)
+                self.assert_objects_equal(new_user, user)
+            except:
+                self.errors_append(text='Empty field "%s"' % field)
+
+    @only_with_obj
+    def test_change_password_without_required_fields_negative(self):
+        """
+        @note: Try change password: without required fields
+        """
+        message_type = 'without_required'
+        for field in filter(None, [self.field_old_password, self.field_password, self.field_password_repeat]):
+            user = self.get_obj_for_edit()
+            try:
+                params = self.deepcopy(self.password_params)
+                self.update_params(params)
+                if self.with_captcha:
+                    self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+                    params.update(get_captcha_codes())
+                params.pop(field, None)
+                response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
+                                            params, follow=True, **self.additional_params)
+                error_message = self.get_error_message(message_type, field)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
+                new_user = self.obj.objects.get(pk=user.pk)
+                self.assert_objects_equal(new_user, user)
+            except:
+                self.errors_append(text='Without field "%s"' % field)
+
+    @only_with_obj
+    def test_change_password_different_new_passwords_negative(self):
+        """
+        @note: Change password: different password and repeat password values
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        params.update({self.field_password: self.get_value_for_field(10, 'password'),
+                       self.field_password_repeat: self.get_value_for_field(10, 'password')})
+        try:
+            response = self.client.post(
+                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('wrong_password_repeat', self.field_password_repeat))
+        except:
+            self.errors_append(text='New passwords "%s", "%s"' %
+                               (params[self.field_password], params[self.field_password_repeat]))
+
+    @only_with_obj
+    @only_with('password_min_length')
+    def test_change_password_length_lt_min_negative(self):
+        """
+        @note: Try change password with length < password_min_length
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        length = self.password_min_length
+        current_length = length - 1
+        value = self.get_value_for_field(current_length, 'password')
+        params.update({self.field_password: value,
+                       self.field_password_repeat: value})
+        try:
+            response = self.client.post(
+                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            error_message = self.get_error_message('min_length', self.field_password,)
+            self.assertEqual(self.get_all_form_errors(response), error_message)
+        except:
+            self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with_obj
+    @only_with('password_min_length')
+    def test_change_password_password_min_length_positive(self):
+        """
+        @note: Change password with length = password_min_length
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        params[self.field_password] = self.get_value_for_field(self.password_min_length, 'password')
+        params[self.field_password_repeat] = params[self.field_password]
+
+        try:
+            response = self.client.post(
+                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            self.assert_no_form_errors(response)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
+            self.assertTrue(new_user.check_password(params[self.field_password]),
+                            'Password not changed to "%s"' % params[self.field_password])
+        except:
+            self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with_obj
+    @only_with('password_max_length')
+    def test_change_password_password_max_length_positive(self):
+        """
+        @note: Change password with length = password_max_length
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        params[self.field_password] = self.get_value_for_field(self.password_max_length, 'password')
+        params[self.field_password_repeat] = params[self.field_password]
+
+        try:
+            response = self.client.post(
+                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            self.assert_no_form_errors(response)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
+            self.assertTrue(new_user.check_password(params[self.field_password]),
+                            'Password not changed to "%s"' % params[self.field_password])
+        except:
+            self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with_obj
+    @only_with('password_max_length')
+    def test_change_password_length_gt_max_negative(self):
+        """
+        @note: Try change self password with length > password_max_length
+        """
+        user = self.get_obj_for_edit()
+        length = self.password_max_length
+        params = self.deepcopy(self.password_params)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        current_length = length + 1
+        params[self.field_password] = self.get_value_for_field(current_length, 'password')
+        params[self.field_password_repeat] = params[self.field_password]
+        try:
+            response = self.client.post(
+                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            error_message = self.get_error_message('max_length', self.field_password,)
+            self.assertEqual(self.get_all_form_errors(response), error_message)
+        except:
+            self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with_obj
+    @only_with('password_wrong_values')
+    def test_change_password_wrong_value_negative(self):
+        """
+        @note: Try change password to wrong value
+        """
+        for value in self.password_wrong_values:
+            user = self.get_obj_for_edit()
+            params = self.deepcopy(self.password_params)
+            self.update_params(params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.update({self.field_password: value,
+                           self.field_password_repeat: value})
+            try:
+                response = self.client.post(
+                    self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+                new_user = self.obj.objects.get(pk=user.pk)
+                self.assert_objects_equal(new_user, user)
+                error_message = self.get_error_message('wrong_value', self.field_password,)
+                self.assertEqual(self.get_all_form_errors(response), error_message)
+            except:
+                self.errors_append(text='New password value "%s"' % value)
+
+    @only_with_obj
+    @only_with('field_old_password')
+    def test_change_password_wrong_old_negative(self):
+        """
+        @note: Try change password: wrong old password
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        value = self.field_old_password + get_randname(1, 'w')
+        params[self.field_old_password] = value
+        try:
+            response = self.client.post(
+                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('wrong_old_password', self.field_old_password))
+        except:
+            self.errors_append()
+
+    @only_with_obj
+    @only_with('field_old_password')
+    def test_change_password_invalid_old_value_positive(self):
+        """
+        @note: Change password: old password value not valid now
+        """
+        user = self.get_obj_for_edit()
+        old_password = choice(self.password_wrong_values or ['йцу'])[:self.password_min_length or 3]
+        user.set_password(old_password)
+        user.save()
+        self.user_login(self.get_login_name(user), old_password, **self.additional_params)
+        params = self.deepcopy(self.password_params)
+        self.update_params(params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+            params.update(get_captcha_codes())
+        value = self.get_value_for_field(10, 'password')
+        params.update({self.field_old_password: old_password,
+                       self.field_password: value,
+                       self.field_password_repeat: value})
+        try:
+            response = self.client.post(
+                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            self.assert_no_form_errors(response)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assertFalse(new_user.check_password(old_password), 'Not changed')
+            self.assertTrue(new_user.check_password(params[self.field_password]), 'Not changed to %s' % value)
+        except:
+            self.errors_append(text='Old password value "%s"' % old_password)
+
+
 class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
 
     multi_db = True
