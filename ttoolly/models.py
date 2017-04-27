@@ -515,10 +515,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if (getattr(self, 'obj', None) and isinstance(obj, self.obj)) or not getattr(self, 'obj', None):
             exclude.extend(getattr(self, 'exclude_from_check', []))
             other_values_for_check = self.deepcopy(getattr(self, 'other_values_for_check', {}))
-            for k in other_values_for_check.keys():
-                if k in other_values.keys():
-                    other_values_for_check.pop(k)
-            other_values.update(other_values_for_check)
+            for k, v in other_values_for_check.items():
+                other_values[k] = other_values.get(k, v)
         params.update(other_values)
 
         local_errors = []
