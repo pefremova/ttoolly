@@ -580,13 +580,13 @@ def get_value_for_obj_field(f, filename=None):
         return value
     elif 'ArrayField' in mro_names:
         if getattr(f, '_choices', None) or f.choices:
-            choices = getattr(f, '_choices', None) or f.choices
+            choices = list(getattr(f, '_choices', None) or f.choices)
             return [random.choice(choices)[0] for _ in xrange(random.randint(0 if f.blank else 1,
                                                                              len(choices)))]
         elif 'IntegerArrayField' in mro_names:
             return [random.randint(0, 1000) for _ in xrange(random.randint(0 if f.blank else 1, 10))]
     elif getattr(f, '_choices', None) or f.choices:
-        return random.choice(getattr(f, '_choices', None) or f.choices)[0]
+        return random.choice(list(getattr(f, '_choices', None) or f.choices))[0]
     elif mro_names.intersection(['FileField', 'ImageField']):
         if 'ImageField' in mro_names:
             content = get_random_jpg_content()
