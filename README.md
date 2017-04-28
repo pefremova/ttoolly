@@ -171,3 +171,22 @@ __ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn)__
 | password_positive_values | [get_randname(10, 'w') + str(randint(0, 9)), str(randint(0, 9)) + get_randname(10, 'w'), get_randname(10, 'w').upper() + str(randint(0, 9)), ] | Допустимые значения для пароля | password_positive_values = ['qwe+', 'qwe*', 'QwE1'] |
 | url_change_password | '' | URL, по которому выполняется смена пароля. Если не содержит pk пользователя, задавать как /url/, иначе - можно задавать через urlname | url_change_password = 'admin:auth_user_password_change' |
  | password_wrong_values | ['йцукенг', ] | Недопустимые значения для пароля (с допустимой длиной) | password_wrong_values = ['qwerty', 'йцукен', '123456'] |
+
+ 
+ __LoginTestMixIn__
+ 
+ Тесты логина пользователя
+ 
+| название поля | значение по умолчанию | описание | пример использования |
+| --- | --- | --- | --- |
+| blacklist_model | None | Модель объекта, в котором хранится информация о некорректных логинах с ip | blacklist_model = BlackList |
+| default_params | {self.field_username: self.username, self.field_password: self.password} | Параметры по умолчанию, которые используются для логина пользователя | default_params = {'username': 'test@test.test', 'password': 'qwerty'} |
+| field_password | 'password' | Поле для ввода пароля | field_password = 'password' |
+| field_username | 'username' | Поле для ввода юзернейма | field_username = 'username' |
+| password | 'qwerty' | Пароль тестируемого пользователя | password = 'qwerty' |
+| passwords_for_check | [] | Пароли для проверки (будут проверены все) | passwords_for_check = ['qwerty', 'йцукен', '123456'] |
+| obj | None | Модель пользователя |  obj = User |
+| username | None | Юзернейм тестируемого пользователя | username = 'test@test.test' |
+| url_login | '' | URL для логина | url_login = 'admin:login' |
+| url_redirect_to | '' | URL на который выполняется редирект после логина | url_redirect_to = 'accounts:cabinet' |
+| urls_for_redirect | ['/', ] | Урлы, доступные пользователю (будет выбран один для проверки редиректа) | urls_for_redirect = ['accounts:profile',] |

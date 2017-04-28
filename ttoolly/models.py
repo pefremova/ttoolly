@@ -19,6 +19,7 @@ import warnings
 from builtins import str
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
+from django.contrib.auth import get_user
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.files.base import ContentFile
@@ -27,6 +28,7 @@ from django.core.urlresolvers import reverse, resolve
 from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
 from django.db.models import Model, Q, Manager, DateTimeField
 from django.db.models.fields import FieldDoesNotExist
+from django.http import HttpRequest
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
@@ -65,7 +67,7 @@ def only_with_obj(fn):
 
 def only_with(param_names=None):
     if not isinstance(param_names, (tuple, list)):
-        param_names = [param_names, ]
+        param_names = (param_names, )
 
     def decorator(fn):
         def tmp(self):
@@ -685,6 +687,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def get_error_field(self, message_type, field):
         if isinstance(field, (list, tuple)):
             return self.non_field_error_key
+        if message_type in ('inactive_user_login', 'wrong_login', 'wrong_captcha'):
+            return self.non_field_error_key
 
         error_field = re.sub(r'_(\d|ru)$', '', field)
         if message_type == 'max_length' and self.is_file_field(field):
@@ -783,6 +787,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                           'max_block_count': 'Пожалуйста, заполните не более {max_count} форм.' if
                                     previous_locals.get('max_count', None) is None
                                     else 'Пожалуйста, заполните не более {max_count} форм.'.format(**previous_locals),
+                          'wrong_login': 'Пожалуйста, введите корректные адрес электронной почты и пароль для аккаунта. '
+                                         'Оба поля могут быть чувствительны к регистру.',
+                          'inactive_user_login': 'Эта учетная запись отключена.',
+                          'wrong_captcha': 'Неверный код',
                           }
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
@@ -1700,7 +1708,6 @@ class FormTestMixIn(GlobalTestMixIn):
     @only_with(('url_list', 'filter_params'))
     def test_view_list_with_filter_positive(self):
         """
-        @author: Polina Efremova
         @note: View list with filter positive
         """
         for field, value in viewitems(self.filter_params):
@@ -1715,7 +1722,6 @@ class FormTestMixIn(GlobalTestMixIn):
     @only_with(('url_list', 'filter_params'))
     def test_view_list_with_filter_negative(self):
         """
-        @author: Polina Efremova
         @note: View list with filter negative
         """
         for field in viewkeys(self.filter_params):
@@ -1776,7 +1782,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_page_fields_list_positive(self):
         """
-        @author: Polina Efremova
         @note: check that all and only need fields is visible at add page
         """
         response = self.client.get(self.get_url(self.url_add), **self.additional_params)
@@ -1801,7 +1806,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_all_fields_filled_positive(self):
         """
-        @author: Polina Efremova
         @note: Create object: fill all fields
         """
         initial_obj_count = self.obj.objects.count()
@@ -1835,7 +1839,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_add',))
     def test_add_object_with_group_all_fields_filled_positive(self):
         """
-        @author: Polina Efremova
         @note: Create object: fill all fields
         """
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_add)
@@ -1882,7 +1885,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_only_required_fields_positive(self):
         """
-        @author: Polina Efremova
         @note: Create object: fill only required fields
         """
         initial_obj_count = self.obj.objects.count()
@@ -1949,7 +1951,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_empty_required_fields_negative(self):
         """
-        @author: Polina Efremova
         @note: Try create object: empty required fields
         """
         message_type = 'empty_required'
@@ -1999,7 +2000,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_without_required_fields_negative(self):
         """
-        @author: Polina Efremova
         @note: Try create object: required fields are not exists in params
         """
         message_type = 'without_required'
@@ -2050,7 +2050,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('max_fields_length')
     def test_add_object_max_length_values_positive(self):
         """
-        @author: Polina Efremova
         @note: Create object: fill all fields with maximum length values
         """
         new_object = None
@@ -2129,7 +2128,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('max_fields_length')
     def test_add_object_values_length_gt_max_negative(self):
         """
-        @author: Polina Efremova
         @note: Create object: values length > maximum
         """
         message_type = 'max_length'
@@ -2161,7 +2159,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('min_fields_length')
     def test_add_object_values_length_lt_min_negative(self):
         """
-        @author: Polina Efremova
         @note: Create object: values length < minimum
         """
         message_type = 'min_length'
@@ -2192,7 +2189,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_with_wrong_choices_negative(self):
         """
-        @author: Polina Efremova
         @note: Try create object with choices, that not exists
         """
         message_type = 'wrong_value'
@@ -2221,7 +2217,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('multiselect_fields_add',))
     def test_add_object_with_wrong_multiselect_choices_negative(self):
         """
-        @author: Polina Efremova
         @note: Try create object with choices in multiselect, that not exists
         """
         message_type = 'wrong_value'
@@ -2249,7 +2244,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('unique_fields_add',))
     def test_add_object_unique_already_exists_negative(self):
         """
-        @author: Polina Efremova
         @note: Try add object with unique field values, that already used in other objects
         """
         message_type = 'unique'
@@ -2322,7 +2316,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_wrong_values_in_digital_negative(self):
         """
-        @author: Polina Efremova
         @note: Try add obj with wrong values in digital fields
         """
         for field in [f for f in self.digital_fields_add]:
@@ -2352,7 +2345,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('email_fields_add',))
     def test_add_object_wrong_values_in_email_negative(self):
         """
-        @author: Polina Efremova
         @note: Try add obj with wrong values in email fields
         """
         message_type = 'wrong_value_email'
@@ -2382,7 +2374,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_value_max_in_digital_positive(self):
         """
-        @author: Polina Efremova
         @note: Add obj with value in digital fields == max
         """
         new_object = None
@@ -2457,7 +2448,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_value_gt_max_in_digital_negative(self):
         """
-        @author: Polina Efremova
         @note: Try add obj with value in digital fields > max
         """
         message_type = 'max_length_digital'
@@ -2488,7 +2478,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_value_min_in_digital_positive(self):
         """
-        @author: Polina Efremova
         @note: Add obj with value in digital fields == min
         """
         new_object = None
@@ -2564,7 +2553,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_value_lt_min_in_digital_negative(self):
         """
-        @author: Polina Efremova
         @note: Try add obj with value in digital fields < min
         """
         message_type = 'min_length_digital'
@@ -2595,7 +2583,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('disabled_fields_add',))
     def test_add_object_disabled_fields_values_negative(self):
         """
-        @author: Polina Efremova
         @note: Try add obj with filled disabled fields
         """
         new_object = None
@@ -2630,7 +2617,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_add',))
     def test_add_object_one_of_fields_all_filled_negative(self):
         """
-        @author: Polina Efremova
         @note: Try add object with all filled fields, that should be filled singly
         """
         message_type = 'one_of'
@@ -2663,7 +2649,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('max_blocks')
     def test_add_object_max_inline_blocks_count_positive(self):
         """
-        @author: Polina Efremova
         @note: Test max number of lines in inline block
         """
         params = self.deepcopy(self.default_params_add)
@@ -2764,7 +2749,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('max_count')
     def test_add_object_many_files_negative(self):
         """
-        @author: Polina Efremova
         @note: Try create obj with files count > max files count
         """
         new_objects = None
@@ -2800,7 +2784,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('max_count')
     def test_add_object_many_files_positive(self):
         """
-        @author: Polina Efremova
         @note: Try create obj with photos count == max files count
         """
         new_object = None
@@ -2875,7 +2858,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('one_max_size')
     def test_add_object_big_file_negative(self):
         """
-        @author: Polina Efremova
         @note: Try create obj with file size > max one file size
         """
         message_type = 'max_size_file'
@@ -2913,7 +2895,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('sum_max_size')
     def test_add_object_big_summary_file_size_negative(self):
         """
-        @author: Polina Efremova
         @note: Try create obj with summary files size > max summary files size
         """
         message_type = 'max_sum_size_file'
@@ -2950,7 +2931,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_add')
     def test_add_object_big_file_positive(self):
         """
-        @author: Polina Efremova
         @note: Create obj with file size == max one file size
         """
         new_object = None
@@ -3041,7 +3021,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('sum_max_size')
     def test_add_object_big_summary_file_size_positive(self):
         """
-        @author: Polina Efremova
         @note: Create obj with summary files size == max summary files size
         """
         new_object = None
@@ -3084,7 +3063,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_add')
     def test_add_object_empty_file_negative(self):
         """
-        @author: Polina Efremova
         @note: Try create obj with file size = 0M
         """
         new_objects = None
@@ -3116,7 +3094,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_add')
     def test_add_object_some_file_extensions_positive(self):
         """
-        @author: Polina Efremova
         @note: Create obj with some available extensions
         """
         new_object = None
@@ -3158,7 +3135,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('extensions')
     def test_add_object_wrong_file_extensions_negative(self):
         """
-        @author: Polina Efremova
         @note: Create obj with wrong extensions
         """
         message_type = 'wrong_extension'
@@ -3195,7 +3171,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['min_width', 'min_height'])
     def test_add_object_min_image_dimensions_positive(self):
         """
-        @author: Polina Efremova
         @note: Create obj with minimum image file dimensions
         """
         new_object = None
@@ -3234,7 +3209,6 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['min_width', 'min_height'])
     def test_add_object_image_dimensions_lt_min_negative(self):
         """
-        @author: Polina Efremova
         @note: Create obj with image file dimensions < minimum
         """
         new_objects = None
@@ -3319,7 +3293,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_page_fields_list_positive(self):
         """
-        @author: Polina Efremova
         @note: check that all and only need fields is visible at edit page
         """
         obj_pk = self.get_obj_id_for_edit()
@@ -3345,7 +3318,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_all_fields_filled_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit object: fill all fields
         """
         obj_for_edit = self.get_obj_for_edit()
@@ -3377,7 +3349,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_edit',))
     def test_edit_object_with_group_all_fields_filled_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit object: fill all fields
         """
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_edit)
@@ -3419,7 +3390,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_only_required_fields_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit object: fill only required fields
         """
         obj_for_edit = self.get_obj_for_edit()
@@ -3478,7 +3448,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_empty_required_fields_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: empty required fields
         """
         message_type = 'empty_required'
@@ -3531,7 +3500,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_without_required_fields_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: required fields are not exists in params
         """
         message_type = 'without_required'
@@ -3584,7 +3552,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_not_exists_object_negative(self):
         """
-        @author: Polina Efremova
         @note: Try open edit page of object with invalid id
         """
         for value in ('9999999', '2147483648', 'qwerty', 'йцу'):
@@ -3612,7 +3579,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('max_fields_length')
     def test_edit_object_max_length_values_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit object: fill all fields with maximum length values
         """
         obj_for_edit = self.get_obj_for_edit()
@@ -3737,7 +3703,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('max_fields_length')
     def test_edit_object_values_length_gt_max_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: values length > maximum
         """
         message_type = 'max_length'
@@ -3771,7 +3736,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('min_fields_length')
     def test_edit_object_values_length_lt_min_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: values length < minimum
         """
         message_type = 'min_length'
@@ -3804,7 +3768,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_with_wrong_choices_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: choice values to choices, that not exists
         """
         message_type = 'wrong_value'
@@ -3836,7 +3799,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('multiselect_fields_edit',))
     def test_edit_object_with_wrong_multiselect_choices_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: choice values to multiselect, that not exists
         """
         message_type = 'wrong_value'
@@ -3866,7 +3828,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('unique_fields_edit',))
     def test_edit_object_unique_already_exists_negative(self):
         """
-        @author: Polina Efremova
         @note: Try change object unique field values, to values, that already used in other objects
         """
         message_type = 'unique'
@@ -3942,7 +3903,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_wrong_values_in_digital_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: wrong values in digital fields
         """
         for field in self.digital_fields_edit:
@@ -3974,7 +3934,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('email_fields_edit',))
     def test_edit_object_wrong_values_in_email_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: wrong values in email fields
         """
         message_type = 'wrong_value_email'
@@ -4005,7 +3964,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_value_max_in_digital_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit object: value in digital fields == max
         """
         obj_for_edit = self.get_obj_for_edit()
@@ -4074,7 +4032,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_value_gt_max_in_digital_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: value in digital fields > max
         """
         message_type = 'max_length_digital'
@@ -4106,7 +4063,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_value_min_in_digital_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit object: value in digital fields == min
         """
         obj_for_edit = self.get_obj_for_edit()
@@ -4175,7 +4131,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_value_lt_min_in_digital_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: value in digital fields < min
         """
         message_type = 'min_length_digital'
@@ -4207,7 +4162,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('disabled_fields_edit',))
     def test_edit_object_disabled_fields_values_negative(self):
         """
-        @author: Polina Efremova
         @note: Try change values in disabled fields
         """
         for field in self.disabled_fields_edit:
@@ -4238,7 +4192,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_edit',))
     def test_edit_object_one_of_fields_all_filled_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit object: fill all fields, that should be filled singly
         """
         message_type = 'one_of'
@@ -4272,7 +4225,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('max_blocks')
     def test_edit_object_max_inline_blocks_count_positive(self):
         """
-        @author: Polina Efremova
         @note: Test max number of line in inline blocks
         """
         obj_for_edit = self.get_obj_for_edit()
@@ -4332,7 +4284,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('max_blocks')
     def test_edit_object_inline_blocks_count_gt_max_negative(self):
         """
-        @author: Polina Efremova
         @note: Test max + 1 number of lines in inline blocks
         """
         message_type = 'max_block_count'
@@ -4365,7 +4316,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('max_count')
     def test_edit_object_many_files_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit obj with files count > max files count
         """
         message_type = 'max_count_file'
@@ -4401,7 +4351,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('max_count')
     def test_edit_object_many_files_positive(self):
         """
-        @author: Polina Efremova
         @note: Try edit obj with photos count == max files count
         """
         obj_for_edit = self.get_obj_for_edit()
@@ -4472,7 +4421,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('one_max_size')
     def test_edit_object_big_file_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit obj with file size > max one file size
         """
         message_type = 'max_size_file'
@@ -4514,7 +4462,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('sum_max_size')
     def test_edit_object_big_summary_file_size_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit obj with summary files size > max summary file size
         """
         message_type = 'max_sum_size_file'
@@ -4556,7 +4503,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_edit')
     def test_edit_object_big_file_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit obj with file size == max one file size
         """
         obj_for_edit = self.get_obj_for_edit()
@@ -4644,7 +4590,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('sum_max_size')
     def test_edit_object_big_summary_file_size_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit obj with summary files size == max summary files size
         """
         for field, field_dict in viewitems(self.file_fields_params_edit):
@@ -4685,7 +4630,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_edit')
     def test_edit_object_empty_file_negative(self):
         """
-        @author: Polina Efremova
         @note: Try edit obj with file size = 0M
         """
         message_type = 'empty_file'
@@ -4716,7 +4660,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_edit')
     def test_edit_object_some_file_extensions_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit obj with some available extensions
         """
         for field, field_dict in viewitems(self.file_fields_params_edit):
@@ -4753,7 +4696,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('extensions')
     def test_edit_object_wrong_file_extensions_negative(self):
         """
-        @author: Polina Efremova
         @note: Edit obj with wrong extensions
         """
         message_type = 'wrong_extension'
@@ -4793,7 +4735,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['min_width', 'min_height'])
     def test_edit_object_min_image_dimensions_positive(self):
         """
-        @author: Polina Efremova
         @note: Edit obj with minimum image file dimensions
         """
         for field, field_dict in viewitems(self.file_fields_params_edit):
@@ -4826,7 +4767,6 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['min_width', 'min_height'])
     def test_edit_object_image_dimensions_lt_min_negative(self):
         """
-        @author: Polina Efremova
         @note: Edit obj with image file dimensions < minimum
         """
         message_type = 'min_dimensions'
@@ -4870,7 +4810,6 @@ class FormDeleteTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_delete_not_exists_object_negative(self):
         """
-        @author: Polina Efremova
         @note: Try delete object with invalid id
         """
         for value in ('9999999', '2147483648', 'qwe', 'йцу'):
@@ -4886,7 +4825,6 @@ class FormDeleteTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_delete_obj_positive(self):
         """
-        @author: Polina Efremova
         @note: Delete object
         """
         if 'get_obj_id_for_edit' in dir(self):
@@ -4904,7 +4842,6 @@ class FormDeleteTestMixIn(FormTestMixIn):
     @only_with(('url_list',))
     def test_delete_obj_from_list_positive(self):
         """
-        @author: Polina Efremova
         @note: Delete objects from objects list
         """
         obj_ids = self.obj.objects.values_list('pk', flat=True)
@@ -4946,7 +4883,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_delete_obj_positive(self):
         """
-        @author: Polina Efremova
         @note: Delete object
         """
         obj_id = self.get_obj_id_for_edit()
@@ -4961,7 +4897,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_recovery_obj_positive(self):
         """
-        @author: Polina Efremova
         @note: Recovery deleted object
         """
         obj_for_test = self.get_obj_for_edit()
@@ -4980,7 +4915,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_delete_not_exists_object_negative(self):
         """
-        @author: Polina Efremova
         @note: Try delete object with invalid id
         """
         for value in ('9999999', '2147483648', 'qwe', 'йцу'):
@@ -4998,7 +4932,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_recovery_not_exists_object_negative(self):
         """
-        @author: Polina Efremova
         @note: Try recovery object with invalid id
         """
         for value in ('9999999', '2147483648',):
@@ -5016,7 +4949,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_in_trash_negative(self):
         """
-        @author: Polina Efremova
         @note: Try change object in trash
         """
         obj_for_test = self.get_obj_for_edit()
@@ -5037,7 +4969,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_in_trash_by_edit_url_negative(self):
         """
-        @author: Polina Efremova
         @note: Try change object in trash
         """
         obj_for_test = self.get_obj_for_edit()
@@ -5089,7 +5020,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with(('url_list',))
     def test_delete_obj_from_list_positive(self):
         """
-        @author: Polina Efremova
         @note: Delete objects from objects list
         """
         obj_ids = [self.get_obj_id_for_edit()]
@@ -5111,7 +5041,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_recovery_obj_from_list_positive(self):
         """
-        @author: Polina Efremova
         @note: Recovery deleted objects from objects list
         """
         self.obj.objects.update(is_removed=True)
@@ -5203,7 +5132,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('allowed_links',))
     def test_allowed_links(self):
         """
-        @author: Polina Efremova
         @note: check allowed links
         """
         for el in self.allowed_links:
@@ -5220,7 +5148,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('links_redirect',))
     def test_unallowed_links_with_redirect(self):
         """
-        @author: Polina Efremova
         @note: check unallowed links, that should redirect to other page
         """
         for el in self.links_redirect:
@@ -5236,7 +5163,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('links_400',))
     def test_unallowed_links_with_400_response(self):
         """
-        @author: Polina Efremova
         @note: check unallowed links, that should response 404
         """
         for el in self.links_400:
@@ -5252,7 +5178,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('links_401')
     def test_unallowed_links_with_401_response(self):
         """
-        @author: Polina Efremova
         @note: check unallowed links, that should response 401
         """
         self.login()
@@ -5270,7 +5195,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('links_403',))
     def test_unallowed_links_with_403_response(self):
         """
-        @author: Polina Efremova
         @note: check unallowed links, that should response 403
         """
         for el in self.links_403:
@@ -5286,7 +5210,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('urlpatterns')
     def test_unallowed_links_with_404_response(self):
         """
-        @author: Polina Efremova
         @note: check unallowed links, that should response 404
         """
         links_other = tuple(self.allowed_links) + tuple(self.links_403) + tuple(self.links_redirect) + \
@@ -5311,7 +5234,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('links_405',))
     def test_unallowed_links_with_405_response(self):
         """
-        @author: Polina Efremova
         @note: check unallowed links, that should response 404
         """
         for el in self.links_405:
@@ -5674,6 +5596,277 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             self.assertTrue(new_user.check_password(params[self.field_password]), 'Not changed to %s' % value)
         except:
             self.errors_append(text='Old password value "%s"' % old_password)
+
+
+class LoginTestMixIn(object):
+
+    blacklist_model = None
+    default_params = None
+    field_password = 'password'
+    field_username = 'username'
+    password = 'qwerty'
+    passwords_for_check = []
+    obj = None
+    username = None
+    url_login = ''
+    url_redirect_to = ''
+    urls_for_redirect = ['/', ]
+
+    def __init__(self, *args, **kwargs):
+        super(LoginTestMixIn, self).__init__(*args, **kwargs)
+        if self.default_params is None:
+            self.default_params = {self.field_username: self.username,
+                                   self.field_password: self.password}
+        self.passwords_for_check = self.passwords_for_check or [self.password, ]
+
+    def add_csrf(self, params):
+        response = self.client.get(self.get_url(self.url_login), **self.additional_params)
+        params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
+
+    def check_blacklist_on_positive(self):
+        if self.blacklist_model:
+            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
+                             '%s blacklist objects created after valid login' % self.blacklist_model.objects.filter(host='127.0.0.1').count())
+
+    def check_blacklist_on_negative(self, response):
+        if self.blacklist_model:
+            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 1,
+                             '%s blacklist objects created after invalid login, expected 1' %
+                             self.blacklist_model.objects.filter(host='127.0.0.1').count())
+            fields = self.get_fields_list_from_response(response)['all_fields']
+            self.assertTrue('captcha' in fields)
+
+    def check_is_authenticated(self):
+        request = HttpRequest()
+        request.session = self.client.session
+        self.assertTrue(get_user(request).is_authenticated())
+
+    def check_is_not_authenticated(self):
+        request = HttpRequest()
+        request.session = self.client.session
+        self.assertFalse(get_user(request).is_authenticated())
+
+    def clean_blacklist(self):
+        if self.blacklist_model:
+            self.blacklist_model.objects.all().delete()
+
+    def get_domain(self):
+        return 'http://%s' % self.additional_params.get('HTTP_HOST', 'testserver')
+
+    def get_user(self, username=None):
+        username = username or self.username
+        return self.obj.objects.get(email=username)
+
+    def test_login_positive(self):
+        """
+        @note: login with valid login and password
+        """
+        for value in self.passwords_for_check:
+            self.client.logout()
+            user = self.get_user()
+            user.set_password(value)
+            user.save()
+            params = self.deepcopy(self.default_params)
+            params[self.field_password] = value
+            self.add_csrf(params)
+            self.clean_blacklist()
+            try:
+                response = self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.check_is_authenticated()
+                self.check_blacklist_on_positive()
+                self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
+            except:
+                self.errors_append(text='User with password "%s"' % value)
+
+    def test_login_wrong_password_negative(self):
+        """
+        @note: login with invalid password
+        """
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        params[self.field_password] = self.password + 'q'
+        try:
+            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+
+            message = self.get_error_message('wrong_login', self.field_username)
+            self.assertEqual(self.get_all_form_errors(response), message)
+            self.check_is_not_authenticated()
+            self.check_blacklist_on_negative(response)
+        except:
+            self.errors_append()
+
+    def test_login_wrong_login_negative(self):
+        """
+        @note: login as not existing user
+        """
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        params[self.field_username] = self.username + 'q'
+        try:
+            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            message = self.get_error_message('wrong_login', self.field_username)
+            self.assertEqual(self.get_all_form_errors(response), message)
+
+            self.check_blacklist_on_negative(response)
+        except:
+            self.errors_append()
+
+    @only_with('blacklist_model')
+    def test_login_blacklist_user_positive(self):
+        """
+        @note: login as user from blacklist with correct data
+        """
+        self.blacklist_model.objects.create(host='127.0.0.1')
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        try:
+            response = self.client.get(self.get_url(self.url_login), **self.additional_params)
+            fields = self.get_fields_list_from_response(response)['all_fields']
+            self.assertTrue('captcha' in fields)
+            params.update(get_captcha_codes())
+            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            self.check_is_authenticated()
+            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
+                             'Blacklist object not deleted after successful login')
+        except:
+            self.errors_append()
+
+    @only_with('blacklist_model')
+    def test_login_blacklist_user_empty_captcha_negative(self):
+        """
+        @note: login as user from blacklist with empty captcha
+        """
+        self.blacklist_model.objects.create(host='127.0.0.1')
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        try:
+            params.update(get_captcha_codes())
+            params['captcha_1'] = ''
+            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('wrong_captcha', 'captcha'))
+            self.check_is_not_authenticated()
+            self.check_blacklist_on_negative(response)
+        except:
+            self.errors_append()
+
+    @only_with('blacklist_model')
+    def test_login_blacklist_user_wrong_captcha_negative(self):
+        """
+        @note: login as user from blacklist with wrong captcha
+        """
+        for field in ('captcha_0', 'captcha_1'):
+            for value in (u'йцу', u'\r', u'\n', u' ', ':'):
+                self.blacklist_model.objects.get_or_create(host='127.0.0.1')
+                params = self.deepcopy(self.default_params)
+                self.add_csrf(params)
+                params.update(get_captcha_codes())
+                params[field] = value
+                try:
+                    response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+                    self.assertEqual(self.get_all_form_errors(response),
+                                     self.get_error_message('wrong_captcha', 'captcha'))
+                    self.check_is_not_authenticated()
+                    self.check_blacklist_on_negative(response)
+                except:
+                    self.errors_append(text='For field %s value %s' % (field, repr(value)))
+
+    def test_login_inactive_user_negative(self):
+        """
+        @note: login as inactive user
+        """
+        user = self.get_user()
+        user.is_active = False
+        user.save()
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        try:
+            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            self.assertEqual(self.get_all_form_errors(response), self.get_error_message(
+                'inactive_user_login', self.field_username))
+            self.check_is_not_authenticated()
+            self.check_blacklist_on_positive()
+        except:
+            self.errors_append()
+
+    def test_login_empty_fields_negative(self):
+        """
+        @note: login with empty fields
+        """
+        _params = self.deepcopy(self.default_params)
+        self.add_csrf(_params)
+        for field in (self.field_password, self.field_username):
+            params = _params.copy()
+            self.set_empty_value_for_field(params, field)
+            self.clean_blacklist()
+            try:
+                response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message('required', field))
+            except:
+                self.errors_append(text="For empty field %s" % field)
+
+    def test_login_with_redirect_positive(self):
+        """
+        @note: login with next GET param
+        """
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        next_url = self.get_url(choice(self.urls_for_redirect))
+        try:
+
+            response = self.client.post(self.get_url(self.url_login) + '?next=%s' % next_url,
+                                        params, follow=True, **self.additional_params)
+            self.check_is_authenticated()
+            self.assertRedirects(response, self.get_domain() + next_url)
+        except:
+            self.errors_append()
+
+    def test_login_with_redirect_with_host_positive(self):
+        """
+        @note: login with next GET param
+        """
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        next_url = self.get_url(choice(self.urls_for_redirect))
+        try:
+            redirect_url = self.get_domain() + next_url
+            response = self.client.post(self.get_url(self.url_login) + '?next=%s' %
+                                        redirect_url, params, follow=True, **self.additional_params)
+            self.check_is_authenticated()
+            self.assertRedirects(response, redirect_url)
+        except:
+            self.errors_append()
+
+    def test_login_with_redirect_with_host_negative(self):
+        """
+        @note: login with next GET param (redirect to other host)
+        """
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        try:
+            redirect_url = 'http://google.com'
+            response = self.client.post(self.get_url(self.url_login) + '?next=%s' %
+                                        redirect_url, params, follow=True, **self.additional_params)
+            self.check_is_authenticated()
+            self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
+        except:
+            self.errors_append()
+
+    def test_open_login_page_already_logged_positive(self):
+        """
+        @note: redirect from login page if already authenticated
+        """
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+        try:
+            response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
+            self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
+            self.check_is_authenticated()
+        except:
+            self.errors_append()
 
 
 class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
