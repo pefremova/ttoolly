@@ -1,7 +1,7 @@
 # ttoolly
 [![Build Status](https://travis-ci.org/pefremova/ttoolly.svg?branch=django1.10)](https://travis-ci.org/pefremova/ttoolly) [![Coverage Status](https://coveralls.io/repos/github/pefremova/ttoolly/badge.svg?branch=django1.10)](https://coveralls.io/github/pefremova/ttoolly?branch=django1.10)
 
-Django test tools. Only for Django >= 1.8
+Django test tools. Django >= 1.8
 
 Наборы стандартных проверок для Django-форм
 
@@ -145,7 +145,7 @@ __FormDeleteTestMixIn(FormTestMixIn)__
 
 __FormRemoveTestMixIn(FormTestMixIn)__
 
-Тесты для объектов, удаление которых происходит в корзинуу
+Тесты для объектов, удаление которых происходит в корзину
 
 | название поля | значение по умолчанию | описание | пример использования |
 | --- | --- | --- | --- |
