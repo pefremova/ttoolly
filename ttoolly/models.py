@@ -223,7 +223,7 @@ class CustomModel(models.Model):
 class JsonResponseErrorsMixIn(object):
 
     def get_all_form_errors(self, response):
-        if response.status_code not in (200, 201):
+        if not 200 <= response.status_code < 300:
             try:
                 return json.loads(force_text(response.content))
             except:
@@ -545,9 +545,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
                 cls = self.get_field_by_name(obj, field)
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
-                """OneToOneField.related_query_name() или OneToOneRel.remote_field.name"""
+                """OneToOneField.related_query_name() или OneToOneRel.remote_field.name или OneToOneRel.field.name"""
                 value = _model.objects.filter(**{cls.related_query_name and cls.related_query_name()
-                                                 or cls.remote_field.name: obj})
+                                                 or getattr(cls, 'remote_field', None) and cls.remote_field.name
+                                                 or cls.field.name: obj})
                 if value:
                     value = value[0]
                 else:
