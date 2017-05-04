@@ -3,7 +3,7 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 from copy import copy, deepcopy
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from decimal import Decimal
 from lxml.html import document_fromstring
 from random import choice, randint, uniform
@@ -20,6 +20,7 @@ from builtins import str
 from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.contrib.auth import get_user
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.files.base import ContentFile
@@ -32,7 +33,9 @@ from django.http import HttpRequest
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
-from django.utils.encoding import force_text
+from django.utils.encoding import force_text, force_bytes
+from django.utils.http import urlsafe_base64_encode
+from freezegun import freeze_time
 from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
 from past.builtins import xrange, basestring
 import psycopg2.extensions
@@ -688,7 +691,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def get_error_field(self, message_type, field):
         if isinstance(field, (list, tuple)):
             return self.non_field_error_key
-        if message_type in ('inactive_user_login', 'wrong_login', 'wrong_captcha'):
+        if message_type in ('inactive_user', 'wrong_login', 'wrong_captcha'):
             return self.non_field_error_key
 
         error_field = re.sub(r'_(\d|ru)$', '', field)
@@ -790,7 +793,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                     else 'Пожалуйста, заполните не более {max_count} форм.'.format(**previous_locals),
                           'wrong_login': 'Пожалуйста, введите корректные адрес электронной почты и пароль для аккаунта. '
                                          'Оба поля могут быть чувствительны к регистру.',
-                          'inactive_user_login': 'Эта учетная запись отключена.',
+                          'inactive_user': 'Эта учетная запись отключена.',
                           'wrong_captcha': 'Неверный код',
                           }
 
@@ -5250,7 +5253,6 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
 
 class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
 
-    fixtures = []
     all_fields = None
     current_password = 'qwerty'
     disabled_fields = ()
@@ -5393,7 +5395,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with_obj
     def test_change_password_different_new_passwords_negative(self):
         """
-        @note: Change password: different password and repeat password values
+        @note: Try change password: different password and repeat password values
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -5443,7 +5445,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
 
     @only_with_obj
     @only_with('password_min_length')
-    def test_change_password_password_min_length_positive(self):
+    def test_change_password_min_length_positive(self):
         """
         @note: Change password with length = password_min_length
         """
@@ -5469,7 +5471,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
 
     @only_with_obj
     @only_with('password_max_length')
-    def test_change_password_password_max_length_positive(self):
+    def test_change_password_max_length_positive(self):
         """
         @note: Change password with length = password_max_length
         """
@@ -5597,6 +5599,524 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             self.assertTrue(new_user.check_password(params[self.field_password]), 'Not changed to %s' % value)
         except:
             self.errors_append(text='Old password value "%s"' % old_password)
+
+
+class ResetPasswordMixIn(GlobalTestMixIn):
+
+    code_lifedays = None
+    current_password = 'qwerty'
+    field_username = None
+    field_password = None
+    field_password_repeat = None
+    mail_subject = ''
+    mail_body = ''
+    password_max_length = 128
+    password_min_length = 6
+    password_params = None
+    request_password_params = None
+    request_fields = None
+    change_fields = None
+    obj = None
+    password_positive_values = [get_randname(10, 'w') + str(randint(0, 9)),
+                                str(randint(0, 9)) + get_randname(10, 'w'),
+                                get_randname(10, 'w').upper() + str(randint(0, 9)), ]
+    url_reset_password_request = ''
+    url_reset_password = ''
+    username = None
+    username_is_email = True
+    with_captcha = True
+    password_wrong_values = ['йцукенг', ]
+
+    def __init__(self, *args, **kwargs):
+        super(ResetPasswordMixIn, self).__init__(*args, **kwargs)
+        if self.request_fields is None:
+            self.request_fields = filter(None, (self.field_username, ))
+        if self.change_fields is None:
+            self.change_fields = filter(None, (self.field_password, self.field_password_repeat))
+        if self.request_password_params is None:
+            self.request_password_params = {self.field_username: self.username}
+        if self.password_params is None:
+            value = self.get_value_for_field(10, 'password')
+            self.password_params = {self.field_password: value,
+                                    self.field_password_repeat: value}
+
+    def assert_request_password_change_mail(self, params):
+        self.assert_mail_count(mail.outbox, 1)
+        m = mail.outbox[0]
+        user = params['user']
+        self.assertEqual(m.to, [user.email])
+        self.assertEqual(m.subject, self.mail_subject)
+        codes = self.get_codes(user)
+        params['url_reset_password'] = self.get_url(self.url_reset_password, codes)
+        self.assert_text_equal_by_symbol(m.body, self.mail_body.format(**params))
+
+    def check_after_password_change_request(self, params):
+        pass
+
+    def check_after_password_change(self, params):
+        pass
+
+    def check_after_second_change(self, params):
+        pass
+
+    def get_codes(self, user):
+        return (urlsafe_base64_encode(force_bytes(user.pk)),
+                default_token_generator.make_token(user),)
+
+    def get_login_name(self, user):
+        return user.email
+
+    def get_obj_for_edit(self):
+        user = choice(self.obj.objects.all())
+        self.username = self.get_login_name(user)
+        return user
+
+    def test_request_reset_password_positive(self):
+        """
+        @note: Request password change code
+        """
+        user = self.get_obj_for_edit()
+        user.email = 'te~st@test.test'
+        user.save()
+        mail.outbox = []
+        params = self.deepcopy(self.request_password_params)
+        if self.with_captcha:
+            self.client.get(self.get_url(self.url_reset_password_request), **self.additional_params)
+            params.update(get_captcha_codes())
+        params[self.field_username] = self.get_login_name(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password_request),
+                                        params, follow=True,  **self.additional_params)
+            self.assert_request_password_change_mail(locals())
+            user.refresh_from_db()
+            self.assertTrue(user.check_password(self.current_password), 'Password was changed after request code')
+            self.check_after_password_change_request(locals())
+        except:
+            self.errors_append()
+
+    def test_request_reset_password_empty_required_negative(self):
+        """
+        @note: Request password change code with empty required fields
+        """
+        for field in self.request_fields:
+            params = self.deepcopy(self.request_password_params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_reset_password_request), **self.additional_params)
+                params.update(get_captcha_codes())
+            self.set_empty_value_for_field(params, field)
+            try:
+                response = self.client.post(
+                    self.get_url(self.url_reset_password_request), params, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message('required', field))
+            except:
+                self.errors_append(text='For empty field %s' % field)
+
+    def test_request_reset_password_without_required_negative(self):
+        """
+        @note: Request password change code without required fields
+        """
+        for field in self.request_fields:
+            params = self.deepcopy(self.request_password_params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_reset_password_request), **self.additional_params)
+                params.update(get_captcha_codes())
+            params.pop(field)
+            try:
+                response = self.client.post(
+                    self.get_url(self.url_reset_password_request), params, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message('required', field))
+            except:
+                self.errors_append(text='Without field %s' % field)
+
+    @only_with('username_is_email')
+    def test_request_reset_password_negative(self):
+        """
+        @note: Try reset password with wrong email value
+        """
+        for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
+            params = self.deepcopy(self.request_password_params)
+            if self.with_captcha:
+                self.client.get(self.get_url(self.url_reset_password_request), **self.additional_params)
+                params.update(get_captcha_codes())
+            params[self.field_username] = value
+            try:
+                response = self.client.post(
+                    self.get_url(self.url_reset_password_request), params, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message('wrong_value_email', self.field_username))
+            except:
+                self.errors_append(text='For email %s' % value)
+
+    def test_request_reset_password_username_not_exists_wo_captcha_negative(self):
+        """
+        @note: Try reset password by username that not exists. No any error messages in secure purposes
+        """
+        if self.with_captcha:
+            self.skipTest('Other test for form with captcha')
+        self.get_obj_for_edit()
+        username = get_random_email_value(10)
+        params = self.deepcopy(self.request_password_params)
+        params[self.field_username] = username
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assert_mail_count(mail.outbox, 0)
+        except:
+            self.errors_append()
+
+    @only_with('with_captcha')
+    def test_request_reset_password_username_not_exists_with_captcha_negative(self):
+        """
+        @note: Try reset password by username that not exists.
+        """
+        username = get_random_email_value(10)
+        params = self.deepcopy(self.request_password_params)
+        self.client.get(self.get_url(self.url_reset_password_request), **self.additional_params)
+        params.update(get_captcha_codes())
+        params[self.field_username] = username
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('user_not_exists', self.field_username))
+            self.assert_mail_count(mail.outbox, 0)
+        except:
+            self.errors_append()
+
+    def test_request_reset_password_inactive_user_wo_captcha_negative(self):
+        """
+        @note: Try reset password as inactive user. No any error messages in secure purposes
+        """
+        if self.with_captcha:
+            self.skipTest('Other test for form with captcha')
+        user = self.get_obj_for_edit()
+        user.is_active = False
+        user.save()
+        params = self.deepcopy(self.request_password_params)
+        params[self.field_username] = self.get_login_name(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assert_mail_count(mail.outbox, 0)
+        except:
+            self.errors_append()
+
+    @only_with('with_captcha')
+    def test_request_reset_password_inactive_user_with_captcha_negative(self):
+        """
+        @note: Try reset password as inactive user.
+        """
+        user = self.get_obj_for_edit()
+        user.is_active = False
+        user.save()
+        params = self.deepcopy(self.request_password_params)
+        self.client.get(self.get_url(self.url_reset_password_request), **self.additional_params)
+        params.update(get_captcha_codes())
+        params[self.field_username] = self.get_login_name(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('inactive_user', self.field_username))
+            self.assert_mail_count(mail.outbox, 0)
+        except:
+            self.errors_append()
+
+    def test_reset_password_positive(self):
+        """
+        @note: Reset password by link
+        """
+        for value in self.password_positive_values:
+            user = self.get_obj_for_edit()
+            params = self.deepcopy(self.password_params)
+            params.update({self.field_password: value,
+                           self.field_password_repeat: value})
+            codes = self.get_codes(user)
+            try:
+                response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assert_mail_count(mail.outbox, 0)
+                user.refresh_from_db()
+                self.assertTrue(user.check_password(params[self.field_password]),
+                                'Password not changed to "%s"' % params[self.field_password])
+                self.check_after_password_change(locals())
+            except:
+                self.errors_append(text='New password value "%s"' % value)
+
+    def test_reset_password_twice_negative(self):
+        """
+        @note: Try reset password twice by one link
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        value1 = self.get_value_for_field(10, 'password')
+        params.update({self.field_password: value1,
+                       self.field_password_repeat: value1})
+        codes = self.get_codes(user)
+
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, **self.additional_params)
+            self.assert_no_form_errors(response)
+            value2 = self.get_value_for_field(10, 'password')
+            params.update({self.field_password: value2,
+                           self.field_password_repeat: value2})
+
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, **self.additional_params)
+            self.assertFalse(self.obj.objects.get(pk=user.pk).check_password(value2),
+                             'Password was changed twice by one link')
+            self.check_after_second_change(locals())
+        except:
+            self.errors_append()
+
+    def test_reset_password_empty_required_negative(self):
+        """
+        @note: Try change password with empty required fields
+        """
+        for field in self.change_fields:
+            user = self.get_obj_for_edit()
+            user.set_password(self.current_password)
+            user.save()
+            params = self.deepcopy(self.password_params)
+            self.set_empty_value_for_field(params, field)
+            codes = self.get_codes(user)
+            try:
+                response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                            params, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message('required', field))
+                new_user = self.obj.objects.get(pk=user.pk)
+                self.assert_objects_equal(new_user, user)
+            except:
+                self.errors_append(text='For empty field %s' % field)
+
+    def test_reset_password_without_required_negative(self):
+        """
+        @note: Try change password without required fields
+        """
+        for field in self.change_fields:
+            user = self.get_obj_for_edit()
+            user.set_password(self.current_password)
+            user.save()
+            params = self.deepcopy(self.password_params)
+            params.pop(field)
+            codes = self.get_codes(user)
+            try:
+                response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                            params, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message('required', field))
+                new_user = self.obj.objects.get(pk=user.pk)
+                self.assert_objects_equal(new_user, user)
+            except:
+                self.errors_append(text='For empty field %s' % field)
+
+    def test_reset_password_different_new_passwords_negative(self):
+        """
+        @note: Try change password: different password and repeat password values
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        params.update({self.field_password: self.get_value_for_field(10, 'password'),
+                       self.field_password_repeat: self.get_value_for_field(9, 'password'), })
+        codes = self.get_codes(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('wrong_password_repeat', self.field_password_repeat))
+        except:
+            self.errors_append(text='New passwords "%s", "%s"' %
+                               (params[self.field_password], params[self.field_password_repeat]))
+
+    @only_with('password_min_length')
+    def test_reset_password_length_lt_min_negative(self):
+        """
+        @note: Try change password with length < password_min_length
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        length = self.password_min_length
+        current_length = length - 1
+        value = self.get_value_for_field(current_length, 'password')
+        params.update({self.field_password: value,
+                       self.field_password_repeat: value})
+        codes = self.get_codes(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('min_length', self.field_password))
+        except:
+            self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with('password_min_length')
+    def test_reset_password_min_length_positive(self):
+        """
+        @note: Change password with length = password_min_length
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        value = self.get_value_for_field(self.password_min_length, 'password')
+        params.update({self.field_password: value,
+                       self.field_password_repeat: value})
+        codes = self.get_codes(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
+            self.assertTrue(new_user.check_password(params[self.field_password]),
+                            'Password not changed to "%s"' % params[self.field_password])
+            self.check_after_password_change(locals())
+        except:
+            self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with('password_max_length')
+    def test_reset_password_length_gt_max_negative(self):
+        """
+        @note: Try change password with length > password_max_length
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        length = self.password_max_length
+        current_length = length + 1
+        value = self.get_value_for_field(current_length, 'password')
+        params.update({self.field_password: value,
+                       self.field_password_repeat: value})
+        codes = self.get_codes(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('max_length', self.field_password))
+        except:
+            self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with('password_max_length')
+    def test_reset_password_max_length_positive(self):
+        """
+        @note: Change password with length = password_max_length
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        value = self.get_value_for_field(self.password_max_length, 'password')
+        params.update({self.field_password: value,
+                       self.field_password_repeat: value})
+        codes = self.get_codes(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, **self.additional_params)
+            self.assert_no_form_errors(response)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
+            self.assertTrue(new_user.check_password(params[self.field_password]),
+                            'Password not changed to "%s"' % params[self.field_password])
+            self.check_after_password_change(locals())
+        except:
+            self.errors_append(text='New password "%s"' % params[self.field_password])
+
+    @only_with('password_wrong_values')
+    def test_reset_password_wrong_value_negative(self):
+        """
+        @note: Try change password to wrong value
+        """
+        for value in self.password_wrong_values:
+            user = self.get_obj_for_edit()
+            params = self.deepcopy(self.password_params)
+            params.update({self.field_password: value,
+                           self.field_password_repeat: value})
+            codes = self.get_codes(user)
+            try:
+                response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                            params, **self.additional_params)
+                new_user = self.obj.objects.get(pk=user.pk)
+                self.assert_objects_equal(new_user, user)
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message('wrong_value', self.field_password))
+            except:
+                self.errors_append(text='New password "%s"' % value)
+
+    def test_reset_password_by_get_positive(self):
+        """
+        @note: Check password changes only after POST, not GET request
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        codes = self.get_codes(user)
+        response = self.client.get(self.get_url(self.url_reset_password, codes),
+                                   params, **self.additional_params)
+        try:
+            response = self.client.get(self.get_url(self.url_reset_password, codes),
+                                       params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+        except:
+            self.errors_append()
+
+    def test_reset_password_inactive_user_negative(self):
+        """
+        @note: Try reset password as inactive user
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        codes = self.get_codes(user)
+        user.is_active = False
+        user.save()
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, **self.additional_params)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('inactive_user', self.field_password))
+        except:
+            self.errors_append()
+
+    @only_with('code_lifedays')
+    def test_reset_password_expired_code_negative(self):
+        """
+        @note: Try reset password by old link
+        """
+        user = self.get_obj_for_edit()
+        old_date = datetime.now() - timedelta(days=self.code_lifedays + 1)
+        with freeze_time(old_date):
+            codes = self.get_codes(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        self.password_params, **self.additional_params)
+            self.assertEqual(response.status_code, 404)
+        except:
+            self.errors_append()
+
+    @only_with('code_lifedays')
+    def test_reset_password_last_day_code_life_positive(self):
+        """
+        @note: Reset password before code expired
+        """
+        user = self.get_obj_for_edit()
+        old_date = datetime.now() - timedelta(days=self.code_lifedays)
+        params = self.deepcopy(self.password_params)
+        with freeze_time(old_date):
+            codes = self.get_codes(user)
+        try:
+            response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            new_user = self.obj.objects.get(pk=user.pk)
+            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
+            self.assertTrue(new_user.check_password(params[self.field_password]),
+                            'Password not changed to "%s"' % params[self.field_password])
+            self.check_after_password_change(locals())
+        except:
+            self.errors_append()
 
 
 class LoginTestMixIn(object):
@@ -5786,7 +6306,7 @@ class LoginTestMixIn(object):
         try:
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
             self.assertEqual(self.get_all_form_errors(response), self.get_error_message(
-                'inactive_user_login', self.field_username))
+                'inactive_user', self.field_username))
             self.check_is_not_authenticated()
             self.check_blacklist_on_positive()
         except:
