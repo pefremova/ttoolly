@@ -5,3 +5,4 @@ chardet
 Pillow
 rstr
 future
+freezegun
