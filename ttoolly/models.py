@@ -5274,7 +5274,8 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     def __init__(self, *args, **kwargs):
         super(ChangePasswordMixIn, self).__init__(*args, **kwargs)
         if self.all_fields is None:
-            self.all_fields = [el for el in [self.field_old_password, self.field_password, self.field_password_repeat] if el])
+            self.all_fields = [
+                el for el in [self.field_old_password, self.field_password, self.field_password_repeat] if el]
         value = self.get_value_for_field(10, 'password')
         self.password_params = (self.password_params
                                 or self.deepcopy(getattr(self, 'default_params', {}))
@@ -5630,7 +5631,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     def __init__(self, *args, **kwargs):
         super(ResetPasswordMixIn, self).__init__(*args, **kwargs)
         if self.request_fields is None:
-            self.request_fields = [self.field_username,] if self.field_username else []
+            self.request_fields = [self.field_username, ] if self.field_username else []
         if self.change_fields is None:
             self.change_fields = [el for el in [self.field_password, self.field_password_repeat] if el]
         if self.request_password_params is None:
