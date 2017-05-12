@@ -1,23 +1,16 @@
 # -*- coding=utf-8 -*-
-try:
-    from django.test.simple import DjangoTestSuiteRunner, reorder_suite, get_app, get_apps
-    class DjRunner(DjangoTestSuiteRunner):
-        pass
-except:
-    # django>=1.6
-    from django.test.runner import reorder_suite, DiscoverRunner
-    class DjRunner(DiscoverRunner):
-        pass
-import unittest
-from django.conf import settings
 import re
 import sys
+import unittest
+
+from django.conf import settings
+from django.test.runner import reorder_suite, DiscoverRunner
 
 
 def get_runner():
     test_runner_class = getattr(settings, 'TEST_RUNNER_PARENT', None)
     if not test_runner_class:
-        return DjRunner
+        return DiscoverRunner
 
     test_path = test_runner_class.split('.')
     test_module = __import__('.'.join(test_path[:-1]), {}, {}, str(test_path[-1]))
@@ -34,6 +27,7 @@ class RegexpTestSuiteRunner(ParentRunner):
 
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
         full_suite = ParentRunner.build_suite(self, None, extra_tests=None, **kwargs)
+
         my_suite = unittest.TestSuite()
         labels_for_suite = []
         if test_labels:

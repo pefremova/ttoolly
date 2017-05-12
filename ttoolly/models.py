@@ -5,6 +5,7 @@ from __future__ import (absolute_import, division,
 from copy import copy, deepcopy
 from datetime import datetime, date, time, timedelta
 from decimal import Decimal
+from functools import wraps
 from lxml.html import document_fromstring
 from random import choice, randint, uniform
 from shutil import rmtree
@@ -58,13 +59,13 @@ def get_dirs_for_move():
 
 def only_with_obj(fn):
 
+    @wraps(fn)
     def tmp(self):
         if self.obj:
             return fn(self)
         else:
             raise SkipTest('Need "obj"')
     tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (only_with_obj,)
-    tmp.__name__ = fn.__name__
     return tmp
 
 
@@ -73,6 +74,7 @@ def only_with(param_names=None):
         param_names = (param_names, )
 
     def decorator(fn):
+        @wraps(fn)
         def tmp(self):
             def get_value(param_name):
                 return getattr(self, param_name, None)
@@ -82,7 +84,6 @@ def only_with(param_names=None):
             else:
                 raise SkipTest("Need all these params: %s" % repr(param_names))
         tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (only_with,)
-        tmp.__name__ = fn.__name__
         return tmp
     return decorator
 
@@ -92,6 +93,7 @@ def only_with_files_params(param_names=None):
         param_names = [param_names, ]
 
     def decorator(fn):
+        @wraps(fn)
         def tmp(self):
             params_dict_name = 'file_fields_params' + ('_add' if '_add_' in fn.__name__ else '_edit')
 
@@ -103,8 +105,6 @@ def only_with_files_params(param_names=None):
                 return fn(self)
             else:
                 raise SkipTest("Need all these params: %s" % repr(param_names))
-
-        tmp.__name__ = fn.__name__
         return tmp
 
     return decorator
@@ -115,6 +115,7 @@ def only_with_any_files_params(param_names=None):
         param_names = [param_names, ]
 
     def decorator(fn):
+        @wraps(fn)
         def tmp(self):
             params_dict_name = 'file_fields_params' + ('_add' if '_add_' in fn.__name__ else '_edit')
 
@@ -126,8 +127,6 @@ def only_with_any_files_params(param_names=None):
                 return fn(self)
             else:
                 raise SkipTest("Need all these params: %s" % repr(param_names))
-
-        tmp.__name__ = fn.__name__
         return tmp
 
     return decorator
@@ -241,11 +240,11 @@ class MetaCheckFailures(type):
 
     def __init__(cls, name, bases, dct):
         def check_errors(fn):
+            @wraps(fn)
             def tmp(self):
                 fn(self)
                 self.formatted_assert_errors()
             tmp.decorators = tuple(set(getattr(tmp, 'decorators', ()))) + (check_errors,)
-            tmp.__name__ = fn.__name__
             return tmp
 
         def decorate(cls, bases, dct):
