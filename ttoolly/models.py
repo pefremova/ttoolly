@@ -1133,7 +1133,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def set_empty_value_for_field(self, params, field):
         mro_names = [m.__name__ for m in params[field].__class__.__mro__]
         if 'list' in mro_names or 'tuple' in mro_names or 'QuerySet' in mro_names:
-            params.pop(field)
+            params[field] = []
         else:
             params[field] = ''
 
@@ -1900,7 +1900,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
-            params[field] = params[field] if params.get(field, None) not in (None, '') else \
+            params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
                 self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
                                                  int(self.max_fields_length.get(field, 10))), field)
         if self.with_captcha:
@@ -1934,7 +1934,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = params[field] if params.get(field, None) not in (None, '') else \
+                params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
                     self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
                                                      int(self.max_fields_length.get(field, 10))), field)
                 try:
@@ -3405,7 +3405,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
-            params[field] = params[field] if params.get(field, None) not in (None, '') else \
+            params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
                 self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
                                                  int(self.max_fields_length.get(field, 10))), field)
         try:
@@ -3432,7 +3432,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = params[field] if params.get(field, None) not in (None, '') else \
+                params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
                     self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
                                                      int(self.max_fields_length.get(field, 10))), field)
                 try:

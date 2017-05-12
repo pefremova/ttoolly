@@ -607,7 +607,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         for field in ('list_field', 'tuple_field', 'query_set_field'):
             _params = params.copy()
             self.btc.set_empty_value_for_field(_params, field)
-            self.assertNotIn(field, _params.keys())
+            self.assertEqual(_params[field], [])
 
     def test_assert_xpath_count_positive(self):
         response = HttpResponse('<html><a href="/qwe">тест</a><a href="test">тест2</a></html>')
