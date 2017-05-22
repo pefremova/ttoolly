@@ -1017,8 +1017,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         field_name = re.sub('\-\d+\-', '-0-', field_name)
         if self.is_email_field(field_name):
+            length = length or 10
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
+            length = length or 10
             value = self.get_random_file(field_name, length)
             return value
         elif self.is_choice_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, ''):
@@ -1042,6 +1044,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 except FieldDoesNotExist:
                     pass
             if 'get_digital_values_range' not in dir(self):
+                length = length or 10
                 return get_randname(length, 'd')
             values_range = self.get_digital_values_range(field_name)
             if self.is_int_field(field_name):
@@ -1052,6 +1055,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     value = round(value, self.max_decimal_places[field_name])
                 return value
         else:
+            length = length or 10
             return get_randname(length, 'w')
 
     def get_value_for_error_message(self, field, value):
@@ -1158,17 +1162,17 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if default_value != '' and default_value is not None:
                 while n < 3 and force_text(params[key]) in existing_values:
                     n += 1
-                    params[key] = self.get_value_for_field(10, key)
+                    params[key] = self.get_value_for_field(None, key)
 
         for key, v in viewitems(params):
             if v and self.is_file_field(key):
                 if isinstance(v, (list, tuple)):
-                    file_value = self.get_value_for_field(10, key)
+                    file_value = self.get_value_for_field(None, key)
                     if not isinstance(file_value, list):
                         file_value = [file_value, ]
                     params[key] = file_value
                 else:
-                    params[key] = self.get_value_for_field(10, key)
+                    params[key] = self.get_value_for_field(None, key)
         return params
 
 
@@ -1552,7 +1556,7 @@ class FormTestMixIn(GlobalTestMixIn):
             if value:
                 while n < 3 and value == self._get_field_value_by_name(obj_for_edit, field):
                     n += 1
-                    value = self.get_value_for_field(10, field)
+                    value = self.get_value_for_field(None, field)
                     mro_names = [b.__name__ for b in field_class.__class__.__mro__]
                     if 'DateField' in mro_names:
                         try:
@@ -1578,8 +1582,8 @@ class FormTestMixIn(GlobalTestMixIn):
                             params[f_name] = f.rel.to.objects.get(
                                 pk=choice(self.choice_fields_values[set_name + '-0-' + f_name]))
                         else:
-                            params[f_name] = f.rel.to.objects.all()[0] if mro_names.intersection(['ForeignKey', ]) \
-                                else self.get_value_for_field(10, f_name)
+                            params[f_name] = choice(f.rel.to.objects.all()) if mro_names.intersection(['ForeignKey', ]) \
+                                else self.get_value_for_field(None, f_name)
                     else:
                         params[f_name] = getattr(value, f_name)
                 getattr(obj, set_name).add(value.__class__(**params))
@@ -1605,14 +1609,14 @@ class FormTestMixIn(GlobalTestMixIn):
                         for subfield in subfields:
                             existing_value = params.get(subfield, None)
                             if existing_value in (None, '', [], ()):
-                                params[field] = self.get_value_for_field(10, field)
+                                params[field] = self.get_value_for_field(None, field)
                     else:
                         if self.get_field_by_name(self.obj, field).__class__.__name__ == 'DateTimeField':
-                            params[field + '_0'] = self.get_value_for_field(10, field + '_0')
-                            params[field + '_1'] = self.get_value_for_field(10, field + '_1')
-                        params[field] = self.get_value_for_field(10, field)
+                            params[field + '_0'] = self.get_value_for_field(None, field + '_0')
+                            params[field + '_1'] = self.get_value_for_field(None, field + '_1')
+                        params[field] = self.get_value_for_field(None, field)
                 else:
-                    params[field] = self.get_value_for_field(10, field)
+                    params[field] = self.get_value_for_field(None, field)
 
     def get_digital_values_range(self, field):
         class_name = self.get_field_by_name(self.obj, field).__class__.__name__
@@ -1753,7 +1757,7 @@ class FormAddTestMixIn(FormTestMixIn):
     def get_existing_obj(self):
         if 'get_obj_for_edit' in dir(self):
             return self.get_obj_for_edit()
-        return self.obj.objects.all()[0]
+        return choice(self.obj.objects.all())
 
     def get_existing_obj_with_filled(self, param_names):
         obj = self.get_existing_obj()
@@ -1779,7 +1783,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.obj.objects.filter(filters)
         if qs.exists():
-            obj = qs[0]
+            obj = choice(qs)
         return obj
 
     @only_with_obj
@@ -2601,7 +2605,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_add), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = params.get(field, None) or self.get_value_for_field(10, field)
+                params[field] = params.get(field, None) or self.get_value_for_field(None, field)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3259,7 +3263,7 @@ class FormEditTestMixIn(FormTestMixIn):
     def get_obj_id_for_edit(self):
         if '%' not in self.url_edit and '/' in self.url_edit:
             return int(re.findall(r"/(\d+)/", self.url_edit)[0])
-        return self.obj.objects.all()[0].pk
+        return choice(self.obj.objects.all()).pk
 
     def get_obj_for_edit(self):
         return self.obj.objects.get(pk=self.get_obj_id_for_edit())
@@ -3289,7 +3293,7 @@ class FormEditTestMixIn(FormTestMixIn):
         qs = self.obj.objects.filter(filters)
 
         if qs.exists():
-            return qs[0]
+            return choice(qs)
         else:
             return self.create_copy(other_obj, param_names)
 
@@ -4176,7 +4180,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.with_captcha:
                     self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
-                params[field] = params.get(field, None) or self.get_value_for_field(10, field)
+                params[field] = params.get(field, None) or self.get_value_for_field(None, field)
                 response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
@@ -4833,7 +4837,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
         if 'get_obj_id_for_edit' in dir(self):
             obj_pk = self.get_obj_id_for_edit()
         else:
-            obj_pk = self.obj.objects.all()[0].pk
+            obj_pk = choice(self.obj.objects.all()).pk
         initial_obj_count = self.obj.objects.count()
 
         self.client.post(self.get_url(self.url_delete, (obj_pk,)), {'post': 'yes'}, **self.additional_params)
@@ -4989,7 +4993,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     @only_with(('others_objects',))
     def test_recovery_other_user_obj_negative(self):
-        obj_for_test = self.others_objects[0]
+        obj_for_test = choice(self.others_objects)
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         initial_obj_count = self.obj.objects.count()
@@ -5005,7 +5009,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     @only_with(('others_objects',))
     def test_delete_other_user_obj_negative(self):
-        obj_for_test = self.others_objects[0]
+        obj_for_test = choice(self.others_objects)
         self.set_is_removed(obj_for_test, False)
         obj_for_test.save()
         initial_obj_count = self.obj.objects.count()
@@ -5275,7 +5279,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         if self.all_fields is None:
             self.all_fields = [
                 el for el in [self.field_old_password, self.field_password, self.field_password_repeat] if el]
-        value = self.get_value_for_field(10, 'password')
+        value = self.get_value_for_field(None, 'password')
         self.password_params = (self.password_params
                                 or self.deepcopy(getattr(self, 'default_params', {}))
                                 or {k: v for k, v in {self.field_old_password: self.current_password,
@@ -5403,8 +5407,8 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         if self.with_captcha:
             self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
             params.update(get_captcha_codes())
-        params.update({self.field_password: self.get_value_for_field(10, 'password'),
-                       self.field_password_repeat: self.get_value_for_field(10, 'password')})
+        params.update({self.field_password: self.get_value_for_field(None, 'password'),
+                       self.field_password_repeat: self.get_value_for_field(None, 'password')})
         try:
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
@@ -5586,7 +5590,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         if self.with_captcha:
             self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
             params.update(get_captcha_codes())
-        value = self.get_value_for_field(10, 'password')
+        value = self.get_value_for_field(None, 'password')
         params.update({self.field_old_password: old_password,
                        self.field_password: value,
                        self.field_password_repeat: value})
@@ -5636,7 +5640,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         if self.request_password_params is None:
             self.request_password_params = {self.field_username: self.username}
         if self.password_params is None:
-            value = self.get_value_for_field(10, 'password')
+            value = self.get_value_for_field(None, 'password')
             self.password_params = {self.field_password: value,
                                     self.field_password_repeat: value}
 
@@ -5848,7 +5852,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
-        value1 = self.get_value_for_field(10, 'password')
+        value1 = self.get_value_for_field(None, 'password')
         params.update({self.field_password: value1,
                        self.field_password_repeat: value1})
         codes = self.get_codes(user)
@@ -5857,7 +5861,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             response = self.client.post(self.get_url(self.url_reset_password, codes),
                                         params, **self.additional_params)
             self.assert_no_form_errors(response)
-            value2 = self.get_value_for_field(10, 'password')
+            value2 = self.get_value_for_field(None, 'password')
             params.update({self.field_password: value2,
                            self.field_password_repeat: value2})
 
@@ -5917,7 +5921,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
-        params.update({self.field_password: self.get_value_for_field(10, 'password'),
+        params.update({self.field_password: self.get_value_for_field(None, 'password'),
                        self.field_password_repeat: self.get_value_for_field(9, 'password'), })
         codes = self.get_codes(user)
         try:
