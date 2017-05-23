@@ -1017,10 +1017,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         field_name = re.sub('\-\d+\-', '-0-', field_name)
         if self.is_email_field(field_name):
-            length = length or 10
+            length = length if length is not None else 10
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
-            length = length or 10
+            length = length if length is not None else 10
             value = self.get_random_file(field_name, length)
             return value
         elif self.is_choice_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, ''):
@@ -1044,7 +1044,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 except FieldDoesNotExist:
                     pass
             if 'get_digital_values_range' not in dir(self):
-                length = length or 10
+                length = length if length is not None else 10
                 return get_randname(length, 'd')
             values_range = self.get_digital_values_range(field_name)
             if self.is_int_field(field_name):
@@ -1055,7 +1055,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     value = round(value, self.max_decimal_places[field_name])
                 return value
         else:
-            length = length or 10
+            length = length if length is not None else 10
             return get_randname(length, 'w')
 
     def get_value_for_error_message(self, field, value):
@@ -5690,7 +5690,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         params[self.field_username] = self.get_login_name(user)
         try:
             response = self.client.post(self.get_url(self.url_reset_password_request),
-                                        params, follow=True,  **self.additional_params)
+                                        params, follow=True, **self.additional_params)
             self.assert_request_password_change_mail(locals())
             user.refresh_from_db()
             self.assertTrue(user.check_password(self.current_password), 'Password was changed after request code')
