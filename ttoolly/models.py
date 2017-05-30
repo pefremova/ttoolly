@@ -723,13 +723,16 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
-        verbose_obj = self.obj._meta.verbose_name if getattr(self, 'obj', None) else 'Объект'
-        if isinstance(verbose_obj, bytes):
-            verbose_obj = verbose_obj.decode('utf-8')
-        verbose_field = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field) if \
+        previous_locals['verbose_obj'] = self.obj._meta.verbose_name if getattr(self, 'obj', None) else 'Объект'
+        if isinstance(previous_locals['verbose_obj'], bytes):
+            previous_locals['verbose_obj'] = previous_locals['verbose_obj'].decode('utf-8')
+        previous_locals['verbose_field'] = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field) if \
             (getattr(self, 'obj', None) and field in get_all_field_names_from_model(self.obj)) else field
-        if isinstance(verbose_field, bytes):
-            verbose_field = verbose_field.decode('utf-8')
+        if isinstance(previous_locals['verbose_field'], bytes):
+            previous_locals['verbose_field'] = previous_locals['verbose_field'].decode('utf-8')
+        previous_locals['verbose_pk'] = self.obj._meta.pk.verbose_name if getattr(self, 'obj', None) else 'id'
+        if isinstance(previous_locals['verbose_pk'], bytes):
+            previous_locals['verbose_pk'] = previous_locals['verbose_pk'].decode('utf-8')
         ERROR_MESSAGES = {'required': 'Обязательное поле.',
                           'max_length': 'Убедитесь, что это значение содержит не ' +
                                         'более {length} символов (сейчас {current_length}).' if
@@ -763,7 +766,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                           'wrong_value_int': 'Введите целое число.',
                           'wrong_value_digital': 'Введите число.',
                           'wrong_value_email': 'Введите правильный адрес электронной почты.',
-                          'unique': '{verbose_obj} с таким {verbose_field} уже существует.'.format(**locals()),
+                          'unique': '{verbose_obj} с таким {verbose_field} уже существует.'.format(**previous_locals),
                           'delete_not_exists': 'Произошла ошибка. Попробуйте позже.',
                           'recovery_not_exists': 'Произошла ошибка. Попробуйте позже.',
                           'empty_file': 'Отправленный файл пуст.',
@@ -794,6 +797,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                          'Оба поля могут быть чувствительны к регистру.',
                           'inactive_user': 'Эта учетная запись отключена.',
                           'wrong_captcha': 'Неверный код',
+                          'not_exist': '{verbose_obj} с {verbose_field} "{value}" не существует. Возможно оно было удалено?' if
+                                         previous_locals.get('value', '') == '' else
+                                         '{verbose_obj} с {verbose_pk} "{value}" не существует. Возможно оно было удалено?'.format(
+                                             **previous_locals)
                           }
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
@@ -1254,9 +1261,10 @@ class FormTestMixIn(GlobalTestMixIn):
     required_fields = None
     required_fields_add = None
     required_fields_edit = None
+    status_code_error = 200
+    status_code_not_exist = 404
     status_code_success_add = 200
     status_code_success_edit = 200
-    status_code_error = 200
     unique_fields_add = None
     unique_fields_edit = None
     url_add = ''
@@ -3562,7 +3570,11 @@ class FormEditTestMixIn(FormTestMixIn):
             try:
                 response = self.client.get(self.get_url_for_negative(self.url_edit, (value,)),
                                            follow=True, **self.additional_params)
-                self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
+                self.assertEqual(response.status_code, self.status_code_not_exist,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
+                if self.status_code_not_exist == 200:
+                    """for Django 1.11 admin"""
+                    self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='GET request. For value %s' % value)
@@ -3573,7 +3585,11 @@ class FormEditTestMixIn(FormTestMixIn):
             try:
                 response = self.client.post(self.get_url_for_negative(self.url_edit, (value,)), params,
                                             follow=True, **self.additional_params)
-                self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
+                self.assertEqual(response.status_code, self.status_code_not_exist,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
+                if self.status_code_not_exist == 200:
+                    """for Django 1.11 admin"""
+                    self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='POST request. For value %s' % value)
@@ -4820,7 +4836,11 @@ class FormDeleteTestMixIn(FormTestMixIn):
             try:
                 response = self.client.post(self.get_url_for_negative(self.url_delete, (value,)),
                                             follow=True, **self.additional_params)
-                self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
+                self.assertEqual(response.status_code, self.status_code_not_exist,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
+                if self.status_code_not_exist == 200:
+                    """for Django 1.11 admin"""
+                    self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
@@ -4982,7 +5002,11 @@ class FormRemoveTestMixIn(FormTestMixIn):
         try:
             response = self.client.post(self.get_url_for_negative(self.url_edit, (obj_id,)), params, follow=True,
                                         **self.additional_params)
-            self.assertEqual(response.status_code, 404, 'Status code %s != 404' % response.status_code)
+            self.assertEqual(response.status_code, self.status_code_not_exist,
+                             'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
+            if self.status_code_not_exist == 200:
+                """for Django 1.11 admin"""
+                self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
         except:
             self.errors_append()
 

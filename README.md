@@ -75,6 +75,10 @@ __FormTestMixIn(GlobalTestMixIn)__
 | required_fields | None | Обязательные для заполнения поля. | required_fields = ('field1', 'field2') | Заполнены только обязательные поля. Одно из обязательных полей (выполняется для всех) не заполнено. Одно из обязательных полей (выполняется для всех) отсутствует |
 | required_fields_add | required_fields или default_params_add.keys() | Обязательные для заполнения поля на форме создания | required_fields_add = ('field1', 'field2') | |
 | required_fields_edit | required_fields или default_params_edit.keys() | Обязательные для заполнения поля на форме редактирования | required_fields_edit = ('field1', 'field2') | |
+| status_code_error | 200 | Статус ответа при наличии ошибок |
+| status_code_not_exist | 404 | Статус ответа при манипуляциях с несуществующим объектом |
+| status_code_success_add | 200 | Статус ответа при успешном создании объекта | 
+| status_code_success_edit | 200 | Статус ответа при успешном редактировании объекта |
 |unique_fields| None | список уникальных полей | unique_fields = ('field1', ('field2', 'field3'), 'field4')| Объект с такими полями уже существует. Для текстовых полей проверяется также в uppercase |
 |unique_fields_add | unique_fields (учитывается наличие в all_fields_add) | Cписок уникальных полей на форме создания | unique_fields_add = ('field1', ('field2', 'field3'), 'field4')| |
 |unique_fields_edit | unique_fields (учитывается наличие в all_fields_edit)| Cписок уникальных полей на форме редактирования | unique_fields_edit = ('field1', ('field2', 'field3'), 'field4')| |
@@ -120,6 +124,7 @@ _custom\_error_messages_
 | min_dimensions | Размеры загруженного изображения меньше, чем минимальные допустимые | 
 | one_of | Поля, которые могут быть заполнены только по отдельности, заполнены вместе |
 | max_block_count | Превышено максимальное число инлайн-полей в блоке |
+| not_exist | Объект не существует (используется для проверки message в тестах редактирования и удаления) |
 
 
 __FormAddTestMixIn(FormTestMixIn)__
