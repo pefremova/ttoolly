@@ -1194,7 +1194,7 @@ class LoginMixIn(object):
         if csrf_cookie:
             params['csrfmiddlewaretoken'] = csrf_cookie.value
         else:
-            response = self.client.get(reverse(url_name), **additional_params)
+            response = self.client.get(reverse(url_name), follow=True, **additional_params)
             params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
         params.update(get_captcha_codes())
         return self.client.post(reverse(url_name), params, **additional_params)
@@ -1728,7 +1728,7 @@ class FormTestMixIn(GlobalTestMixIn):
         for field, value in viewitems(self.filter_params):
             value = value if value else ''
             try:
-                response = self.client.get(self.get_url(self.url_list), {field: value}, **self.additional_params)
+                response = self.client.get(self.get_url(self.url_list), {field: value}, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
             except:
                 self.errors_append(text='For filter %s=%s' % (field, value))
@@ -1795,7 +1795,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         @note: check that all and only need fields is visible at add page
         """
-        response = self.client.get(self.get_url(self.url_add), **self.additional_params)
+        response = self.client.get(self.get_url(self.url_add), follow=True, **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
             """not set because of one field can be on form many times"""
@@ -3307,7 +3307,7 @@ class FormEditTestMixIn(FormTestMixIn):
         @note: check that all and only need fields is visible at edit page
         """
         obj_pk = self.get_obj_id_for_edit()
-        response = self.client.get(self.get_url(self.url_edit, (obj_pk,)), **self.additional_params)
+        response = self.client.get(self.get_url(self.url_edit, (obj_pk,)), follow=True, **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
             """not set because of one field can be on form many times"""
@@ -5326,7 +5326,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         @note: Check fields list on change password form
         """
         user = self.get_obj_for_edit()
-        response = self.client.get(self.get_url(self.url_change_password, (user.pk,)), **self.additional_params)
+        response = self.client.get(self.get_url(self.url_change_password, (user.pk,)), follow=True, **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
             self.assert_form_equal(form_fields['visible_fields'], self.all_fields)
@@ -6075,11 +6075,9 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
         codes = self.get_codes(user)
-        response = self.client.get(self.get_url(self.url_reset_password, codes),
-                                   params, **self.additional_params)
         try:
             response = self.client.get(self.get_url(self.url_reset_password, codes),
-                                       params, **self.additional_params)
+                                       params, follow=True, **self.additional_params)
             new_user = self.obj.objects.get(pk=user.pk)
             self.assert_objects_equal(new_user, user)
         except:
@@ -6165,7 +6163,7 @@ class LoginTestMixIn(object):
         self.passwords_for_check = self.passwords_for_check or [self.password, ]
 
     def add_csrf(self, params):
-        response = self.client.get(self.get_url(self.url_login), **self.additional_params)
+        response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
         params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
 
     def check_blacklist_on_positive(self):
@@ -6266,7 +6264,7 @@ class LoginTestMixIn(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
-            response = self.client.get(self.get_url(self.url_login), **self.additional_params)
+            response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
             fields = self.get_fields_list_from_response(response)['all_fields']
             self.assertTrue('captcha' in fields)
             params.update(get_captcha_codes())
