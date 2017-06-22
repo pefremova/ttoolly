@@ -485,9 +485,20 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if form_errors:
             raise AssertionError('There are errors at form: ' + repr(form_errors))
 
-    def assert_objects_equal(self, obj1, obj2, exclude=None, other_values=None):
+    def assert_objects_count_on_add(self, is_positive, initial_obj_count=0, additional=1):
+        if is_positive:
+            self.assertEqual(self.obj.objects.count(), initial_obj_count + additional,
+                             'Objects count after add = %s (expect %s)' %
+                             (self.obj.objects.count(), initial_obj_count + additional))
+        else:
+            self.assertEqual(self.obj.objects.count(), initial_obj_count,
+                             'Objects count after wrong add = %s (expect %s)' %
+                             (self.obj.objects.count(), initial_obj_count))
+
+    def assert_objects_equal(self, obj1, obj2, exclude=None, other_values=None, changed=None):
         other_values = other_values or {}
-        exclude = list(exclude or [])
+        changed = list(changed or [])
+        exclude = list(set(exclude or []).union(changed))
         if (getattr(self, 'obj', None) and isinstance(obj1, self.obj)) or not getattr(self, 'obj', None):
             exclude.extend(getattr(self, 'exclude_from_check', []))
         local_errors = []
@@ -500,6 +511,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             try:
                 self.assertEqual(self.get_value_for_compare(obj1, field),
                                  other_values.get(field, self.get_value_for_compare(obj2, field)))
+            except AssertionError:
+                local_errors.append('"%s":\n' % field + get_error())
+
+        for field in changed:
+            try:
+                self.assertNotEqual(self.get_value_for_compare(obj1, field),
+                                    self.get_value_for_compare(obj2, field))
             except AssertionError:
                 local_errors.append('"%s":\n' % field + get_error())
         if local_errors:
@@ -1751,16 +1769,6 @@ class FormTestMixIn(GlobalTestMixIn):
 
 
 class FormAddTestMixIn(FormTestMixIn):
-
-    def assert_objects_count_on_add(self, is_positive, initial_obj_count=0, additional=1):
-        if is_positive:
-            self.assertEqual(self.obj.objects.count(), initial_obj_count + additional,
-                             'Objects count after add = %s (expect %s)' %
-                             (self.obj.objects.count(), initial_obj_count + additional))
-        else:
-            self.assertEqual(self.obj.objects.count(), initial_obj_count,
-                             'Objects count after wrong add = %s (expect %s)' %
-                             (self.obj.objects.count(), initial_obj_count))
 
     def get_existing_obj(self):
         if 'get_obj_for_edit' in dir(self):
