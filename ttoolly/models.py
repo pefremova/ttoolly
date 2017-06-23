@@ -3472,20 +3472,20 @@ class FormEditTestMixIn(FormTestMixIn):
         message_type = 'empty_required'
         for field in [f for f in self.required_fields_edit if 'FORMS' not in f]:
             sp = transaction.savepoint()
-            test_obj = self.get_obj_for_edit()
+            obj_for_edit = self.get_obj_for_edit()
             try:
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 self.set_empty_value_for_field(params, field)
-                response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_object = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_object, test_obj)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -3495,21 +3495,21 @@ class FormEditTestMixIn(FormTestMixIn):
         """обязательно хотя бы одно поле из группы (все пустые)"""
         for group in self.required_related_fields_edit:
             sp = transaction.savepoint()
-            test_obj = self.get_obj_for_edit()
+            obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             for field in group:
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 self.set_empty_value_for_field(params, field)
             try:
-                response = self.client.post(self.get_url(self.url_edit, (test_obj.id,)),
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.id,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_object = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_object, test_obj)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -3525,19 +3525,19 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in [f for f in self.required_fields_edit if 'FORMS' not in f and not re.findall(r'.+?\-\d+\-.+?', f)]:
             sp = transaction.savepoint()
             try:
-                test_obj = self.get_obj_for_edit()
+                obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 params.pop(field)
-                response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_object = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_object, test_obj)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -3546,22 +3546,22 @@ class FormEditTestMixIn(FormTestMixIn):
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
         for group in self.required_related_fields_edit:
-            test_obj = self.get_obj_for_edit()
+            obj_for_edit = self.get_obj_for_edit()
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             for field in group:
                 params.pop(field)
             if self.with_captcha:
-                self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                 params.update(get_captcha_codes())
             try:
-                response = self.client.post(self.get_url(self.url_edit, (test_obj.id,)),
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.id,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_object = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_object, test_obj)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -3739,19 +3739,19 @@ class FormEditTestMixIn(FormTestMixIn):
             current_length = length + 1
             sp = transaction.savepoint()
             try:
-                test_obj = self.get_obj_for_edit()
+                obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = self.get_value_for_field(current_length, field)
-                response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field, length)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_object = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_object, test_obj)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -3772,19 +3772,19 @@ class FormEditTestMixIn(FormTestMixIn):
             current_length = length - 1
             sp = transaction.savepoint()
             try:
-                test_obj = self.get_obj_for_edit()
+                obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = self.get_value_for_field(current_length, field)
-                response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field, length)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_object = self.obj.objects.get(pk=test_obj.pk)
-                self.assert_objects_equal(new_object, test_obj)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except:
@@ -3937,20 +3937,20 @@ class FormEditTestMixIn(FormTestMixIn):
             for value in ('q', 'й', 'NaN', 'inf', '-inf'):
                 sp = transaction.savepoint()
                 try:
-                    test_obj = self.get_obj_for_edit()
+                    obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     if self.with_captcha:
-                        self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                        self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                         params.update(get_captcha_codes())
                     params[field] = value
-                    response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
-                    new_object = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_object, test_obj)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -3968,19 +3968,19 @@ class FormEditTestMixIn(FormTestMixIn):
             for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
                 sp = transaction.savepoint()
                 try:
-                    test_obj = self.get_obj_for_edit()
+                    obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     if self.with_captcha:
-                        self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                        self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                         params.update(get_captcha_codes())
                     params[field] = value
-                    response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_object = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_object, test_obj)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -4067,19 +4067,19 @@ class FormEditTestMixIn(FormTestMixIn):
             for value in self.get_gt_max_list(field, self.get_digital_values_range(field)['max_values']):
                 sp = transaction.savepoint()
                 try:
-                    test_obj = self.get_obj_for_edit()
+                    obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     if self.with_captcha:
-                        self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                        self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                         params.update(get_captcha_codes())
                     params[field] = value
-                    response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_object = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_object, test_obj)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -4166,19 +4166,19 @@ class FormEditTestMixIn(FormTestMixIn):
             for value in self.get_lt_min_list(field, self.get_digital_values_range(field)['min_values']):
                 sp = transaction.savepoint()
                 try:
-                    test_obj = self.get_obj_for_edit()
+                    obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     if self.with_captcha:
-                        self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                        self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                         params.update(get_captcha_codes())
                     params[field] = value
-                    response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_object = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_object, test_obj)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
@@ -4194,23 +4194,23 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in self.disabled_fields_edit:
             sp = transaction.savepoint()
             try:
-                test_obj = self.get_obj_for_edit()
+                obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 if self.with_captcha:
-                    self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                    self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                     params.update(get_captcha_codes())
                 params[field] = params.get(field, None) or self.get_value_for_field(None, field)
-                response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_edit,
                                  'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
-                new_object = self.obj.objects.get(pk=test_obj.pk)
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 if field not in getattr(self, 'exclude_from_check_edit', []):
                     self.assertEqual(self.get_value_for_compare(new_object, field),
                                      getattr(self, 'other_values_for_check',
-                                             {}).get(field, self.get_value_for_compare(test_obj, field)))
+                                             {}).get(field, self.get_value_for_compare(obj_for_edit, field)))
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
@@ -4228,19 +4228,19 @@ class FormEditTestMixIn(FormTestMixIn):
                     (group,):
                 sp = transaction.savepoint()
                 try:
-                    test_obj = self.get_obj_for_edit()
+                    obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     self.fill_all_fields(filled_group, params)
                     if self.with_captcha:
-                        self.client.get(self.get_url(self.url_edit, (test_obj.pk,)), **self.additional_params)
+                        self.client.get(self.get_url(self.url_edit, (obj_for_edit.pk,)), **self.additional_params)
                         params.update(get_captcha_codes())
-                    response = self.client.post(self.get_url(self.url_edit, (test_obj.pk,)),
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, group)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                    new_object = self.obj.objects.get(pk=test_obj.pk)
-                    self.assert_objects_equal(new_object, test_obj)
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
                 except:
