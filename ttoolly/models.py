@@ -6000,6 +6000,16 @@ class LoginTestMixIn(object):
         request.session = self.client.session
         self.assertFalse(get_user(request).is_authenticated())
 
+    def check_response_on_positive(self, response):
+        if self.url_redirect_to:
+            self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
+        else:
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.redirect_chain, [])
+
+    def check_response_on_negative(self, response):
+        pass
+
     def clean_blacklist(self):
         if self.blacklist_model:
             self.blacklist_model.objects.all().delete()
@@ -6028,8 +6038,8 @@ class LoginTestMixIn(object):
                 response = self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.check_is_authenticated()
+                self.check_response_on_positive(response)
                 self.check_blacklist_on_positive()
-                self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
             except:
                 self.errors_append(text='User with password "%s"' % value)
 
@@ -6042,10 +6052,10 @@ class LoginTestMixIn(object):
         params[self.field_password] = self.password + 'q'
         try:
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
-
             message = self.get_error_message('wrong_login', self.field_username)
             self.assertEqual(self.get_all_form_errors(response), message)
             self.check_is_not_authenticated()
+            self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response)
         except:
             self.errors_append()
@@ -6061,7 +6071,7 @@ class LoginTestMixIn(object):
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
             message = self.get_error_message('wrong_login', self.field_username)
             self.assertEqual(self.get_all_form_errors(response), message)
-
+            self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response)
         except:
             self.errors_append()
@@ -6081,6 +6091,7 @@ class LoginTestMixIn(object):
             params.update(get_captcha_codes())
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
             self.check_is_authenticated()
+            self.check_response_on_positive(response)
             self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
                              'Blacklist object not deleted after successful login')
         except:
@@ -6102,6 +6113,7 @@ class LoginTestMixIn(object):
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_captcha', 'captcha'))
             self.check_is_not_authenticated()
+            self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response)
         except:
             self.errors_append()
@@ -6123,6 +6135,7 @@ class LoginTestMixIn(object):
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message('wrong_captcha', 'captcha'))
                     self.check_is_not_authenticated()
+                    self.check_response_on_negative(response)
                     self.check_blacklist_on_negative(response)
                 except:
                     self.errors_append(text='For field %s value %s' % (field, repr(value)))
@@ -6138,9 +6151,10 @@ class LoginTestMixIn(object):
         self.add_csrf(params)
         try:
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
-            self.assertEqual(self.get_all_form_errors(response), self.get_error_message(
-                'inactive_user', self.field_username))
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('inactive_user', self.field_username))
             self.check_is_not_authenticated()
+            self.check_response_on_negative(response)
             self.check_blacklist_on_positive()
         except:
             self.errors_append()
@@ -6157,10 +6171,33 @@ class LoginTestMixIn(object):
             self.clean_blacklist()
             try:
                 response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message('required', field))
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message('empty_required', field))
+                self.check_is_not_authenticated()
+                self.check_response_on_negative(response)
+                self.check_blacklist_on_negative(response)
             except:
                 self.errors_append(text="For empty field %s" % field)
 
+    def test_login_without_fields_negative(self):
+        """
+        @note: login without required fields
+        """
+        _params = self.deepcopy(self.default_params)
+        self.add_csrf(_params)
+        for field in (self.field_password, self.field_username):
+            params = _params.copy()
+            params.pop(field)
+            self.clean_blacklist()
+            try:
+                response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message('without_required', field))
+                self.check_is_not_authenticated()
+                self.check_response_on_negative(response)
+                self.check_blacklist_on_negative(response)
+            except:
+                self.errors_append(text="For empty field %s" % field)
+
+    @only_with('urls_for_redirect')
     def test_login_with_redirect_positive(self):
         """
         @note: login with next GET param
@@ -6174,9 +6211,11 @@ class LoginTestMixIn(object):
                                         params, follow=True, **self.additional_params)
             self.check_is_authenticated()
             self.assertRedirects(response, self.get_domain() + next_url)
+            self.check_blacklist_on_positive()
         except:
             self.errors_append()
 
+    @only_with('urls_for_redirect')
     def test_login_with_redirect_with_host_positive(self):
         """
         @note: login with next GET param
@@ -6190,6 +6229,7 @@ class LoginTestMixIn(object):
                                         redirect_url, params, follow=True, **self.additional_params)
             self.check_is_authenticated()
             self.assertRedirects(response, redirect_url)
+            self.check_blacklist_on_positive()
         except:
             self.errors_append()
 
@@ -6204,6 +6244,7 @@ class LoginTestMixIn(object):
             response = self.client.post(self.get_url(self.url_login) + '?next=%s' %
                                         redirect_url, params, follow=True, **self.additional_params)
             self.check_is_authenticated()
+            self.check_blacklist_on_positive()
             self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
         except:
             self.errors_append()
@@ -6217,8 +6258,9 @@ class LoginTestMixIn(object):
         self.client.post(self.get_url(self.url_login), params, **self.additional_params)
         try:
             response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
-            self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
             self.check_is_authenticated()
+            self.check_blacklist_on_positive()
+            self.check_response_on_positive(response)
         except:
             self.errors_append()
 
@@ -6480,4 +6522,3 @@ class CustomTestCaseNew(CustomTestCase):
                     for table in tables:
                         with transaction.atomic(using=db):
                             cursor.execute("DELETE FROM %s" % table)
-
