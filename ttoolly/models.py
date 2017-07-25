@@ -6164,9 +6164,9 @@ class LoginTestMixIn(object):
         @note: login with empty fields
         """
         _params = self.deepcopy(self.default_params)
-        self.add_csrf(_params)
         for field in (self.field_password, self.field_username):
             params = _params.copy()
+            self.add_csrf(params)
             self.set_empty_value_for_field(params, field)
             self.clean_blacklist()
             try:
@@ -6183,9 +6183,9 @@ class LoginTestMixIn(object):
         @note: login without required fields
         """
         _params = self.deepcopy(self.default_params)
-        self.add_csrf(_params)
         for field in (self.field_password, self.field_username):
             params = _params.copy()
+            self.add_csrf(params)
             params.pop(field)
             self.clean_blacklist()
             try:
@@ -6206,7 +6206,6 @@ class LoginTestMixIn(object):
         self.add_csrf(params)
         next_url = self.get_url(choice(self.urls_for_redirect))
         try:
-
             response = self.client.post(self.get_url(self.url_login) + '?next=%s' % next_url,
                                         params, follow=True, **self.additional_params)
             self.check_is_authenticated()
