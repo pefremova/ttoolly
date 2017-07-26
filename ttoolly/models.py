@@ -467,6 +467,59 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             res = res.decode('utf-8')
         return res
 
+    def assert_mail_content(self, m, params):
+        default_params = {'from_email': settings.DEFAULT_FROM_EMAIL,
+                          'attachments': [],
+                          'alternatives': [],
+                          'bcc': [],
+                          'cc': [],
+                          'reply_to': [],
+                          'to': [],
+                          'subject': '',
+                          'body': ''}
+        default_params.update(params)
+        errors = []
+        for field in set(default_params.keys()).difference(('body', 'attachments', 'alternatives')):
+            try:
+                self.assertEqual(getattr(m, field), default_params[field])
+            except Exception:
+                self.errors_append(errors, text='[%s]' % field)
+        try:
+            self.assert_text_equal_by_symbol(m.body, default_params['body'])
+        except Exception:
+            self.errors_append(errors, text='[body]')
+
+        try:
+            self.assertEqual(len(getattr(m, 'alternatives', [])), len(default_params['alternatives']),
+                             '%s alternatives in mail, expected %s' % (len(getattr(m, 'alternatives', [])),
+                                                                       len(default_params['alternatives'])))
+            for n, alternative in enumerate(default_params['alternatives']):
+                m_alternative = m.alternative[n]
+                self.assert_text_equal_by_symbol(m_alternative[0], alternative[0])
+                self.assertEqual(m_alternative[1], alternative[1])
+        except Exception:
+            self.errors_append(errors, text='[alternatives]')
+
+        try:
+            self.assertEqual(len(m.attachments), len(default_params['attachments']),
+                             '%s attachments in mail, expected %s' % (len(m.attachments), len(default_params['attachments'])))
+            for n, attachment in enumerate(default_params['attachments']):
+                m_attachment = m.attachments[n]
+                self.assertEqual(m_attachment[0], attachment[0])
+                self.assertEqual(hash(m_attachment[1]), hash(attachment[1]),
+                                 'Attachment[%s] content and expected value are not equals' % n)
+        except Exception:
+            self.errors_append(errors, text='[attachments]')
+
+        if getattr(m, 'content_subtype', None) not in ('html', 'text/html') and re.match('<[\w]', m.body):
+            errors.append('Not html message type (%s), but contains html tags in body' % getattr(m, 'content_subtype', None))
+
+        for n, alternative in enumerate(getattr(m, 'alternatives', [])):
+            if alternative[1] not in ('html', 'text/html') and re.match('<[\w]|/\w>', alternative[0]):
+                errors.append('[alternatives][%d]: Not html message type (%s), but contains html tags in body' % (n, alternative[1]))
+        if errors:
+            self.errors.append('\n'.join(errors))
+
     def assert_mail_count(self, mails=None, count=None):
         error = ''
         mails = mails or mail.outbox
