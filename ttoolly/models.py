@@ -1341,6 +1341,7 @@ class FormTestMixIn(GlobalTestMixIn):
     status_code_not_exist = 404
     status_code_success_add = 200
     status_code_success_edit = 200
+    unique_with_case = None
     unique_fields_add = None
     unique_fields_edit = None
     url_add = ''
@@ -1354,6 +1355,8 @@ class FormTestMixIn(GlobalTestMixIn):
             self.default_params_add = self.deepcopy(self.default_params)
         if not self.default_params_edit:
             self.default_params_edit = self.deepcopy(self.default_params)
+        if self.unique_with_case is None:
+            self.unique_with_case = ()
 
         self.exclude_from_check_add = getattr(self, 'exclude_from_check_add', None) or copy(self.exclude_from_check)
         self.exclude_from_check_edit = getattr(self, 'exclude_from_check_edit', None) or copy(self.exclude_from_check)
@@ -2330,7 +2333,7 @@ class FormAddTestMixIn(FormTestMixIn):
             field = self.all_unique[el]
             existing_obj = self.get_existing_obj_with_filled(el)
             params = self.deepcopy(self.default_params_add)
-            if not any([isinstance(params[el_field], basestring) for el_field in el]):
+            if not any([isinstance(params[el_field], basestring) and el_field not in self.unique_with_case for el_field in el]):
                 continue
             sp = transaction.savepoint()
             initial_obj_count = self.obj.objects.count()
@@ -2356,6 +2359,57 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
+
+    @only_with_obj
+    @only_with(('unique_fields_add', 'unique_with_case',))
+    def test_add_object_unique_alredy_exists_in_other_case_positive(self):
+        """
+        @note: Add object with unique field values, to values, that already used in other objects but in other case
+        """
+        new_object = None
+        for el in self.unique_fields_edit:
+            if not set(self.unique_with_case).intersection(el):
+                continue
+            for existing_command, new_command in (('lower', 'upper'),
+                                                  ('upper', 'lower')):
+                sp = transaction.savepoint()
+                """if unique fields"""
+                if new_object:
+                    self.obj.objects.filter(pk=new_object.pk).delete()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+
+                existing_obj = self.get_existing_obj_with_filled(el)
+                params = self.deepcopy(self.default_params_add)
+
+                initial_obj_count = self.obj.objects.count()
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_add), params)
+                for el_field in el:
+                    if el_field not in self.all_fields_add:
+                        """only if user can fill this field"""
+                        continue
+                    value = self._get_field_value_by_name(existing_obj, el_field)
+                    params[el_field] = self.get_params_according_to_type(value, '')[0]
+                    if el_field in self.unique_with_case:
+                        self.obj.objects.filter(pk=existing_obj.pk).update(**{el_field: getattr(value, existing_command)()})
+                        params[el_field] = getattr(params[el_field], new_command)()
+                try:
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    self.assert_no_form_errors(response)
+                    self.assert_objects_count_on_add(True, initial_obj_count)
+                    self.assertEqual(response.status_code, self.status_code_success_add,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                    new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                    exclude = getattr(self, 'exclude_from_check_add', [])
+                    self.assert_object_fields(new_object, params, exclude=exclude)
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
+                                       (', '.join('field "%s" with value "%s"\n' % (field,
+                                                                                    self._get_field_value_by_name(existing_obj, el_field))
+                                                  for field in el),
+                                        ', '.join('field "%s" with value "%s"\n' % (field, params[field])
+                                                  for field in el if field in params.keys())))
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -3836,7 +3890,7 @@ class FormEditTestMixIn(FormTestMixIn):
             obj_for_edit = self.get_obj_for_edit()
             existing_obj = self.get_other_obj_with_filled(el, obj_for_edit)
             params = self.deepcopy(self.default_params_edit)
-            if not any([isinstance(params[el_field], basestring) for el_field in el]):
+            if not any([isinstance(params[el_field], basestring) and el_field not in self.unique_with_case for el_field in el]):
                 continue
             sp = transaction.savepoint()
             self.update_params(params)
@@ -3863,6 +3917,51 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % (field, params[field])
                                                              for field in el if field in params.keys()))
+
+    @only_with_obj
+    @only_with(('unique_fields_edit', 'unique_with_case',))
+    def test_edit_object_unique_alredy_exists_in_other_case_positive(self):
+        """
+        @note: Change object unique field values, to values, that already used in other objects but in other case
+        """
+        for el in self.unique_fields_edit:
+            if not set(self.unique_with_case).intersection(el):
+                continue
+            for existing_command, new_command in (('lower', 'upper'),
+                                                  ('upper', 'lower')):
+                obj_for_edit = self.get_obj_for_edit()
+                sp = transaction.savepoint()
+                existing_obj = self.get_other_obj_with_filled(el, obj_for_edit)
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+                for el_field in el:
+                    if el_field not in self.all_fields_edit:
+                        """only if user can change this field"""
+                        continue
+                    value = self._get_field_value_by_name(existing_obj, el_field)
+                    params[el_field] = self.get_params_according_to_type(value, '')[0]
+                    if el_field in self.unique_with_case:
+                        self.obj.objects.filter(pk=existing_obj.pk).update(**{el_field: getattr(value, existing_command)()})
+                        params[el_field] = getattr(params[el_field], new_command)()
+                existing_obj.refresh_from_db()
+                try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                                params, follow=True, **self.additional_params)
+                    self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_edit,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    exclude = getattr(self, 'exclude_from_check_edit', [])
+                    self.assert_object_fields(new_object, params, exclude=exclude)
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
+                                       (', '.join('field "%s" with value "%s"\n' % (field,
+                                                                                    self._get_field_value_by_name(existing_obj, el_field))
+                                                  for field in el),
+                                        ', '.join('field "%s" with value "%s"\n' % (field, params[field])
+                                                  for field in el if field in params.keys())))
 
     @only_with_obj
     @only_with(('digital_fields_edit',))

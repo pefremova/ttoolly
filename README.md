@@ -82,6 +82,7 @@ __FormTestMixIn(GlobalTestMixIn)__
 |unique_fields| None | список уникальных полей | unique_fields = ('field1', ('field2', 'field3'), 'field4')| Объект с такими полями уже существует. Для текстовых полей проверяется также в uppercase |
 |unique_fields_add | unique_fields (учитывается наличие в all_fields_add) | Cписок уникальных полей на форме создания | unique_fields_add = ('field1', ('field2', 'field3'), 'field4')| |
 |unique_fields_edit | unique_fields (учитывается наличие в all_fields_edit)| Cписок уникальных полей на форме редактирования | unique_fields_edit = ('field1', ('field2', 'field3'), 'field4')| |
+| unique_with_case | () | Список уникальных полей, для которых при проверке униклаьности учитывается регистр | unique_with_case = ('field1', ) | Объект со значением в lowercase существует - проверяется uppercase, объект со значением в uppercase существует - проверяется lowercase |
 | url_list | | URL, на котором находится список объектов, например, в админке. Включает все тесты, связанные со списком | url_list = 'modelname:url_name' или url_list = '/path/to/list/'| |
 | with_captcha | Наличие поля 'captcha' в all_fields или в all_fields_add или в all_fields_edit | Используется ли капча на форме. Если True, во всех тестах отправляемые параметры дополняются полями капчи | | |
 
