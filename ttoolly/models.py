@@ -46,6 +46,31 @@ from .utils import (format_errors, get_error, get_randname, get_url_for_negative
                     get_fields_list_from_response, get_all_form_errors, generate_random_obj,
                     get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model, FILE_TYPES)
 
+__all__ = ('ChangePasswordMixIn',
+           'CustomModel',
+           'CustomTestCase',
+           'CustomTestCaseNew',
+           'EmailLog',
+           'FormAddTestMixIn',
+           'FormDeleteTestMixIn',
+           'FormEditTestMixIn',
+           'FormRemoveTestMixIn',
+           'FormTestMixIn',
+           'GlobalTestMixIn',
+           'JsonResponseErrorsMixIn',
+           'ListWithDelete',
+           'LoginMixIn',
+           'LoginTestMixIn',
+           'PrettyTuple',
+           'ResetPasswordMixIn',
+           'Ring',
+           'UserPermissionsTestMixIn',
+           'get_dirs_for_move',
+           'only_with',
+           'only_with_any_files_params',
+           'only_with_files_params',
+           'only_with_obj',)
+
 
 TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
 
@@ -6576,6 +6601,9 @@ class CustomTestCaseNew(CustomTestCase):
     def setUpClass(cls):
         super(CustomTestCaseNew, cls).setUpClass()
 
+        """Version sensitive import"""
+        from django.apps import apps
+
         """load fixtures to main database once"""
 
         for db in cls._databases_names(include_mirrors=False):
@@ -6602,9 +6630,6 @@ class CustomTestCaseNew(CustomTestCase):
         cls.custom_fixture_setup()
 
     def _fixture_setup(self):
-        """Version sensitive import"""
-        from django.apps import apps
-
         """only copy from main database"""
         databases = self._databases_names(include_mirrors=True)
 
