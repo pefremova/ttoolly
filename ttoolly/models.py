@@ -657,7 +657,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if value is not None and field in obj_related_objects.keys() or field in obj_related_objects.values() and \
                 (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
                  set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase'])):
-                if isinstance(params.get(field, None), list):
+                if hasattr(params.get(field, None), '__len__'):
                     count_for_check = len(params[field])
                 else:
                     count_for_check = params.get('%s-TOTAL_FORMS' % obj_related_objects.get(field, field), None)
@@ -1029,7 +1029,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         elif value.__class__.__name__ in ('ManyRelatedManager', 'GenericRelatedObjectManager'):
             value = [force_text(v) for v in value.values_list('pk', flat=True)]
             value.sort()
-            if isinstance(params_value, list):
+            if hasattr(params_value, '__iter__'):
                 params_value = [force_text(pv) for pv in params_value]
                 params_value.sort()
         elif isinstance(value, (int, float)) and not isinstance(value, bool):
