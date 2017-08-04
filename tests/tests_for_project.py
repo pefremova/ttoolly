@@ -2,14 +2,12 @@
 from __future__ import unicode_literals
 
 from django.test import TestCase
-from ttoolly.models import (FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, FormAddFileTestMixIn,
-                            FormEditFileTestMixIn)
+from ttoolly.models import (FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn)
 
 from test_project.test_app.models import SomeModel, OtherModel
 
 
-class TestSomeModel(FormAddTestMixIn, FormAddFileTestMixIn, FormEditTestMixIn, FormEditFileTestMixIn,
-                    FormDeleteTestMixIn, TestCase):
+class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, TestCase):
 
     all_fields = ('foreign_key_field', 'unique_int_field', 'int_field', 'email_field', 'char_field', 'file_field',
                   'datetime_field', 'date_field', 'text_field', 'digital_field', 'many_related_field', 'image_field',

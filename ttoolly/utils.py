@@ -100,7 +100,13 @@ def fill_all_obj_fields(obj, fields=(), save=True):
         if field_name not in required_fields and f.null and f.blank:
             if random.randint(0, 1):
                 continue
-        value = get_value_for_obj_field(f)
+        value = None
+        i = 0
+        while not value and i < 3:
+            value = get_value_for_obj_field(f)
+            if isinstance(value, basestring):
+                value = value.strip()
+            i += 1
         if value:
             setattr(obj, field_name, value)
     if save:
@@ -757,6 +763,18 @@ def get_random_img_content(_format, size=10, width=1, height=1):
     if size > 0:
         content += bytearray(size)
     return content
+
+
+def get_random_inn(length):
+    if length in (10, None):
+        value = get_randname(9, 'd')
+        return value + str(sum(int(el[0]) * el[1] for el in zip(value, (2, 4, 10, 3, 5, 9, 4, 6, 8))) % 11 % 10)
+    if length == 12:
+        value = get_randname(10, 'd')
+        value = value + str(sum(int(el[0]) * el[1] for el in zip(value, (7, 2, 4, 10, 3, 5, 9, 4, 6, 8))) % 11 % 10)
+        return value + str(sum(int(el[0]) * el[1] for el in zip(value, (3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8))) % 11 % 10)
+    else:
+        return get_randname(length, 'd')
 
 
 def get_random_bmp_content(size=10, width=1, height=1):

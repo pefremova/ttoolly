@@ -5106,16 +5106,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.errors_append()
 
 
-class FormAddFileTestMixIn(object):
-    """Может наследоваться в тестах, поэтому оставлено"""
-    pass
-
-
-class FormEditFileTestMixIn(object):
-    """Может наследоваться в тестах, поэтому оставлено"""
-    pass
-
-
 class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     allowed_links = ()
     links_400 = ()
