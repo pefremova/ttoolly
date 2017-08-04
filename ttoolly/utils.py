@@ -28,7 +28,7 @@ from django.template.context import Context
 from django.test import Client
 from django.utils.encoding import force_text
 from future.utils import viewvalues, viewitems, viewkeys
-from past.builtins import xrange
+from past.builtins import xrange, basestring
 import rstr
 
 __all__ = ('convert_size_to_bytes',
