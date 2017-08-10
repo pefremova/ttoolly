@@ -1055,12 +1055,6 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         return value, params_value
 
-    def is_file_list(self, field):
-        return isinstance(((getattr(self, 'default_params', None) and self.default_params.get(field, None))
-                           or (getattr(self, 'default_params_add', None) and self.default_params_add.get(field, None))
-                           or (getattr(self, 'default_params_edit', None) and self.default_params_edit.get(field, None))),
-                          (list, tuple))
-
     def get_random_file(self, field, length=10, count=1, *args, **kwargs):
         self.with_files = True
         filename = get_randname(length, 'wrd')
@@ -1202,6 +1196,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             or any([field in (getattr(self, 'email_fields', ()) or ()),
                     field in (getattr(self, 'email_fields_add', ()) or ()),
                     field in (getattr(self, 'email_fields_edit', ()) or ()), ])
+
+    def is_file_list(self, field):
+        for param_name in ('default_params', 'default_params_add', 'default_params_edit'):
+            v = getattr(self, param_name, {}).get(field, None)
+            if isinstance(v, (list, tuple)):
+                return True
+        return False
 
     def is_int_field(self, field):
         return any([field in (getattr(self, 'int_fields', ()) or ()),
