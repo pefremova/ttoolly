@@ -1,10 +1,13 @@
 # -*- coding: utf-8
 from __future__ import unicode_literals
 
-from django.test import TestCase
-from ttoolly.models import (FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn)
+import os
 
+from django.core.files.base import ContentFile
+from django.test import TestCase
 from test_project.test_app.models import SomeModel, OtherModel
+from ttoolly.models import (FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn)
+from ttoolly.utils import FILE_TYPES
 
 
 class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, TestCase):
@@ -27,6 +30,9 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
     max_decimal_places = {'digital_field': 2}
     max_fields_length = {'char_field': 120,
                          'digital_field': 250.1,
+                         'email_field': 254,
+                         'file_field': 100,
+                         'image_field': 100,
                          'int_field': 500,
                          'unique_int_field': 9999999}
     min_fields_length = {'digital_field': -100.5,
@@ -39,6 +45,16 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
     url_add = 'somemodel-create'
     url_delete = 'somemodel-delete'
     url_edit = 'somemodel-update'
+
+    def get_params_according_to_type(self, value, params_value):
+        if isinstance(params_value, FILE_TYPES + (ContentFile,)):
+            value, params_value = super(TestSomeModel, self).get_params_according_to_type(value, params_value)
+            if len(params_value) == 100:
+                name, ext = os.path.splitext(params_value)
+                # django replace last 8 symbols in name to random string
+                params_value = name[:-(len('tmp/') + 8)] + ext
+            return value, params_value
+        return super(TestSomeModel, self).get_params_according_to_type(value, params_value)
 
     def setUp(self):
         other_model_pks = OtherModel.objects.all().values_list('pk', flat=True)

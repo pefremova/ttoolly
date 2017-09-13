@@ -2137,15 +2137,20 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text='For params without group "%s"' % force_text(group))
 
     @only_with_obj
-    @only_with('max_fields_length')
     def test_add_object_max_length_values_positive(self):
         """
         @note: Create object: fill all fields with maximum length values
         """
         new_object = None
-        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
-        fields_for_check = [(k, v) for k, v in self.max_fields_length.items() if k in
-                            self.all_fields_add and k not in other_fields]
+        other_fields = []
+        for field_type_name in ('digital_fields_add', 'date_fields', 'datetime_fields', 'choice_fields_add',
+                                'choice_fields_add_with_value_in_error', 'disabled_fields_add', 'hidden_fields_add',
+                                'int_fields_add', 'multiselect_fields_add', 'not_str_fields'):
+            other_fields.extend(getattr(self, field_type_name, []) or [])
+
+        fields_for_check = [(k, self.max_fields_length.get(k, 100000)) for k in self.all_fields_add if k not in other_fields]
+        if not fields_for_check:
+            self.skipTest('No any string fields')
         max_length_params = {}
         for field, length in fields_for_check:
             max_length_params[field] = self.get_value_for_field(length, field)
@@ -2164,13 +2169,14 @@ class FormAddTestMixIn(FormTestMixIn):
                              'Status code %s != %s' % (response.status_code, self.status_code_success_add))
             self.assert_objects_count_on_add(True, initial_obj_count)
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(list(max_length_params.keys()))
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all fields\n%s" %
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
-                                                 (field, length, max_length_params[field])
+                                                 (field, length, max_length_params[field] if len(str(max_length_params[field])) <= 1000
+                                                  else str(max_length_params[field])[:1000] + '...')
                                                  for field, length in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
@@ -2208,7 +2214,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For field "%s" with length %d\n(value "%s")' % (field, length, value))
+                self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
+                                   (field, length, value if len(str(value)) <= 1000 else str(value)[:1000] + '...'))
 
     @only_with_obj
     @only_with('max_fields_length')
@@ -3641,15 +3648,20 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.errors_append(text='POST request. For value %s' % value)
 
     @only_with_obj
-    @only_with('max_fields_length')
     def test_edit_object_max_length_values_positive(self):
         """
         @note: Edit object: fill all fields with maximum length values
         """
         obj_for_edit = self.get_obj_for_edit()
-        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
-        fields_for_check = [(k, v) for k, v in self.max_fields_length.items() if k in
-                            self.all_fields_edit and k not in other_fields]
+        other_fields = []
+        for field_type_name in ('digital_fields_edit', 'date_fields', 'datetime_fields', 'choice_fields_edit',
+                                'choice_fields_edit_with_value_in_error', 'disabled_fields_edit', 'hidden_fields_edit',
+                                'int_fields_edit', 'multiselect_fields_edit', 'not_str_fields'):
+            other_fields.extend(getattr(self, field_type_name, []) or [])
+        fields_for_check = [(k, self.max_fields_length.get(k, 100000)) for k in self.all_fields_edit if k not in other_fields]
+        if not fields_for_check:
+            self.skipTest('No any string fields')
+
         max_length_params = {}
         file_fields = []
         for field, length in fields_for_check:
@@ -3686,7 +3698,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(response.status_code, self.status_code_success_edit,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(list(max_length_params.keys()))
                     self.assert_object_fields(new_object, params, exclude=exclude,
                                               other_values={ff: self._get_field_value_by_name(obj_for_edit, ff) for ff
                                                             in file_fields})
@@ -3698,7 +3710,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all fields\n%s" %
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
-                                                 (field, length, max_length_params[field])
+                                                 (field, length, max_length_params[field] if len(str(max_length_params[field])) <= 1000
+                                                  else str(max_length_params[field])[:1000] + '...')
                                                  for field, length in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
@@ -3754,7 +3767,7 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
-                                   (field, length, value))
+                                   (field, length, value if len(str(value)) <= 1000 else str(value)[:1000] + '...'))
 
     @only_with_obj
     @only_with('max_fields_length')
