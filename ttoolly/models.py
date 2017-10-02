@@ -1419,7 +1419,7 @@ class FormTestMixIn(GlobalTestMixIn):
             self.min_fields_length = dict(self.min_fields_length)
         if not isinstance(self.max_fields_length, dict):
             warnings.warn('max_fields_length should be dict', FutureWarning)
-        self.max_fields_length = dict(self.max_fields_length)
+            self.max_fields_length = dict(self.max_fields_length)
         super(FormTestMixIn, self).__init__(*args, **kwargs)
 
     def _divide_common_and_related_fields(self, fields_list):
