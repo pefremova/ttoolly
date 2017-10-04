@@ -12,10 +12,13 @@ if getattr(settings, 'COLORIZE_TESTS', False):
 
     def _getDescription(self, test):
         doc_first_line = test.shortDescription()
-        if self.descriptions and doc_first_line:
-            return '\n'.join((str(test), doc_first_line))
-        else:
-            return "\x1B[38;5;230m" + str(test) + "\x1B[0m"
+        full_text = "\x1B[38;5;230m" + str(test) + "\x1B[0m"
+        doc = getattr(test, '_testMethodDoc', '')
+        if doc:
+            full_text += '\n' + doc.replace('@note: ', '').strip('\n')
+        elif self.descriptions and doc_first_line:
+            full_text += '\n' + doc_first_line
+        return full_text
 
     TextTestResult.getDescription = _getDescription
 
