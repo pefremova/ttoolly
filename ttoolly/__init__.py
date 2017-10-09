@@ -5,7 +5,7 @@ from unittest import TextTestResult
 
 from django.conf import settings
 from future.utils import PY2
-from ttoolly.utils import unicode_to_readable
+from ttoolly.utils import unicode_to_readable, to_bytes
 
 
 if getattr(settings, 'COLORIZE_TESTS', False):
@@ -15,9 +15,9 @@ if getattr(settings, 'COLORIZE_TESTS', False):
         full_text = "\x1B[38;5;230m" + str(test) + "\x1B[0m"
         doc = getattr(test, '_testMethodDoc', '')
         if doc:
-            full_text += '\n' + doc.replace('@note: ', '').strip('\n')
+            full_text += '\n' + to_bytes(doc).decode('utf-8').replace('@note: ', '').strip('\n')
         elif self.descriptions and doc_first_line:
-            full_text += '\n' + doc_first_line
+            full_text += '\n' + to_bytes(doc_first_line).decode('utf-8')
         return full_text
 
     TextTestResult.getDescription = _getDescription
