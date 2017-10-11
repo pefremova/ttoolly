@@ -6292,7 +6292,7 @@ class LoginTestMixIn(object):
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
 
             self.assertEqual(self.get_all_form_errors(response),
-                             self.get_error_message('wrong_captcha', 'captcha'))
+                             self.get_error_message('empty_required', 'captcha'))
             self.check_is_not_authenticated()
             self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response)
