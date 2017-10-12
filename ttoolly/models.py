@@ -6183,7 +6183,16 @@ class LoginTestMixIn(object):
 
     def check_response_on_positive(self, response):
         if self.url_redirect_to:
-            self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
+            urls_redirect_to = self.url_redirect_to
+            if not isinstance(self.url_redirect_to, (list, tuple)):
+                urls_redirect_to = [self.url_redirect_to, ]
+
+            expected_redirects = [(self.get_domain() + self.get_url(url), 302) for url in urls_redirect_to]
+            self.assertEqual(response.redirect_chain, expected_redirects,
+                             'Recieved redirects:\n%s\n\nExpected redirects:\n%s' %
+                             ('\n'.join(['%s (status %s)' % el for el in response.redirect_chain]),
+                              '\n'.join(['%s (status %s)' % el for el in expected_redirects])))
+            self.assertEqual(response.status_code, 200, "Final response code was %d (expected 200)" % response.status_code)
         else:
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.redirect_chain, [])
@@ -6270,7 +6279,7 @@ class LoginTestMixIn(object):
             fields = self.get_fields_list_from_response(response)['all_fields']
             self.assertTrue('captcha' in fields)
             params.update(get_captcha_codes())
-            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            response = self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
             self.check_is_authenticated()
             self.check_response_on_positive(response)
             self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
@@ -6435,7 +6444,7 @@ class LoginTestMixIn(object):
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
-        self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+        self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
         try:
             response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
             self.check_is_authenticated()
