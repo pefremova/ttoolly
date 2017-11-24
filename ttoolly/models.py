@@ -38,8 +38,10 @@ from django.utils.encoding import force_text, force_bytes
 from django.utils.http import urlsafe_base64_encode
 from freezegun import freeze_time
 from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
+from itertools import cycle
 from past.builtins import xrange, basestring
 import psycopg2.extensions
+
 
 from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
@@ -286,16 +288,32 @@ class MetaCheckFailures(type):
         super(MetaCheckFailures, cls).__init__(name, bases, dct)
 
 
-class Ring(list):
+class Ring(cycle):
 
     def turn(self):
-        last = self.pop(0)
-        self.append(last)
+        self.next()
 
     def get_and_turn(self):
-        res = self[0]
-        self.turn()
-        return res
+        return self.next()
+
+
+class DictWithPassword(dict):
+
+    def __init__(self, d, password1='password1', password2='password2'):
+        self.password1 = password1
+        self.password2 = password2
+        super(DictWithPassword, self).__init__(d)
+
+    def __setitem__(self, k, v):
+        if k == self.password1 and v:
+            self[self.password2] = v
+
+        super(DictWithPassword, self).__setitem__(k, v)
+
+    def update(self, d):
+        if self.password1 in d.keys() and not self.password2 in d.keys():
+            d[self.password2] = d[self.password1]
+        return super(DictWithPassword, self).update(d)
 
 
 class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
