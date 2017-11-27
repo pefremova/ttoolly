@@ -1471,7 +1471,8 @@ class FormTestMixIn(GlobalTestMixIn):
 
     def _get_field_value_by_name(self, obj, field):
         if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
-            value = getattr(getattr(obj, field.split('-')[0]).all()[0], field.split('-')[2])
+            model_name, index, field_name = field.split('-')
+            value = getattr(getattr(obj, model_name).all()[int(index)], field_name)
         else:
             value = getattr(obj, field)
         return value
