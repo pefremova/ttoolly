@@ -5,7 +5,7 @@ from __future__ import (absolute_import, division,
 from copy import copy, deepcopy
 from datetime import datetime, date, time, timedelta
 from decimal import Decimal
-from functools import wraps
+from functools import wraps, update_wrapper
 from lxml.html import document_fromstring
 from random import choice, randint, uniform
 from shutil import rmtree
@@ -15,6 +15,7 @@ import json
 import os
 import re
 import sys
+import types
 import warnings
 
 from builtins import str
@@ -84,79 +85,111 @@ def get_dirs_for_move():
     return set(DIRS_FOR_MOVE)
 
 
-def only_with_obj(fn):
+class only_with_obj(object):
 
-    @wraps(fn)
-    def tmp(self):
-        if self.obj:
-            return fn(self)
+    skip_text = 'Need "obj"'
+
+    def __init__(self, fn):
+        self.fn = fn
+        self.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (self,)
+        update_wrapper(self, fn)
+
+    def __call__(self, cls, *args, **kwargs):
+        if self.check(cls):
+            return self.fn(cls, *args, **kwargs)
         else:
-            raise SkipTest('Need "obj"')
-    tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (only_with_obj,)
-    return tmp
+            raise SkipTest(self.skip_text)
+
+    def check(self, cls):
+        return cls.obj
 
 
-def only_with(param_names=None):
-    if not isinstance(param_names, (tuple, list)):
-        param_names = (param_names, )
+class only_with(object):
 
-    def decorator(fn):
+    def __init__(self,  param_names):
+        if not isinstance(param_names, (tuple, list)):
+            param_names = (param_names, )
+        self.param_names = param_names
+        self.skip_text = "Need all these params: %s" % repr(self.param_names)
+
+    def __call__(self, fn,  *args, **kwargs):
         @wraps(fn)
-        def tmp(self):
-            def get_value(param_name):
-                return getattr(self, param_name, None)
-
-            if all(get_value(param_name) for param_name in param_names):
-                return fn(self)
+        def tmp(cls):
+            if self.check(cls):
+                return fn(cls, *args, **kwargs)
             else:
-                raise SkipTest("Need all these params: %s" % repr(param_names))
-        tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (only_with,)
-        return tmp
-    return decorator
-
-
-def only_with_files_params(param_names=None):
-    if not isinstance(param_names, (tuple, list)):
-        param_names = [param_names, ]
-
-    def decorator(fn):
-        @wraps(fn)
-        def tmp(self):
-            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in fn.__name__ else '_edit')
-
-            def check_params(field_dict, param_names):
-                return all([param_name in field_dict.keys() for param_name in param_names])
-            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                    warnings.warn('%s not set for all fields' % force_text(param_names))
-                return fn(self)
-            else:
-                raise SkipTest("Need all these params: %s" % repr(param_names))
+                raise SkipTest(self.skip_text)
+        tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (self,)
         return tmp
 
-    return decorator
+    def check(self, cls):
+        return all(getattr(cls, param_name, None) for param_name in self.param_names)
 
 
-def only_with_any_files_params(param_names=None):
-    if not isinstance(param_names, (tuple, list)):
-        param_names = [param_names, ]
+class only_with_files_params(object):
 
-    def decorator(fn):
+    def __init__(self,  param_names):
+        if not isinstance(param_names, (tuple, list)):
+            param_names = (param_names, )
+        self.param_names = param_names
+
+    def __call__(self, fn,  *args, **kwargs):
         @wraps(fn)
-        def tmp(self):
-            params_dict_name = 'file_fields_params' + ('_add' if '_add_' in fn.__name__ else '_edit')
-
-            def check_params(field_dict, param_names):
-                return any([param_name in field_dict.keys() for param_name in param_names])
-            if any([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                if not all([check_params(field_dict, param_names) for field_dict in getattr(self, params_dict_name).values()]):
-                    warnings.warn('%s not set for all fields' % force_text(param_names))
-                return fn(self)
+        def tmp(cls):
+            if self.check(cls):
+                return fn(cls, *args, **kwargs)
             else:
-                raise SkipTest("Need all these params: %s" % repr(param_names))
+                raise SkipTest(self.skip_text)
+        tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (self,)
+        self.fn = fn
         return tmp
 
-    return decorator
+    def check(self, cls):
+        params_dict_name = 'file_fields_params' + ('_add' if '_add_' in self.fn.__name__ else '_edit')
+        self.skip_text = "Need all these keys in %s: %s" % (params_dict_name, repr(self.param_names))
+
+        def check_params(field_dict, param_names):
+            return all([param_name in field_dict.keys() for param_name in param_names])
+
+        to_run = any([check_params(field_dict, self.param_names)
+                      for field_dict in getattr(cls, params_dict_name).values()])
+        if to_run:
+            if not all([check_params(field_dict, self.param_names) for field_dict in getattr(cls, params_dict_name).values()]):
+                warnings.warn('%s not set for all fields' % force_text(self.param_names))
+        return to_run
+
+
+class only_with_any_files_params(object):
+
+    def __init__(self,  param_names):
+        if not isinstance(param_names, (tuple, list)):
+            param_names = (param_names, )
+        self.param_names = param_names
+
+    def __call__(self, fn,  *args, **kwargs):
+        @wraps(fn)
+        def tmp(cls):
+            if self.check(cls):
+                return fn(cls, *args, **kwargs)
+            else:
+                raise SkipTest(self.skip_text)
+        tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (self,)
+        self.fn = fn
+        return tmp
+
+    def check(self, cls):
+        params_dict_name = 'file_fields_params' + ('_add' if '_add_' in self.fn.__name__ else '_edit')
+        self.skip_text = "Need any of these keys in %s: %s" % (params_dict_name, repr(self.param_names))
+
+        def check_params(field_dict, param_names):
+            return any([param_name in field_dict.keys() for param_name in param_names])
+
+        to_run = any([check_params(field_dict, self.param_names)
+                      for field_dict in getattr(cls, params_dict_name).values()])
+        if to_run:
+            if not all([check_params(field_dict, self.param_names) for field_dict in getattr(cls, params_dict_name).values()]):
+                warnings.warn('%s not set for all fields' % force_text(self.param_names))
+        return to_run
 
 
 class PrettyTuple(tuple):
@@ -277,7 +310,8 @@ class MetaCheckFailures(type):
         def decorate(cls, bases, dct):
             for attr in cls.__dict__:
                 if callable(getattr(cls, attr)) and attr.startswith('test_') and \
-                        'check_errors' not in [d.__name__ for d in getattr(getattr(cls, attr), 'decorators', ())]:
+                        'check_errors' not in [getattr(d, '__name__', d.__class__.__name__)
+                                               for d in getattr(getattr(cls, attr), 'decorators', ())]:
                     setattr(cls, attr, check_errors(getattr(cls, attr)))
             bases = cls.__bases__
             for base in bases:
@@ -348,6 +382,26 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if self.custom_error_messages is None:
             self.custom_error_messages = {}
         super(GlobalTestMixIn, self).__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        if getattr(settings, 'TEST_SPEEDUP_EXPERIMENTAL', False):
+            fn = getattr(self, self._testMethodName)
+
+            need_skip = False
+            skip_text = ''
+            for decorator in getattr(fn, 'decorators', []):
+                check = getattr(decorator, 'check', None)
+                if check:
+                    need_skip = not(check(self))
+                    if need_skip:
+                        skip_text = decorator.skip_text
+                        break
+            fn = fn.im_func
+            fn.__unittest_skip__ = need_skip
+            if need_skip:
+                fn.__unittest_skip_why__ = skip_text
+            setattr(self,  self._testMethodName, types.MethodType(fn, self, self.__class__))
+        super(GlobalTestMixIn, self).__call__(*args, **kwargs)
 
     def _fixture_setup(self):
         if getattr(settings, 'TEST_CASE_NAME', self.__class__.__name__) != self.__class__.__name__:
@@ -555,11 +609,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             self.errors_append(errors, text='[attachments]')
 
         if getattr(m, 'content_subtype', None) not in ('html', 'text/html') and re.match('<[\w]', m.body):
-            errors.append('Not html message type (%s), but contains html tags in body' % getattr(m, 'content_subtype', None))
+            errors.append('Not html message type (%s), but contains html tags in body' %
+                          getattr(m, 'content_subtype', None))
 
         for n, alternative in enumerate(getattr(m, 'alternatives', [])):
             if alternative[1] not in ('html', 'text/html') and re.match('<[\w]|/\w>', alternative[0]):
-                errors.append('[alternatives][%d]: Not html message type (%s), but contains html tags in body' % (n, alternative[1]))
+                errors.append(
+                    '[alternatives][%d]: Not html message type (%s), but contains html tags in body' % (n, alternative[1]))
         if errors:
             self.errors.append('\n'.join(errors))
 
@@ -1852,7 +1908,8 @@ class FormTestMixIn(GlobalTestMixIn):
         for field, value in viewitems(self.filter_params):
             value = value if value else ''
             try:
-                response = self.client.get(self.get_url(self.url_list), {field: value}, follow=True, **self.additional_params)
+                response = self.client.get(
+                    self.get_url(self.url_list), {field: value}, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
             except:
                 self.errors_append(text='For filter %s=%s' % (field, value))
@@ -2167,7 +2224,8 @@ class FormAddTestMixIn(FormTestMixIn):
                                 'int_fields_add', 'multiselect_fields_add', 'not_str_fields'):
             other_fields.extend(getattr(self, field_type_name, []) or [])
 
-        fields_for_check = [(k, self.max_fields_length.get(k, 100000)) for k in self.all_fields_add if k not in other_fields]
+        fields_for_check = [(k, self.max_fields_length.get(k, 100000))
+                            for k in self.all_fields_add if k not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
         max_length_params = {}
@@ -2443,10 +2501,12 @@ class FormAddTestMixIn(FormTestMixIn):
                     value = self._get_field_value_by_name(existing_obj, el_field)
                     params[el_field] = self.get_params_according_to_type(value, '')[0]
                     if el_field in self.unique_with_case:
-                        self.obj.objects.filter(pk=existing_obj.pk).update(**{el_field: getattr(value, existing_command)()})
+                        self.obj.objects.filter(pk=existing_obj.pk).update(
+                            **{el_field: getattr(value, existing_command)()})
                         params[el_field] = getattr(params[el_field], new_command)()
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    response = self.client.post(
+                        self.get_url(self.url_add), params, follow=True, **self.additional_params)
                     self.assert_no_form_errors(response)
                     self.assert_objects_count_on_add(True, initial_obj_count)
                     self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3677,7 +3737,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                 'choice_fields_edit_with_value_in_error', 'disabled_fields_edit', 'hidden_fields_edit',
                                 'int_fields_edit', 'multiselect_fields_edit', 'not_str_fields'):
             other_fields.extend(getattr(self, field_type_name, []) or [])
-        fields_for_check = [(k, self.max_fields_length.get(k, 100000)) for k in self.all_fields_edit if k not in other_fields]
+        fields_for_check = [(k, self.max_fields_length.get(k, 100000))
+                            for k in self.all_fields_edit if k not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
 
@@ -3717,7 +3778,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(response.status_code, self.status_code_success_edit,
                                      'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
-                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(list(max_length_params.keys()))
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
+                        list(max_length_params.keys()))
                     self.assert_object_fields(new_object, params, exclude=exclude,
                                               other_values={ff: self._get_field_value_by_name(obj_for_edit, ff) for ff
                                                             in file_fields})
@@ -4000,7 +4062,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     value = self._get_field_value_by_name(existing_obj, el_field)
                     params[el_field] = self.get_params_according_to_type(value, '')[0]
                     if el_field in self.unique_with_case:
-                        self.obj.objects.filter(pk=existing_obj.pk).update(**{el_field: getattr(value, existing_command)()})
+                        self.obj.objects.filter(pk=existing_obj.pk).update(
+                            **{el_field: getattr(value, existing_command)()})
                         params[el_field] = getattr(params[el_field], new_command)()
                 existing_obj.refresh_from_db()
                 try:
@@ -5367,7 +5430,8 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         @note: Check fields list on change password form
         """
         user = self.get_obj_for_edit()
-        response = self.client.get(self.get_url(self.url_change_password, (user.pk,)), follow=True, **self.additional_params)
+        response = self.client.get(
+            self.get_url(self.url_change_password, (user.pk,)), follow=True, **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
             self.assert_form_equal(form_fields['visible_fields'], self.all_fields)
@@ -6211,7 +6275,8 @@ class LoginTestMixIn(object):
                              'Recieved redirects:\n%s\n\nExpected redirects:\n%s' %
                              ('\n'.join(['%s (status %s)' % el for el in response.redirect_chain]),
                               '\n'.join(['%s (status %s)' % el for el in expected_redirects])))
-            self.assertEqual(response.status_code, 200, "Final response code was %d (expected 200)" % response.status_code)
+            self.assertEqual(response.status_code, 200, "Final response code was %d (expected 200)" %
+                             response.status_code)
         else:
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.redirect_chain, [])
