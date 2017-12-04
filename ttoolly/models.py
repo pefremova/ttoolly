@@ -91,7 +91,7 @@ class only_with_obj(object):
 
     def __init__(self, fn):
         self.fn = fn
-        self.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (self,)
+        self.fn.decorators = getattr(fn, 'decorators', ()) + (self,)
         update_wrapper(self, fn)
 
     def __call__(self, cls, *args, **kwargs):
@@ -106,20 +106,20 @@ class only_with_obj(object):
 
 class only_with(object):
 
-    def __init__(self,  param_names):
+    def __init__(self, param_names):
         if not isinstance(param_names, (tuple, list)):
             param_names = (param_names, )
         self.param_names = param_names
         self.skip_text = "Need all these params: %s" % repr(self.param_names)
 
-    def __call__(self, fn,  *args, **kwargs):
+    def __call__(self, fn, *args, **kwargs):
         @wraps(fn)
         def tmp(cls):
             if self.check(cls):
                 return fn(cls, *args, **kwargs)
             else:
                 raise SkipTest(self.skip_text)
-        tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (self,)
+        tmp.decorators = getattr(fn, 'decorators', ()) + (self,)
         return tmp
 
     def check(self, cls):
@@ -128,19 +128,19 @@ class only_with(object):
 
 class only_with_files_params(object):
 
-    def __init__(self,  param_names):
+    def __init__(self, param_names):
         if not isinstance(param_names, (tuple, list)):
             param_names = (param_names, )
         self.param_names = param_names
 
-    def __call__(self, fn,  *args, **kwargs):
+    def __call__(self, fn, *args, **kwargs):
         @wraps(fn)
         def tmp(cls):
             if self.check(cls):
                 return fn(cls, *args, **kwargs)
             else:
                 raise SkipTest(self.skip_text)
-        tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (self,)
+        tmp.decorators = getattr(fn, 'decorators', ()) + (self,)
         self.fn = fn
         return tmp
 
@@ -161,19 +161,19 @@ class only_with_files_params(object):
 
 class only_with_any_files_params(object):
 
-    def __init__(self,  param_names):
+    def __init__(self, param_names):
         if not isinstance(param_names, (tuple, list)):
             param_names = (param_names, )
         self.param_names = param_names
 
-    def __call__(self, fn,  *args, **kwargs):
+    def __call__(self, fn, *args, **kwargs):
         @wraps(fn)
         def tmp(cls):
             if self.check(cls):
                 return fn(cls, *args, **kwargs)
             else:
                 raise SkipTest(self.skip_text)
-        tmp.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (self,)
+        tmp.decorators = getattr(fn, 'decorators', ()) + (self,)
         self.fn = fn
         return tmp
 
@@ -304,7 +304,9 @@ class MetaCheckFailures(type):
             def tmp(self):
                 fn(self)
                 self.formatted_assert_errors()
-            tmp.decorators = tuple(set(getattr(tmp, 'decorators', ()))) + (check_errors,)
+            decorators = getattr(tmp, 'decorators', ())
+            if not 'check_errors' in [getattr(d, '__name__', d.__class__.__name__) for d in decorators]:
+                tmp.decorators = decorators + (check_errors,)
             return tmp
 
         def decorate(cls, bases, dct):
@@ -389,7 +391,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
             need_skip = False
             skip_text = ''
-            for decorator in getattr(fn, 'decorators', []):
+            for decorator in reversed(getattr(fn, 'decorators', ())):
                 check = getattr(decorator, 'check', None)
                 if check:
                     need_skip = not(check(self))
@@ -400,7 +402,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             fn.__unittest_skip__ = need_skip
             if need_skip:
                 fn.__unittest_skip_why__ = skip_text
-            setattr(self,  self._testMethodName, types.MethodType(fn, self, self.__class__))
+            setattr(self, self._testMethodName, types.MethodType(fn, self, self.__class__))
         super(GlobalTestMixIn, self).__call__(*args, **kwargs)
 
     def _fixture_setup(self):
