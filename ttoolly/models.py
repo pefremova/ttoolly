@@ -1190,10 +1190,17 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         field_name = re.sub('\-\d+\-', '-0-', field_name)
         if self.is_email_field(field_name):
-            length = length if length is not None else 10
+            length = length if length is not None else randint(getattr(self, 'max_fields_length', {}).get(field_name, 1),
+                                                               getattr(self, 'max_fields_length', {}).get(field_name, 254))
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
-            length = length if length is not None else 10
+            if length is None:
+                length = max(getattr(self, 'max_fields_length', {}).get(field_name, 1),
+                             max([1, ] + [len(ext) for ext in
+                                          (getattr(self, 'file_fields_params_add', {}).get(field_name, {}).get('extensions', ()) +
+                                           getattr(self, 'file_fields_params_edit', {}).get(field_name, {}).get('extensions', ()))]) + 2  # dot + 1 symbol
+                             )
+
             value = self.get_random_file(field_name, length)
             return value
         elif self.is_choice_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, ''):
@@ -1228,7 +1235,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     value = round(value, self.max_decimal_places[field_name])
                 return value
         else:
-            length = length if length is not None else 10
+            length = length if length is not None else randint(getattr(self, 'max_fields_length', {}).get(field_name, 1),
+                                                               getattr(self, 'max_fields_length', {}).get(field_name, 100000))
             return get_randname(length, 'w')
 
     def get_value_for_error_message(self, field, value):
@@ -2078,8 +2086,7 @@ class FormAddTestMixIn(FormTestMixIn):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
-                                                 int(self.max_fields_length.get(field, 10))), field)
+                self.get_value_for_field(None, field)
         self.update_captcha_params(self.get_url(self.url_add), params)
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2108,8 +2115,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                    self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
-                                                     int(self.max_fields_length.get(field, 10))), field)
+                    self.get_value_for_field(None, field)
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
@@ -3558,8 +3564,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
-                                                 int(self.max_fields_length.get(field, 10))), field)
+                self.get_value_for_field(None, field)
         try:
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
@@ -3583,8 +3588,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                    self.get_value_for_field(randint(int(self.min_fields_length.get(field, 1)),
-                                                     int(self.max_fields_length.get(field, 10))), field)
+                    self.get_value_for_field(None, field)
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
