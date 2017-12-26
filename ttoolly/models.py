@@ -5421,9 +5421,9 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             if k:
                 self.password_params[k] = self.password_params.get(k, v) or v
         """for get_value_for_field"""
-        self.max_fields_length = getattr(self, 'max_fields_length')
+        self.max_fields_length = getattr(self, 'max_fields_length', {})
         self.max_fields_length['password'] = self.max_fields_length.get('password', self.password_max_length)
-        self.min_fields_length = getattr(self, 'min_fields_length')
+        self.min_fields_length = getattr(self, 'min_fields_length', {})
         self.min_fields_length['password'] = self.min_fields_length.get('password', self.password_min_length)
 
     def get_obj_for_edit(self):
