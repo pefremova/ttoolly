@@ -659,7 +659,7 @@ def get_random_contentfile(size=10, filename=None):
     return ContentFile(get_randname(size), filename)
 
 
-def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filename=None, **kwargs):
+def get_random_file(path=None, size=1000, rewrite=False, return_opened=True, filename=None, **kwargs):
     if path:
         filename = os.path.basename(path)
         if os.path.exists(path):
@@ -681,11 +681,14 @@ def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filen
         filename = os.path.splitext(filename)[0][:-len(size_text)] + size_text + os.path.splitext(filename)[1]
 
     img_extensions = ('tiff', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp')
-    if size > 0 and (os.path.splitext(filename)[1].lower().strip('.') in img_extensions or
-                     set(img_extensions).intersection(kwargs.get('extensions', ()))):
+    if size > 0 and os.path.splitext(filename)[1].lower() == '.pdf':
+        content = get_random_pdf_content(size)
+    elif size > 0 and (os.path.splitext(filename)[1].lower().strip('.') in img_extensions or
+                       set(img_extensions).intersection(kwargs.get('extensions', ()))):
         return get_random_image(path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename,
                                 **kwargs)
-    content = get_randname(size)
+    else:
+        content = get_randname(size)
     if not path and return_opened:
         return ContentFile(content, filename)
 
@@ -788,6 +791,37 @@ def get_random_gif_content(size=10, width=1, height=1):
 
 def get_random_jpg_content(size=10, width=1, height=1):
     return get_random_img_content('JPEG', size, width, height)
+
+
+def get_random_pdf_content(size=10,):
+    content = """%PDF-1.5
+%\B5\ED\AE\FB
+6 0 obj
+<< /Type /Page
+>>
+endobj
+{}
+1 0 obj
+<< /Type /Pages
+   /Kids [ 6 0 R ]
+   /Count 1
+>>
+endobj
+13 0 obj
+<< /Type /Catalog
+   /Pages 1 0 R
+>>
+endobj
+trailer
+<< /Root 13 0 R
+>>
+%%EOF"""
+    size = convert_size_to_bytes(size)
+    size -= len(content.format(''))
+    additional_content = ''
+    if size > 0:
+        additional_content = bytearray(size)
+    return content.format(additional_content)
 
 
 def get_random_png_content(size=10, width=1, height=1):
