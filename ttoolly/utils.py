@@ -659,7 +659,7 @@ def get_random_contentfile(size=10, filename=None):
     return ContentFile(get_randname(size), filename)
 
 
-def get_random_file(path=None, size=1000, rewrite=False, return_opened=True, filename=None, **kwargs):
+def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filename=None, **kwargs):
     if path:
         filename = os.path.basename(path)
         if os.path.exists(path):
