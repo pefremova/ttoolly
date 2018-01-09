@@ -1382,7 +1382,10 @@ class LoginMixIn(object):
         else:
             response = self.client.get(reverse(url_name), follow=True, **additional_params)
             params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
-        params.update(get_captcha_codes())
+        if hasattr(self, 'update_captcha_params'):
+            self.update_captcha_params(reverse(url_name), params)
+        else:
+            params.update(get_captcha_codes())
         return self.client.post(reverse(url_name), params, **additional_params)
 
     def user_logout(self, **kwargs):
@@ -5881,8 +5884,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         """
         username = get_random_email_value(10)
         params = self.deepcopy(self.request_password_params)
-        self.client.get(self.get_url(self.url_reset_password_request), **self.additional_params)
-        params.update(get_captcha_codes())
+        self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = username
         try:
             response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
@@ -5919,8 +5921,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         user.is_active = False
         user.save()
         params = self.deepcopy(self.request_password_params)
-        self.client.get(self.get_url(self.url_reset_password_request), **self.additional_params)
-        params.update(get_captcha_codes())
+        self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = self.get_login_name(user)
         try:
             response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
@@ -6306,6 +6307,10 @@ class LoginTestMixIn(object):
         username = username or self.username
         return self.obj.objects.get(email=username)
 
+    def update_captcha_params(self, url, params):
+        self.client.get(url, **self.additional_params)
+        params.update(get_captcha_codes())
+
     def test_login_positive(self):
         """
         @note: login with valid login and password
@@ -6373,7 +6378,7 @@ class LoginTestMixIn(object):
             response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
             fields = self.get_fields_list_from_response(response)['all_fields']
             self.assertTrue('captcha' in fields)
-            params.update(get_captcha_codes())
+            self.update_captcha_params(self.get_url(self.url_login), params)
             response = self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
             self.check_is_authenticated()
             self.check_response_on_positive(response)
@@ -6391,7 +6396,7 @@ class LoginTestMixIn(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
-            params.update(get_captcha_codes())
+            self.update_captcha_params(self.get_url(self.url_login), params)
             params['captcha_1'] = ''
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
 
@@ -6413,7 +6418,7 @@ class LoginTestMixIn(object):
                 self.blacklist_model.objects.get_or_create(host='127.0.0.1')
                 params = self.deepcopy(self.default_params)
                 self.add_csrf(params)
-                params.update(get_captcha_codes())
+                self.update_captcha_params(self.get_url(self.url_login), params)
                 params[field] = value
                 try:
                     response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
