@@ -359,10 +359,11 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     custom_error_messages = None
     errors = []
     files = []
+    longMessage = False
     maxDiff = None
     non_field_error_key = '__all__'
     unique_fields = None
-    longMessage = False
+    with_captcha = None
 
     def __init__(self, *args, **kwargs):
         if self.additional_params is None:
@@ -1363,8 +1364,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     params[key] = self.get_value_for_field(None, key)
         return params
 
-    def update_captcha_params(self, url, params):
-        if self.with_captcha:
+    def update_captcha_params(self, url, params, force=False):
+        if self.with_captcha or force:
             self.client.get(url, **self.additional_params)
             params.update(get_captcha_codes())
 
@@ -1383,7 +1384,7 @@ class LoginMixIn(object):
             response = self.client.get(reverse(url_name), follow=True, **additional_params)
             params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
         if hasattr(self, 'update_captcha_params'):
-            self.update_captcha_params(reverse(url_name), params)
+            self.update_captcha_params(reverse(url_name), params, force=True)
         else:
             params.update(get_captcha_codes())
         return self.client.post(reverse(url_name), params, **additional_params)
@@ -1458,7 +1459,6 @@ class FormTestMixIn(GlobalTestMixIn):
     unique_fields_add = None
     unique_fields_edit = None
     url_add = ''
-    with_captcha = None
 
     def __init__(self, *args, **kwargs):
         super(FormTestMixIn, self).__init__(*args, **kwargs)
