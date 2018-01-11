@@ -6307,7 +6307,7 @@ class LoginTestMixIn(object):
         username = username or self.username
         return self.obj.objects.get(email=username)
 
-    def update_captcha_params(self, url, params):
+    def update_captcha_params(self, url, params, *args, **kwargs):
         self.client.get(url, **self.additional_params)
         params.update(get_captcha_codes())
 
