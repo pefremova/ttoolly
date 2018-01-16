@@ -2051,6 +2051,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params = self.deepcopy(default_params)
             for field in group:
                 """if unique fields"""
+                mail.outbox = []
                 if new_object:
                     self.obj.objects.filter(pk=new_object.pk).delete()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
@@ -2110,6 +2111,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.set_empty_value_for_field(_params, field)
             for field in group:
                 """if unique fields"""
+                mail.outbox = []
                 if new_object:
                     self.obj.objects.filter(pk=new_object.pk).delete()
                 initial_obj_count = self.obj.objects.count()
@@ -2276,6 +2278,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field, length in fields_for_check:
             sp = transaction.savepoint()
             """if unique fields"""
+            mail.outbox = []
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             try:
@@ -2495,6 +2498,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                                   ('upper', 'lower')):
                 sp = transaction.savepoint()
                 """if unique fields"""
+                mail.outbox = []
                 if new_object:
                     self.obj.objects.filter(pk=new_object.pk).delete()
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
@@ -2637,6 +2641,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in fields_for_check:
             value = max_value_params[field]
             """if unique fields"""
+            mail.outbox = []
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             try:
@@ -2736,6 +2741,7 @@ class FormAddTestMixIn(FormTestMixIn):
             value = min_value_params[field]
             sp = transaction.savepoint()
             """if unique fields"""
+            mail.outbox = []
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             try:
@@ -2794,6 +2800,7 @@ class FormAddTestMixIn(FormTestMixIn):
         new_object = None
         for field in self.disabled_fields_add:
             sp = transaction.savepoint()
+            mail.outbox = []
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             try:
@@ -2877,6 +2884,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                                                                viewitems(self.max_blocks)))
         finally:
             self.obj.objects.exclude(pk__in=old_pks).delete()
+            mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -2907,6 +2915,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
             finally:
                 self.obj.objects.exclude(pk__in=old_pks).delete()
+                mail.outbox = []
 
     @only_with_obj
     @only_with('max_blocks')
@@ -2939,6 +2948,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
             finally:
                 self.obj.objects.exclude(pk__in=old_pks).delete()
+                mail.outbox = []
 
     @only_with_obj
     @only_with('file_fields_params_add')
@@ -2954,6 +2964,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 continue
             max_count = field_dict['max_count']
             sp = transaction.savepoint()
+            mail.outbox = []
             if new_objects:
                 new_objects.delete()
             try:
@@ -3020,6 +3031,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
         for field in fields_for_check:
             sp = transaction.savepoint()
+            mail.outbox = []
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             try:
@@ -3167,6 +3179,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
         for field, field_dict in viewitems(self.file_fields_params_add):
             sp = transaction.savepoint()
+            mail.outbox = []
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             one_max_size = field_dict.get('one_max_size', '10M')
@@ -3208,6 +3221,7 @@ class FormAddTestMixIn(FormTestMixIn):
         new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
             sp = transaction.savepoint()
+            mail.outbox = []
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             sum_max_size = field_dict.get('sum_max_size', None)
@@ -3249,6 +3263,7 @@ class FormAddTestMixIn(FormTestMixIn):
         message_type = 'empty_file'
         for field, field_dict in viewitems(self.file_fields_params_add):
             sp = transaction.savepoint()
+            mail.outbox = []
             if new_objects:
                 new_objects.delete()
             try:
@@ -3283,6 +3298,7 @@ class FormAddTestMixIn(FormTestMixIn):
             for ext in extensions:
                 old_pks = list(self.obj.objects.values_list('pk', flat=True))
                 sp = transaction.savepoint()
+                mail.outbox = []
                 if new_object:
                     self.obj.objects.filter(pk=new_object.pk).delete()
                 filename = '.'.join([el for el in ['test', ext] if el])
@@ -3352,6 +3368,7 @@ class FormAddTestMixIn(FormTestMixIn):
             width = field_dict.get('min_width', 1)
             height = field_dict.get('min_height', 1)
             sp = transaction.savepoint()
+            mail.outbox = []
             if new_object:
                 self.obj.objects.filter(pk=new_object.pk).delete()
             try:
@@ -3386,6 +3403,7 @@ class FormAddTestMixIn(FormTestMixIn):
         new_objects = None
         message_type = 'min_dimensions'
         for field, field_dict in viewitems(self.file_fields_params_add):
+            mail.outbox = []
             if new_objects:
                 new_objects.delete()
             values = ()
@@ -3552,6 +3570,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except:
                     self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
+                finally:
+                    mail.outbox = []
 
     @only_with_obj
     def test_edit_object_only_required_fields_positive(self):
@@ -3579,6 +3599,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assert_object_fields(new_object, params, exclude=exclude)
         except:
             self.errors_append()
+        finally:
+            mail.outbox = []
 
         """если хотя бы одно поле из группы заполнено, объект редактируется"""
         for group in self.required_related_fields_edit:
@@ -3604,6 +3626,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.errors_append(text='For filled field %s from group "%s"' %
                                        (field, force_text(group)))
+                finally:
+                    mail.outbox = []
 
     @only_with_obj
     def test_edit_object_empty_required_fields_negative(self):
@@ -3803,6 +3827,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                                  (field, length, max_length_params[field] if len(str(max_length_params[field])) <= 1000
                                                   else str(max_length_params[field])[:1000] + '...')
                                                  for field, length in fields_for_check]))
+        finally:
+            mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -3858,6 +3884,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, length, value if len(str(value)) <= 1000 else str(value)[:1000] + '...'))
+            finally:
+                mail.outbox = []
 
     @only_with_obj
     @only_with('max_fields_length')
@@ -4092,6 +4120,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                                   for field in el),
                                         ', '.join('field "%s" with value "%s"\n' % (field, params[field])
                                                   for field in el if field in params.keys())))
+                finally:
+                    mail.outbox = []
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -4186,6 +4216,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                     '\n\n'.join(['  %s with value %s' %
                                                  (field, max_value_params[field])
                                                  for field in fields_for_check]))
+        finally:
+            mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -4213,6 +4245,8 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, value))
+            finally:
+                mail.outbox = []
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -4279,6 +4313,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                     '\n\n'.join(['  %s with value %s' %
                                                  (field, min_value_params[field])
                                                  for field in fields_for_check]))
+        finally:
+            mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -4306,6 +4342,8 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, value))
+            finally:
+                mail.outbox = []
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -4422,6 +4460,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.savepoint_rollback(sp)
             self.errors_append(text="Max count in all (%s) blocks" % ', '.join('%s in %s' % (k, v) for k, v in
                                                                                viewitems(self.max_blocks)))
+        finally:
+            mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -4449,6 +4489,8 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
+            finally:
+                mail.outbox = []
 
     @only_with_obj
     @only_with('max_blocks')
@@ -4549,6 +4591,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.savepoint_rollback(sp)
             self.errors_append(text='For max count files in all fields\n%s' %
                                     '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
+        finally:
+            mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -4577,6 +4621,8 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
+            finally:
+                mail.outbox = []
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -4702,6 +4748,8 @@ class FormEditTestMixIn(FormTestMixIn):
                                                     convert_size_to_bytes(
                                                         self.file_fields_params_edit[field].get('one_max_size', '10M'))))
                                                for field in fields_for_check]))
+        finally:
+            mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
         if not self.errors:
@@ -4738,6 +4786,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             finally:
                 self.del_files()
+                mail.outbox = []
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -4777,6 +4826,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                     field))
             finally:
                 self.del_files()
+                mail.outbox = []
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -4838,6 +4888,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 except:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
+                finally:
+                    mail.outbox = []
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -4905,6 +4957,8 @@ class FormEditTestMixIn(FormTestMixIn):
             except:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+            finally:
+                mail.outbox = []
 
     @only_with_obj
     @only_with('file_fields_params_edit')
