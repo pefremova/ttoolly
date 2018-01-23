@@ -276,7 +276,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(res.name.split('.'), [res.name])
         self.assertTrue(self.btc.with_files)
 
-    def test_get_random_file_class_with_sefault_params(self):
+    def test_get_random_file_class_with_default_params(self):
         self.btc.with_files = False
         self.btc.default_params = {}
         res = self.btc.get_random_file('some_file_field', 20)
@@ -1617,6 +1617,56 @@ class TestUtils(unittest.TestCase):
         self.assertIsInstance(new_file, ContentFile)
         self.assertEqual(new_file.size, 10)
         self.assertEqual(new_file.name, '_size_100_.qwe')
+
+    def test_get_random_pdf_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.pdf', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_tiff_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.tiff', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_jpg_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.jpg', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_jpeg_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.jpeg', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_png_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.png', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_gif_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.gif', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_svg_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.svg', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_bmp_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.bmp', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_txt_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.txt', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
+
+    def test_get_random_doc_file_with_size(self):
+        new_file = utils.get_random_file(size='1K', filename='test.doc', )
+        self.assertIsInstance(new_file, File)
+        self.assertEqual(new_file.size, 1024)
 
     def test_prepare_file_for_tests(self):
         SomeModel.objects.create(file_field='test', int_field=1)

@@ -820,7 +820,7 @@ trailer
     size -= len(content.format(''))
     additional_content = ''
     if size > 0:
-        additional_content = bytearray(size)
+        additional_content = bytearray(size).decode()
     return content.format(additional_content)
 
 
