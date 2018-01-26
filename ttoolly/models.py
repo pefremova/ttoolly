@@ -1191,7 +1191,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         field_name = re.sub('\-\d+\-', '-0-', field_name)
         if self.is_email_field(field_name):
-            length = length if length is not None else randint(getattr(self, 'max_fields_length', {}).get(field_name, 1),
+            length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 1),
                                                                getattr(self, 'max_fields_length', {}).get(field_name, 254))
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
@@ -2237,8 +2237,8 @@ class FormAddTestMixIn(FormTestMixIn):
                                 'int_fields_add', 'multiselect_fields_add', 'not_str_fields'):
             other_fields.extend(getattr(self, field_type_name, []) or [])
 
-        fields_for_check = [(k, self.max_fields_length.get(k, 100000))
-                            for k in self.all_fields_add if k not in other_fields]
+        fields_for_check = [(k, self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000))
+                            for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
         max_length_params = {}
@@ -3770,8 +3770,9 @@ class FormEditTestMixIn(FormTestMixIn):
                                 'choice_fields_edit_with_value_in_error', 'disabled_fields_edit', 'hidden_fields_edit',
                                 'int_fields_edit', 'multiselect_fields_edit', 'not_str_fields'):
             other_fields.extend(getattr(self, field_type_name, []) or [])
-        fields_for_check = [(k, self.max_fields_length.get(k, 100000))
-                            for k in self.all_fields_edit if k not in other_fields]
+
+        fields_for_check = [(k, self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000))
+                            for k in self.all_fields_edit if re.sub('\-\d+\-', '-0-', k) not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
 
