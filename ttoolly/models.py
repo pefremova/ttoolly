@@ -1191,7 +1191,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         field_name = re.sub('\-\d+\-', '-0-', field_name)
         if self.is_email_field(field_name):
-            length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 1),
+            length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 6),
                                                                getattr(self, 'max_fields_length', {}).get(field_name, 254))
             return get_random_email_value(length)
         elif self.is_file_field(field_name):
@@ -1236,7 +1236,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     value = round(value, self.max_decimal_places[field_name])
                 return value
         else:
-            length = length if length is not None else randint(getattr(self, 'max_fields_length', {}).get(field_name, 1),
+            length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 1),
                                                                getattr(self, 'max_fields_length', {}).get(field_name, 100000))
             return get_randname(length, 'w')
 
