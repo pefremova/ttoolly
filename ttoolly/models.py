@@ -738,7 +738,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     count_for_check = len(params[field])
                 else:
                     count_for_check = params.get('%s-TOTAL_FORMS' % obj_related_objects.get(field, field), None)
-                if count_for_check and value.__class__.__name__ == 'RelatedManager':
+                if count_for_check is not None and value.__class__.__name__ == 'RelatedManager':
                     try:
                         self.assertEqual(value.all().count(), count_for_check)
                     except Exception as e:
