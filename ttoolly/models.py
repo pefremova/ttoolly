@@ -5467,6 +5467,11 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         if self.all_fields is None:
             self.all_fields = [
                 el for el in [self.field_old_password, self.field_password, self.field_password_repeat] if el]
+        """for get_value_for_field"""
+        self.max_fields_length = getattr(self, 'max_fields_length', {})
+        self.max_fields_length['password'] = self.max_fields_length.get('password', self.password_max_length)
+        self.min_fields_length = getattr(self, 'min_fields_length', {})
+        self.min_fields_length['password'] = self.min_fields_length.get('password', self.password_min_length)
         value = self.get_value_for_field(None, 'password')
         self.password_params = (self.password_params
                                 or self.deepcopy(getattr(self, 'default_params', {}))
@@ -5478,11 +5483,6 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                      self.field_password_repeat: value}.items():
             if k:
                 self.password_params[k] = self.password_params.get(k, v) or v
-        """for get_value_for_field"""
-        self.max_fields_length = getattr(self, 'max_fields_length', {})
-        self.max_fields_length['password'] = self.max_fields_length.get('password', self.password_max_length)
-        self.min_fields_length = getattr(self, 'min_fields_length', {})
-        self.min_fields_length['password'] = self.min_fields_length.get('password', self.password_min_length)
 
     def get_obj_for_edit(self):
         user = choice(self.obj.objects.all())
