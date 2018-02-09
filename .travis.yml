@@ -12,7 +12,7 @@ env:
 matrix:
   exclude:
     - python: "2.7"
-    - env: "DJANGO_VERSION=2.0.3"
+      env: "DJANGO_VERSION=2.0.3"
 install: 
   - pip install -q Django==$DJANGO_VERSION
   - pip install -r tests/requirements.pip
