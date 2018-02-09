@@ -18,7 +18,7 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
                   'datetime_field', 'date_field', 'text_field', 'digital_field', 'many_related_field', 'image_field',
                   'bool_field', 'one_to_one_field', 'one_to_one_field2')
     choice_fields = ('foreign_key_field', 'one_to_one_field', 'one_to_one_field2')
-    if VERSION >= (2,):
+    if VERSION >= (1, 11,):
         custom_error_messages = {'image_field': {'wrong_extension': [
             "Формат файлов '{ext}' не поддерживается. Поддерживаемые форматы файлов: 'bmp, bufr, cur, pcx, dcx, "
             "dds, ps, eps, fit, fits, fli, flc, ftc, ftu, gbr, gif, grib, h5, hdf, png, jp2, j2k, jpc, jpf, jpx, "
@@ -56,7 +56,7 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
     url_edit = 'somemodel-update'
 
     def get_error_message(self, message_type, field, *args, **kwargs):
-        if VERSION >= (2,) and message_type == 'wrong_extension':
+        if VERSION >= (1, 11,) and message_type == 'wrong_extension':
             previous_locals = kwargs.get('locals', {})
             if not previous_locals:
                 for frame in inspect.getouterframes(inspect.currentframe()):
