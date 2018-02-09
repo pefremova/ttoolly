@@ -3459,17 +3459,13 @@ class FormEditTestMixIn(FormTestMixIn):
             if not re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
                 filters &= ~Q(**{'%s__isnull' % field: True})
                 field_class = self.get_field_by_name(self.obj, field)
-                if not set([c.__name__ for c in field_class.__class__.__mro__])\
-                        .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DecimalField',
-                                       'DateField', 'BooleanField')):
+                if field_class.empty_strings_allowed:
                     filters &= ~Q(**{field: ''})
             else:
                 related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
                 filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
                 field_class = self.get_field_by_name(self.obj, field)
-                if not set([c.__name__ for c in field_class.__class__.__mro__])\
-                        .intersection(('RelatedField', 'ForeignKey', 'IntegerField', 'DecimalField',
-                                       'DateField', 'BooleanField')):
+                if field_class.empty_strings_allowed:
                     filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.obj.objects.filter(filters)
 
