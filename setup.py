@@ -3,7 +3,7 @@ from distutils.core import setup
 from setuptools import find_packages
 
 setup(name='ttoolly',
-      version='0.18.26',
+      version='0.19.0',
       description="Django test tools",
       include_package_data=True,
       packages=find_packages(exclude=["tests", "test_project"]),

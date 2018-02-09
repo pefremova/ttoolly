@@ -16,12 +16,12 @@ class SomeModel(models.Model):
     unique_int_field = models.IntegerField(null=True, blank=True, unique=True, verbose_name='Уникальное поле',
                                            validators=[MinValueValidator(0), MaxValueValidator(9999999)])
     email_field = models.EmailField(blank=True)
-    foreign_key_field = models.ForeignKey('OtherModel', blank=True, null=True)
+    foreign_key_field = models.ForeignKey('OtherModel', blank=True, null=True, on_delete=models.CASCADE)
     date_field = models.DateField(blank=True, null=True)
     datetime_field = models.DateTimeField(blank=True, null=True)
     bool_field = models.BooleanField(default=False)
-    one_to_one_field = models.OneToOneField('OtherModel', related_name='one_to_one_related_name', blank=True, null=True)
-    one_to_one_field2 = models.OneToOneField('SomeModel', blank=True, null=True)
+    one_to_one_field = models.OneToOneField('OtherModel', related_name='one_to_one_related_name', blank=True, null=True, on_delete=models.CASCADE)
+    one_to_one_field2 = models.OneToOneField('SomeModel', blank=True, null=True, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = 'SomeModel'

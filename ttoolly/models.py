@@ -27,7 +27,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.management import call_command
-from django.core.urlresolvers import reverse, resolve
+try:
+    from django.core.urlresolvers import reverse, resolve
+except:
+    # Django 2.0
+    from django.urls import reverse, resolve
 from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
 from django.db.models import Model, Q, Manager, DateTimeField
 from django.db.models.fields import FieldDoesNotExist
@@ -1221,7 +1225,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 try:
                     if 'ForeignKey' in [b.__name__ for b in
                                         self.get_field_by_name(self.obj, field_name).__class__.__mro__]:
-                        return choice(self.get_field_by_name(self.obj, field_name).rel.to.objects.all()).pk
+                        return choice(self.get_field_by_name(self.obj, field_name).related_model.objects.all()).pk
                 except FieldDoesNotExist:
                     pass
             if 'get_digital_values_range' not in dir(self):

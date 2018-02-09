@@ -22,7 +22,11 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.uploadhandler import MemoryFileUploadHandler
-from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
+try:
+    from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
+except:
+    # Django 2.0
+    from django.urls import reverse, resolve, Resolver404, NoReverseMatch
 from django.forms.forms import NON_FIELD_ERRORS
 from django.template.context import Context
 from django.test import Client
@@ -606,7 +610,7 @@ def get_value_for_obj_field(f, filename=None):
             not (getattr(f, '_choices', None) or f.choices):
         return random.randint(0, 1000)
     elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
-        related_model = f.rel.model
+        related_model = f.related_model
         if related_model == f.model:
             # fix recursion
             return None

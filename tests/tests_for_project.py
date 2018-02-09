@@ -3,11 +3,13 @@ from __future__ import unicode_literals
 
 import os
 
+from django import VERSION
 from django.core.files.base import ContentFile
 from django.test import TestCase
 from test_project.test_app.models import SomeModel, OtherModel
 from ttoolly.models import (FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn)
 from ttoolly.utils import FILE_TYPES
+import inspect
 
 
 class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, TestCase):
@@ -16,8 +18,15 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
                   'datetime_field', 'date_field', 'text_field', 'digital_field', 'many_related_field', 'image_field',
                   'bool_field', 'one_to_one_field', 'one_to_one_field2')
     choice_fields = ('foreign_key_field', 'one_to_one_field', 'one_to_one_field2')
-    custom_error_messages = {'image_field': {'wrong_extension': [
-        'Загрузите правильное изображение. Файл, который вы загрузили, поврежден или не является изображением.']}}
+    if VERSION >= (2,):
+        custom_error_messages = {'image_field': {'wrong_extension': [
+            "Формат файлов '{ext}' не поддерживается. Поддерживаемые форматы файлов: 'bmp, bufr, cur, pcx, dcx, "
+            "dds, ps, eps, fit, fits, fli, flc, ftc, ftu, gbr, gif, grib, h5, hdf, png, jp2, j2k, jpc, jpf, jpx, "
+            "j2c, icns, ico, im, iim, tif, tiff, jfif, jpe, jpg, jpeg, mpg, mpeg, mpo, msp, palm, pcd, pdf, pxr, "
+            "pbm, pgm, ppm, psd, bw, rgb, rgba, sgi, ras, tga, webp, wmf, emf, xbm, xpm'."]}}
+    else:
+        custom_error_messages = {'image_field': {'wrong_extension': [
+            'Загрузите правильное изображение. Файл, который вы загрузили, поврежден или не является изображением.']}}
     datetime_fields = ('datetime_field',)
     default_params = {'digital_field': 1.56,
                       'int_field': 34,
@@ -45,6 +54,18 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
     url_add = 'somemodel-create'
     url_delete = 'somemodel-delete'
     url_edit = 'somemodel-update'
+
+    def get_error_message(self, message_type, field, *args, **kwargs):
+        if VERSION >= (2,) and message_type == 'wrong_extension':
+            previous_locals = kwargs.get('locals', {})
+            if not previous_locals:
+                for frame in inspect.getouterframes(inspect.currentframe()):
+                    if frame[3].startswith('test_'):
+                        break
+                previous_locals = frame[0].f_locals
+            previous_locals['ext'] = previous_locals['ext'].lower()
+            kwargs['locals'] = previous_locals
+        return super().get_error_message(message_type, field, *args, **kwargs)
 
     def get_params_according_to_type(self, value, params_value):
         if isinstance(params_value, FILE_TYPES + (ContentFile,)):
