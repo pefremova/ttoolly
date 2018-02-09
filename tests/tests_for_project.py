@@ -65,7 +65,7 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
                 previous_locals = frame[0].f_locals
             previous_locals['ext'] = previous_locals['ext'].lower()
             kwargs['locals'] = previous_locals
-        return super().get_error_message(message_type, field, *args, **kwargs)
+        return super(TestSomeModel, self).get_error_message(message_type, field, *args, **kwargs)
 
     def get_params_according_to_type(self, value, params_value):
         if isinstance(params_value, FILE_TYPES + (ContentFile,)):
