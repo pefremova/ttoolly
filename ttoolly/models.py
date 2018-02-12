@@ -6324,12 +6324,14 @@ class LoginTestMixIn(object):
     def check_is_authenticated(self):
         request = HttpRequest()
         request.session = self.client.session
-        self.assertTrue(get_user(request).is_authenticated())
+        self.assertTrue((callable(get_user(request).is_authenticated) and get_user(request).is_authenticated())
+                        or get_user(request).is_authenticated)
 
     def check_is_not_authenticated(self):
         request = HttpRequest()
         request.session = self.client.session
-        self.assertFalse(get_user(request).is_authenticated())
+        self.assertFalse((callable(get_user(request).is_authenticated) and get_user(request).is_authenticated())
+                         or get_user(request).is_authenticated)
 
     def check_response_on_positive(self, response):
         if self.url_redirect_to:

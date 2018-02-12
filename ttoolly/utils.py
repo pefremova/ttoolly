@@ -136,7 +136,6 @@ def generate_random_obj(obj_model, additional_params=None, filename=None, with_s
         if f.null and f.blank and random.randint(0, 1):
             continue
         params[f.name] = get_value_for_obj_field(f, filename)
-
     params.update(additional_params)
     if with_save:
         return obj_model.objects.create(**params)
@@ -288,7 +287,7 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
     if result is None:
         result = []
     for entry in urllist:
-        url = prefix + entry.regex.pattern.strip('^$')
+        url = prefix + getattr(entry, 'pattern', entry).regex.pattern.strip('^$')
         if hasattr(entry, 'url_patterns'):
             get_all_urls(entry.url_patterns, depth + 1, prefix=url, result=result)
         else:
