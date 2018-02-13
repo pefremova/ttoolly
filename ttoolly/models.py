@@ -3591,12 +3591,14 @@ class FormEditTestMixIn(FormTestMixIn):
         params = self.deepcopy(self.default_params_edit)
         self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
         required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
+
         self.update_params(params)
         for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
             params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
                 self.get_value_for_field(None, field)
+
         try:
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
@@ -6333,14 +6335,18 @@ class LoginTestMixIn(object):
     def check_is_authenticated(self):
         request = HttpRequest()
         request.session = self.client.session
-        self.assertTrue((callable(get_user(request).is_authenticated) and get_user(request).is_authenticated())
-                        or get_user(request).is_authenticated)
+        if callable(get_user(request).is_authenticated):
+            self.assertTrue(get_user(request).is_authenticated())
+        else:
+            self.assertTrue(get_user(request).is_authenticated)
 
     def check_is_not_authenticated(self):
         request = HttpRequest()
         request.session = self.client.session
-        self.assertFalse((callable(get_user(request).is_authenticated) and get_user(request).is_authenticated())
-                         or get_user(request).is_authenticated)
+        if callable(get_user(request).is_authenticated):
+            self.assertFalse(get_user(request).is_authenticated())
+        else:
+            self.assertFalse(get_user(request).is_authenticated)
 
     def check_response_on_positive(self, response):
         if self.url_redirect_to:
