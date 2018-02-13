@@ -734,7 +734,6 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     value = None
             else:
                 value = getattr(obj, field)
-
             if value is not None and field in obj_related_objects.keys() or field in obj_related_objects.values() and \
                 (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
                  set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase'])):
@@ -755,6 +754,14 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                      params[k]) for k in params.keys() if
                                     k.startswith('%s-%d-' % (obj_related_objects.get(field, field), i))
                                     and k not in exclude and re.sub('\-\d+\-', '-_-', k) not in exclude])
+                    if (not _params and params.get(field, None) and isinstance(params[field], (list, tuple)) and
+                            all([isinstance(value_el, FILE_TYPES + (ContentFile,)) for value_el in params[field]])):
+                        """Try check multiple file field.
+                        But you should redefine assert_object_fields in test with params like `field-0-file_obj`"""
+                        el_file_fields = [f.name for f in el._meta.fields if
+                                          set([m.__name__ for m in f.__class__.__mro__]).intersection(['FileField', 'ImageField'])]
+                        if len(el_file_fields) == 1:
+                            _params = {el_file_fields[0]: params[field][i] if len(params[field]) > i else ''}
                     try:
                         self.assert_object_fields(el, _params)
                     except Exception as e:
@@ -1287,6 +1294,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     field in (getattr(self, 'email_fields_edit', ()) or ()), ])
 
     def is_file_list(self, field):
+        if not self.is_file_field(field):
+            return False
         for param_name in ('default_params', 'default_params_add', 'default_params_edit'):
             v = getattr(self, param_name, {}).get(field, None)
             if isinstance(v, (list, tuple)):
