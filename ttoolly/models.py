@@ -5480,7 +5480,8 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 el for el in [self.field_old_password, self.field_password, self.field_password_repeat] if el]
         """for get_value_for_field"""
         self.max_fields_length = getattr(self, 'max_fields_length', {})
-        self.max_fields_length['password'] = self.max_fields_length.get('password', self.password_max_length)
+        if self.password_max_length:
+            self.max_fields_length['password'] = self.max_fields_length.get('password', self.password_max_length)
         self.min_fields_length = getattr(self, 'min_fields_length', {})
         self.min_fields_length['password'] = self.min_fields_length.get('password', self.password_min_length)
         value = self.get_value_for_field(None, 'password')
@@ -5494,6 +5495,16 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                      self.field_password_repeat: value}.items():
             if k:
                 self.password_params[k] = self.password_params.get(k, v) or v
+
+    def check_positive(self, user, params):
+        new_user = self.obj.objects.get(pk=user.pk)
+        self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
+        self.assertTrue(new_user.check_password(params[self.field_password]),
+                        'Password not changed to "%s"' % params[self.field_password])
+
+    def check_negative(self, user, params, response):
+        new_user = self.obj.objects.get(pk=user.pk)
+        self.assert_objects_equal(new_user, user)
 
     def get_obj_for_edit(self):
         user = choice(self.obj.objects.all())
@@ -5544,10 +5555,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.client.post(
                     self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
                 self.assert_no_form_errors(response)
-                new_user = self.obj.objects.get(pk=user.pk)
-                self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
-                self.assertTrue(new_user.check_password(params[self.field_password]),
-                                'Password not changed to "%s"' % params[self.field_password])
+                self.check_positive(user, params)
             except:
                 self.errors_append(text='New password "%s"' % params[self.field_password])
 
@@ -5566,10 +5574,9 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.set_empty_value_for_field(params, field)
                 response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                             params, follow=True, **self.additional_params)
+                self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_user = self.obj.objects.get(pk=user.pk)
-                self.assert_objects_equal(new_user, user)
             except:
                 self.errors_append(text='Empty field "%s"' % field)
 
@@ -5588,10 +5595,9 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 params.pop(field, None)
                 response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                             params, follow=True, **self.additional_params)
+                self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-                new_user = self.obj.objects.get(pk=user.pk)
-                self.assert_objects_equal(new_user, user)
             except:
                 self.errors_append(text='Without field "%s"' % field)
 
@@ -5609,8 +5615,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         try:
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
-            new_user = self.obj.objects.get(pk=user.pk)
-            self.assert_objects_equal(new_user, user)
+            self.check_negative(user, params, response)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_password_repeat', self.field_password_repeat))
         except:
@@ -5635,8 +5640,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         try:
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
-            new_user = self.obj.objects.get(pk=user.pk)
-            self.assert_objects_equal(new_user, user)
+            self.check_negative(user, params, response)
             error_message = self.get_error_message('min_length', self.field_password,)
             self.assertEqual(self.get_all_form_errors(response), error_message)
         except:
@@ -5659,10 +5663,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
             self.assert_no_form_errors(response)
-            new_user = self.obj.objects.get(pk=user.pk)
-            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
-            self.assertTrue(new_user.check_password(params[self.field_password]),
-                            'Password not changed to "%s"' % params[self.field_password])
+            self.check_positive(user, params)
         except:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
@@ -5683,10 +5684,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
             self.assert_no_form_errors(response)
-            new_user = self.obj.objects.get(pk=user.pk)
-            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
-            self.assertTrue(new_user.check_password(params[self.field_password]),
-                            'Password not changed to "%s"' % params[self.field_password])
+            self.check_positive(user, params)
         except:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
@@ -5707,8 +5705,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         try:
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
-            new_user = self.obj.objects.get(pk=user.pk)
-            self.assert_objects_equal(new_user, user)
+            self.check_negative(user, params, response)
             error_message = self.get_error_message('max_length', self.field_password,)
             self.assertEqual(self.get_all_form_errors(response), error_message)
         except:
@@ -5730,8 +5727,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             try:
                 response = self.client.post(
                     self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
-                new_user = self.obj.objects.get(pk=user.pk)
-                self.assert_objects_equal(new_user, user)
+                self.check_negative(user, params, response)
                 error_message = self.get_error_message('wrong_value', self.field_password,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
             except:
@@ -5752,8 +5748,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         try:
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
-            new_user = self.obj.objects.get(pk=user.pk)
-            self.assert_objects_equal(new_user, user)
+            self.check_negative(user, params, response)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_old_password', self.field_old_password))
         except:
@@ -5781,9 +5776,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
             self.assert_no_form_errors(response)
-            new_user = self.obj.objects.get(pk=user.pk)
-            self.assertFalse(new_user.check_password(old_password), 'Not changed')
-            self.assertTrue(new_user.check_password(params[self.field_password]), 'Not changed to %s' % value)
+            self.check_positive(user, params)
         except:
             self.errors_append(text='Old password value "%s"' % old_password)
 
