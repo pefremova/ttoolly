@@ -5186,10 +5186,10 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_for_test = self.get_obj_for_edit()
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
-        obj_id = obj_for_test.id
+        value = obj_for_test.id
         params = self.deepcopy(self.default_params_edit)
         try:
-            response = self.client.post(self.get_url_for_negative(self.url_edit, (obj_id,)), params, follow=True,
+            response = self.client.post(self.get_url_for_negative(self.url_edit, (value,)), params, follow=True,
                                         **self.additional_params)
             self.assertEqual(response.status_code, self.status_code_not_exist,
                              'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
