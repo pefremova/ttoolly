@@ -737,6 +737,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if value is not None and field in obj_related_objects.keys() or field in obj_related_objects.values() and \
                 (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
                  set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase'])):
+
                 if hasattr(params.get(field, None), '__len__'):
                     count_for_check = len(params[field])
                 else:
@@ -747,6 +748,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     except Exception as e:
                         local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, str)
                                                               else field) + force_text(e))
+
                 for i, el in enumerate(value.all().order_by('pk')
                                        if value.__class__.__name__ in ('RelatedManager', 'QuerySet')
                                        else [value, ]):
@@ -1554,7 +1556,7 @@ class FormTestMixIn(GlobalTestMixIn):
     def _get_field_value_by_name(self, obj, field):
         if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
             model_name, index, field_name = field.split('-')
-            value = getattr(getattr(obj, model_name).all()[int(index)], field_name)
+            value = getattr(getattr(obj, model_name).all().order_by('pk')[int(index)], field_name)
         else:
             value = getattr(obj, field)
         return value
@@ -3816,6 +3818,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.set_empty_value_for_field(params, ff)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 _errors = []
+                other_values = {ff: self._get_field_value_by_name(obj_for_edit, ff) for ff in file_fields}
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
@@ -3826,8 +3829,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
                         list(max_length_params.keys()))
                     self.assert_object_fields(new_object, params, exclude=exclude,
-                                              other_values={ff: self._get_field_value_by_name(obj_for_edit, ff) for ff
-                                                            in file_fields})
+                                              other_values=other_values)
                 except:
                     self.errors_append(_errors, text='Second save for check max file length')
                 if _errors:
@@ -3878,6 +3880,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[field] = ''
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     _errors = []
+                    other_values = {field: self._get_field_value_by_name(obj_for_edit, field)}
                     try:
                         response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                     params, follow=True, **self.additional_params)
@@ -3887,7 +3890,7 @@ class FormEditTestMixIn(FormTestMixIn):
                         new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                         exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                         self.assert_object_fields(new_object, params, exclude=exclude,
-                                                  other_values={field: self._get_field_value_by_name(obj_for_edit, field)})
+                                                  other_values=other_values)
                     except:
                         self.errors_append(_errors, text='Second save with file max length')
                     if _errors:
