@@ -331,10 +331,10 @@ class MetaCheckFailures(type):
 class Ring(cycle):
 
     def turn(self):
-        self.next()
+        next(self)
 
     def get_and_turn(self):
-        return self.next()
+        return next(self)
 
 
 class DictWithPassword(dict):

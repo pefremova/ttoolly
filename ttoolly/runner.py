@@ -5,6 +5,16 @@ import unittest
 
 from django.conf import settings
 from django.test.runner import reorder_suite, DiscoverRunner
+from datetime import datetime
+
+
+WITH_HTML_REPORT = getattr(settings, 'TEST_HTML_REPORT', False)
+if WITH_HTML_REPORT:
+    try:
+        from pyunitreport import HTMLTestRunner
+        from html_report import CustomHtmlTestResult
+    except ImportError:
+        raise Exception('For html reports you should install pyunitreport:\n    pip install PyUnitReport')
 
 
 def get_runner():
@@ -22,8 +32,14 @@ ParentRunner = get_runner()
 
 
 class RegexpTestSuiteRunner(ParentRunner):
+    test_runner = HTMLTestRunner if WITH_HTML_REPORT else ParentRunner.test_runner
 
     mro_names = [m.__name__ for m in ParentRunner.__mro__]
+
+    def get_resultclass(self):
+        if WITH_HTML_REPORT:
+            return CustomHtmlTestResult
+        return super(RegexpTestSuiteRunner, self).get_resultclass()
 
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
         full_suite = ParentRunner.build_suite(self, None, extra_tests=None, **kwargs)
@@ -37,27 +53,16 @@ class RegexpTestSuiteRunner(ParentRunner):
                     labels_for_suite.append(label)
                     continue
                 text_for_re = label.replace('.', '\.').replace('*', '[^\.]+?')
-                if 'DjangoTestSuiteRunner' in self.mro_names:
-                    if len(label.split('.')) > 2:
-                        text_for_re += '$'
-                    else:
-                        text_for_re += '\..+$'
-                    app = get_app(label.split('.')[0])
-                    text_for_re = text_for_re.replace(label.split('.')[0], app.__name__.split('.models')[0])
-                elif 'DiscoverRunner' in self.mro_names:
+                if 'DiscoverRunner' in self.mro_names:
                     if len(label.split('.')) > 3:
                         text_for_re += '$'
                     else:
                         text_for_re += '\..+$'
                 full_re.append(text_for_re)
             full_re = '(^' + ')|(^'.join(full_re) + ')' if full_re else ''
-            if 'DjangoTestSuiteRunner' in self.mro_names:
-                apps = [app.__name__.split('.models')[0] for app in get_apps()]
             for el in full_suite._tests:
                 module_name = el.__module__
-                if 'DjangoTestSuiteRunner' in self.mro_names:
-                    while module_name and module_name not in apps:
-                        module_name = '.'.join(module_name.split('.')[:-1])
+
                 full_name = [module_name, el.__class__.__name__, el._testMethodName]
                 full_name = '.'.join(full_name)
                 if (full_re and re.findall(r'%s' % full_re, full_name)):
@@ -66,8 +71,17 @@ class RegexpTestSuiteRunner(ParentRunner):
             my_suite.addTests(ParentRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
         return reorder_suite(my_suite, (unittest.TestCase,))
 
-    def run_suite(self, *args, **kwargs):
-        result = super(RegexpTestSuiteRunner, self).run_suite(*args, **kwargs)
+    def run_suite(self, suite, **kwargs):
+        if WITH_HTML_REPORT:
+            resultclass = self.get_resultclass()
+            result = self.test_runner(
+                output=getattr(settings, 'TEST_REPORT_OUTPUT_DIR', datetime.now().strftime('%Y-%m-%d %H-%M-%S')),
+                verbosity=self.verbosity,
+                failfast=self.failfast,
+                resultclass=resultclass,
+            ).run(suite)
+        else:
+            result = super(RegexpTestSuiteRunner, self).run_suite(suite, **kwargs)
         if self.verbosity > 2 and (result.errors or result.failures):
             st = unittest.runner._WritelnDecorator(sys.stderr)
             st.write('\n' + '*' * 29 + ' Run failed ' + '*' * 29 + '\n\n')
