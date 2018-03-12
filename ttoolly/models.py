@@ -1871,7 +1871,7 @@ class FormTestMixIn(GlobalTestMixIn):
             return value
 
     def get_gt_max_list(self, field, values_list):
-        return [value for value in [self.get_gt_max(field, v) for v in values_list] if value]
+        return [value for value in [self.get_gt_max(field, v) for v in values_list] if value is not None]
 
     def get_lt_min(self, field, value):
         if ('Integer' in self.get_field_by_name(self.obj, field).__class__.__name__) or \
@@ -1887,7 +1887,7 @@ class FormTestMixIn(GlobalTestMixIn):
             return value
 
     def get_lt_min_list(self, field, values_list):
-        return [value for value in [self.get_lt_min(field, v) for v in values_list] if value]
+        return [value for value in [self.get_lt_min(field, v) for v in values_list] if value is not None]
 
     def humanize_file_size(self, size):
         return filesizeformat(size)
