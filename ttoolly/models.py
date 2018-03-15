@@ -2467,7 +2467,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
 
-        """values is in uppercase"""
+        """values is in other case"""
         for el in self.unique_fields_add:
             field = self.all_unique[el]
             existing_obj = self.get_existing_obj_with_filled(el)
@@ -2484,7 +2484,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
                 if isinstance(params[el_field], basestring):
-                    params[el_field] = params[el_field].upper()
+                    params[el_field] = params[el_field].swapcase()
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
@@ -4056,7 +4056,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in params.keys()))
-        """values is in uppercase"""
+        """values is in other case"""
         for el in self.unique_fields_edit:
             field = self.all_unique[el]
             obj_for_edit = self.get_obj_for_edit()
@@ -4074,7 +4074,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
                 if isinstance(params[el_field], basestring):
-                    params[el_field] = params[el_field].upper()
+                    params[el_field] = params[el_field].swapcase()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
