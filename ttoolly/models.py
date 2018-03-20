@@ -196,6 +196,23 @@ class only_with_any_files_params(object):
         return to_run
 
 
+class DictToJson(dict):
+
+    def __str__(self):
+        def get_value(v):
+            if isinstance(v, dict):
+                return {kk: get_value(vv) for kk, vv in v.items()}
+            if v is None:
+                return v
+            if isinstance(v, list):
+                return [get_value(vv) for vv in v]
+            if isinstance(v, bool):
+                return v
+            return str(v)
+        res = json.dumps({k: get_value(v) for k, v in self.items()})
+        return res
+
+
 class PrettyTuple(tuple):
 
     def __format__(self, format):
@@ -6273,13 +6290,15 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         @note: Reset password before code expired
         """
         user = self.get_obj_for_edit()
+        now = datetime.now()
         old_date = datetime.now() - timedelta(days=self.code_lifedays)
         params = self.deepcopy(self.password_params)
         with freeze_time(old_date):
             codes = self.get_codes(user)
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, follow=True, **self.additional_params)
+            with freeze_time(now):
+                response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                            params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             new_user = self.obj.objects.get(pk=user.pk)
             self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
