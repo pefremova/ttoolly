@@ -420,11 +420,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     if need_skip:
                         skip_text = decorator.skip_text
                         break
-            fn = fn.im_func
-            fn.__unittest_skip__ = need_skip
+            fn.__func__.__unittest_skip__ = need_skip
             if need_skip:
-                fn.__unittest_skip_why__ = skip_text
-            setattr(self, self._testMethodName, types.MethodType(fn, self, self.__class__))
+                fn.__func__.__unittest_skip_why__ = skip_text
         super(GlobalTestMixIn, self).__call__(*args, **kwargs)
 
     def _fixture_setup(self):
