@@ -1795,7 +1795,7 @@ class FormTestMixIn(GlobalTestMixIn):
                         except:
                             pass
                     if 'ForeignKey' in mro_names:
-                        value = field_class.rel.to.objects.get(pk=value)
+                        value = field_class.related_model.objects.get(pk=value)
                 obj.__setattr__(field, value)
         obj.save()
         for set_name, values in viewitems(additional):
@@ -1806,14 +1806,14 @@ class FormTestMixIn(GlobalTestMixIn):
                     mro_names = set([m.__name__ for m in f.__class__.__mro__])
                     if 'AutoField' in mro_names:
                         continue
-                    if mro_names.intersection(['ForeignKey', ]) and f.rel.model == obj.__class__:
+                    if mro_names.intersection(['ForeignKey', ]) and f.related_model == obj.__class__:
                         params[f_name] = obj
                     elif f_name in inline_models_dict[set_name]:
                         if getattr(self, 'choice_fields_values', {}).get(set_name + '-0-' + f_name, ''):
-                            params[f_name] = f.rel.to.objects.get(
+                            params[f_name] = f.related_model.objects.get(
                                 pk=choice(self.choice_fields_values[set_name + '-0-' + f_name]))
                         else:
-                            params[f_name] = choice(f.rel.to.objects.all()) if mro_names.intersection(['ForeignKey', ]) \
+                            params[f_name] = choice(f.related_model.objects.all()) if mro_names.intersection(['ForeignKey', ]) \
                                 else self.get_value_for_field(None, f_name)
                     else:
                         params[f_name] = getattr(value, f_name)
@@ -1918,7 +1918,7 @@ class FormTestMixIn(GlobalTestMixIn):
             field = self.get_field_by_name(next_obj, name)
             field_class_name = field.__class__.__name__
             if field_class_name == 'ForeignKey':
-                next_obj = field.rel.to
+                next_obj = field.related_model
             elif field_class_name == 'RelatedObject':
                 next_obj = getattr(field, 'related_model', field.model)
             else:
