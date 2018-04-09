@@ -880,6 +880,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return generate_random_obj(obj_model, additional_params, filename)
 
     def get_all_form_messages(self, response):
+        if not response.context:
+            return None
         try:
             return [ld.message for ld in response.context['messages']._loaded_data]
         except KeyError:
@@ -2272,8 +2274,13 @@ class FormAddTestMixIn(FormTestMixIn):
         if not fields_for_check:
             self.skipTest('No any string fields')
         max_length_params = {}
+        prepared_depends_fields = self.prepare_depend_from_one_of(
+            self.one_of_fields_add) if self.one_of_fields_add else {}
+        fields_for_clean = []
         for field, length in fields_for_check:
             max_length_params[field] = self.get_value_for_field(length, field)
+            if field in prepared_depends_fields.keys():
+                fields_for_clean.extend(prepared_depends_fields[field])
 
         sp = transaction.savepoint()
         try:
@@ -2283,6 +2290,8 @@ class FormAddTestMixIn(FormTestMixIn):
             old_pks = list(self.obj.objects.values_list('pk', flat=True))
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(max_length_params)
+            for depended_field in fields_for_clean:
+                self.set_empty_value_for_field(params, depended_field)
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2300,7 +2309,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                                  for field, length in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(prepared_depends_fields.keys()):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -2317,6 +2326,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                for depended_field in prepared_depends_fields.get(field, []):
+                    self.set_empty_value_for_field(params, depended_field)
                 params[field] = max_length_params[field]
                 if self.is_file_field(field):
                     if self.is_file_list(field):
@@ -3806,10 +3817,16 @@ class FormEditTestMixIn(FormTestMixIn):
 
         max_length_params = {}
         file_fields = []
+
+        prepared_depends_fields = self.prepare_depend_from_one_of(
+            self.one_of_fields_edit) if self.one_of_fields_edit else {}
+        fields_for_clean = []
         for field, length in fields_for_check:
             max_length_params[field] = self.get_value_for_field(length, field)
             if self.is_file_field(field):
                 file_fields.append(field)
+            if field in prepared_depends_fields.keys():
+                fields_for_clean.extend(prepared_depends_fields[field])
 
         sp = transaction.savepoint()
         try:
@@ -3860,7 +3877,7 @@ class FormEditTestMixIn(FormTestMixIn):
             mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(prepared_depends_fields.keys()):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -3873,6 +3890,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 params[field] = max_length_params[field]
+                for depended_field in prepared_depends_fields.get(field, []):
+                    self.set_empty_value_for_field(params, depended_field)
                 if field in file_fields:
                     if self.is_file_list(field):
                         for f in params[field]:
@@ -6540,7 +6559,7 @@ class LoginTestMixIn(object):
         """
         _params = self.deepcopy(self.default_params)
         for field in (self.field_password, self.field_username):
-            params = _params.copy()
+            params = self.deepcopy(_params)
             self.add_csrf(params)
             self.set_empty_value_for_field(params, field)
             self.clean_blacklist()
@@ -6559,7 +6578,7 @@ class LoginTestMixIn(object):
         """
         _params = self.deepcopy(self.default_params)
         for field in (self.field_password, self.field_username):
-            params = _params.copy()
+            params = self.deepcopy(_params)
             self.add_csrf(params)
             params.pop(field)
             self.clean_blacklist()
