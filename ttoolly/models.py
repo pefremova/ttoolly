@@ -6420,7 +6420,7 @@ class LoginTestMixIn(object):
         @note: login with valid login and password
         """
         for value in self.passwords_for_check:
-            self.client.logout()
+            self.client = self.client_class()
             user = self.get_user()
             user.set_password(value)
             user.save()
@@ -6519,6 +6519,7 @@ class LoginTestMixIn(object):
         """
         for field in ('captcha_0', 'captcha_1'):
             for value in (u'йцу', u'\r', u'\n', u' ', ':'):
+                self.client = self.client_class()
                 self.blacklist_model.objects.get_or_create(host='127.0.0.1')
                 params = self.deepcopy(self.default_params)
                 self.add_csrf(params)
@@ -6559,6 +6560,7 @@ class LoginTestMixIn(object):
         """
         _params = self.deepcopy(self.default_params)
         for field in (self.field_password, self.field_username):
+            self.client = self.client_class()
             params = self.deepcopy(_params)
             self.add_csrf(params)
             self.set_empty_value_for_field(params, field)
@@ -6578,6 +6580,7 @@ class LoginTestMixIn(object):
         """
         _params = self.deepcopy(self.default_params)
         for field in (self.field_password, self.field_username):
+            self.client = self.client_class()
             params = self.deepcopy(_params)
             self.add_csrf(params)
             params.pop(field)
