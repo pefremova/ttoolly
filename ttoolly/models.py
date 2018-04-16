@@ -4145,7 +4145,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     if el_field not in self.all_fields_edit:
                         """only if user can change this field"""
                         continue
-                    value = self._get_field_value_by_name(existing_obj, el_field)
+                    value = self.get_value_for_field(None, el_field)
                     params[el_field] = self.get_params_according_to_type(value, '')[0]
                     if el_field in self.unique_with_case:
                         self.obj.objects.filter(pk=existing_obj.pk).update(
