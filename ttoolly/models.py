@@ -27,6 +27,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.management import call_command
+from unittest.util import strclass
 try:
     from django.core.urlresolvers import reverse, resolve
 except:
@@ -332,7 +333,7 @@ class MetaCheckFailures(type):
 
         def decorate(cls, bases, dct):
             for attr in cls.__dict__:
-                if callable(getattr(cls, attr)) and attr.startswith('test_') and \
+                if callable(getattr(cls, attr)) and attr.startswith('test') and \
                         'check_errors' not in [getattr(d, '__name__', d.__class__.__name__)
                                                for d in getattr(getattr(cls, attr), 'decorators', ())]:
                     setattr(cls, attr, check_errors(getattr(cls, attr)))
@@ -424,6 +425,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if need_skip:
                 fn.__func__.__unittest_skip_why__ = skip_text
         super(GlobalTestMixIn, self).__call__(*args, **kwargs)
+
+    def __str__(self):
+        return "%s.%s" % (strclass(self.__class__), self._testMethodName)
 
     def _fixture_setup(self):
         if getattr(settings, 'TEST_CASE_NAME', self.__class__.__name__) != self.__class__.__name__:
@@ -919,7 +923,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         previous_locals = kwargs.get('locals', {})
         if not previous_locals:
             for frame in inspect.getouterframes(inspect.currentframe()):
-                if frame[3].startswith('test_'):
+                if frame[3].startswith('test'):
                     break
             previous_locals = frame[0].f_locals
         if 'field' not in viewkeys(previous_locals):
