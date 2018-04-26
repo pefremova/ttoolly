@@ -1007,7 +1007,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                           'not_exist': '{verbose_obj} с {verbose_field} "{value}" не существует. Возможно оно было удалено?' if
                                          previous_locals.get('value', '') == '' else
                                          '{verbose_obj} с {verbose_pk} "{value}" не существует. Возможно оно было удалено?'.format(
-                                             **previous_locals)
+                                             **previous_locals),
+                          'wrong_password_similar': 'Введённый пароль слишком похож на {user_field_name}.' if
+                          previous_locals.get('user_field_name', '') == '' else
+                          'Введённый пароль слишком похож на {user_field_name}.'.format(**previous_locals),
                           }
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
@@ -5821,6 +5824,32 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         except:
             self.errors_append(text='Old password value "%s"' % old_password)
 
+    @only_with('password_similar_fields')
+    def test_change_password_value_similar_to_user_field_negative(self):
+        """
+        Try change password to value similar to field from object
+        """
+        for field in self.password_similar_fields:
+            user_field_name = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field)
+            user = self.get_obj_for_edit()
+            value = self.get_value_for_field(self.password_min_length, field)
+            self.obj.objects.filter(pk=user.pk).update(**{field: value})
+            for password_value in (value, value.swapcase(), get_randname(1, 'w') + value, value + get_randname(1, 'w')):
+                user.refresh_from_db()
+                params = self.deepcopy(self.password_params)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
+                params.update({self.field_password: password_value,
+                               self.field_password_repeat: password_value})
+                try:
+                    response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
+                                                params, **self.additional_params)
+                    self.check_negative(user, params, response)
+                    error_message = self.get_error_message('wrong_password_similar', self.field_password, locals=locals())
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                except:
+                    self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' % (password_value, field, value))
+
 
 class ResetPasswordMixIn(GlobalTestMixIn):
 
@@ -6328,6 +6357,34 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.check_after_password_change(locals())
         except:
             self.errors_append()
+
+    @only_with('password_similar_fields')
+    def test_reset_password_value_similar_to_user_field_negative(self):
+        """
+        Try reset password to value similar to field from object
+        """
+        for field in self.password_similar_fields:
+            user_field_name = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field)
+            user = self.get_obj_for_edit()
+            value = self.get_value_for_field(self.password_min_length, field)
+            self.obj.objects.filter(pk=user.pk).update(**{field: value})
+            for password_value in (value, value.swapcase(), get_randname(1, 'w') + value, value + get_randname(1, 'w')):
+                user.refresh_from_db()
+                params = self.deepcopy(self.password_params)
+
+                self.update_params(params)
+                params.update({self.field_password: password_value,
+                               self.field_password_repeat: password_value})
+                codes = self.get_codes(user)
+                try:
+                    response = self.client.post(self.get_url(self.url_reset_password, codes),
+                                                params, **self.additional_params)
+                    new_user = self.obj.objects.get(pk=user.pk)
+                    self.assert_objects_equal(new_user, user)
+                    error_message = self.get_error_message('wrong_password_similar', self.field_password, locals=locals())
+                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                except:
+                    self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' % (password_value, field, value))
 
 
 class LoginTestMixIn(object):

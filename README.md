@@ -177,8 +177,9 @@ __ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn)__
 | password_params | default_params или {field_old_password: current_password, field_password: some_new_value, field_password_repeat: some_new_value} | Параметры по умолчанию, которые используются для смены пароля | password_params = {'password1': 'qwe123', 'password2': 'qwe123'} |
 | obj | None | Модель пользователя | obj = User |
 | password_positive_values | [get_randname(10, 'w') + str(randint(0, 9)), str(randint(0, 9)) + get_randname(10, 'w'), get_randname(10, 'w').upper() + str(randint(0, 9)), ] | Допустимые значения для пароля | password_positive_values = ['qwe+', 'qwe*', 'QwE1'] |
+| password_similar_fields | None | Поля в модели пользователя, на значения которых не должен быть похож новый пароль | password_similar_fields = ('email', 'first_name')
+| password_wrong_values | ['йцукенг', ] | Недопустимые значения для пароля (с допустимой длиной) | password_wrong_values = ['qwerty', 'йцукен', '123456'] |
 | url_change_password | '' | URL, по которому выполняется смена пароля. Если не содержит pk пользователя, задавать как /url/, иначе - можно задавать через urlname | url_change_password = 'admin:auth_user_password_change' |
- | password_wrong_values | ['йцукенг', ] | Недопустимые значения для пароля (с допустимой длиной) | password_wrong_values = ['qwerty', 'йцукен', '123456'] |
 
  
  __LoginTestMixIn__
