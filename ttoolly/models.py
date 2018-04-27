@@ -643,7 +643,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 errors.append(
                     '[alternatives][%d]: Not html message type (%s), but contains html tags in body' % (n, alternative[1]))
         if errors:
-            self.errors.append('\n'.join(errors))
+            raise AssertionError('\n'.join(errors))
 
     def assert_mail_count(self, mails=None, count=None):
         error = ''
