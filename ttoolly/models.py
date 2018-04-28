@@ -6472,6 +6472,10 @@ class LoginTestMixIn(object):
         username = username or self.username
         return self.obj.objects.get(email=username)
 
+    def set_user_inactive(self, user):
+        user.is_active = False
+        user.save()
+
     def update_captcha_params(self, url, params, *args, **kwargs):
         self.client.get(url, **self.additional_params)
         params.update(get_captcha_codes())
@@ -6601,8 +6605,7 @@ class LoginTestMixIn(object):
         @note: login as inactive user
         """
         user = self.get_user()
-        user.is_active = False
-        user.save()
+        self.set_user_inactive(user)
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
@@ -6612,6 +6615,25 @@ class LoginTestMixIn(object):
             self.check_is_not_authenticated()
             self.check_response_on_negative(response)
             self.check_blacklist_on_positive()
+        except:
+            self.errors_append()
+
+    def test_login_wrong_password_inactive_user_negative(self):
+        """
+        @note: login as inactive user with invalid password 
+        """
+        user = self.get_user()
+        self.set_user_inactive(user)
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        params[self.field_password] = self.password + 'q'
+        try:
+            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            message = self.get_error_message('wrong_login', self.field_username)
+            self.assertEqual(self.get_all_form_errors(response), message)
+            self.check_is_not_authenticated()
+            self.check_response_on_negative(response)
+            self.check_blacklist_on_negative(response)
         except:
             self.errors_append()
 
