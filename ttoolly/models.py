@@ -6910,7 +6910,6 @@ class CustomTestCaseNew(CustomTestCase):
         """load fixtures to main database once"""
 
         for db in cls._databases_names(include_mirrors=False):
-
             if cls.reset_sequences:
                 cls._reset_sequences(db)
 
@@ -6923,12 +6922,13 @@ class CustomTestCaseNew(CustomTestCase):
                     connections[db]._test_serialized_contents
                 )
                 if cls.available_apps is not None:
-                    apps.set_available_apps(self.available_apps)
+                    apps.set_available_apps(cls.available_apps)
 
             if cls.fixtures:
-                # We have to use this slightly awkward syntax due to the fact
-                # that we're using *args and **kwargs together.
-                call_command('loaddata', *cls.fixtures, **{'verbosity': 0, 'database': db})
+                # Django loadddata with multi_db fails on deserialize objects with natural keys for not default fixture
+                fixtures = [fixture for fixture in cls.fixtures if db == DEFAULT_DB_ALIAS or ('.' + db) in fixture]
+                if fixtures:
+                    call_command('loaddata', *fixtures, **{'verbosity': 0, 'database': db})
 
         cls.custom_fixture_setup()
 
