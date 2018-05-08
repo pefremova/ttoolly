@@ -1,8 +1,10 @@
 from unittest.runner import TextTestResult
 
 import jinja2
-from pyunitreport.result import HtmlTestResult, _TestInfo
+from pyunitreport.result import HtmlTestResult, _TestInfo, render_html
 from ttoolly.utils import to_bytes
+import os
+from datetime import datetime
 
 
 class CustomInfoClass(_TestInfo):
@@ -20,15 +22,72 @@ class CustomHtmlTestResult(HtmlTestResult):
         super(CustomHtmlTestResult, self).__init__(*args, **kwargs)
         self.infoclass = CustomInfoClass
 
+    def _get_report_attributes(self, tests, start_time, time_taken):
+        """ Setup the header info for the report. """
+
+        failures = errors = skips = success = 0
+        for test in tests:
+            outcome = test.outcome
+            if outcome == test.ERROR:
+                errors += 1
+            elif outcome == test.FAILURE:
+                failures += 1
+            elif outcome == test.SKIP:
+                skips += 1
+            elif outcome == test.SUCCESS:
+                success += 1
+        status = []
+
+        if success:
+            status.append('Pass: {}'.format(success))
+        if failures:
+            status.append('Fail: {}'.format(failures))
+        if errors:
+            status.append('Error: {}'.format(errors))
+        if skips:
+            status.append('Skip: {}'.format(skips))
+        result = ', '.join(status)
+
+        start_time = datetime.fromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
+        hearders = {
+            "start_time": start_time,
+            "duration": time_taken,
+            "status": result,
+            'success': success,
+            'skips': skips,
+            'errors': errors,
+            'failures': failures
+        }
+        total_runned_test = success + skips + errors + failures
+        return hearders, total_runned_test
+
+    def generate_index(self, reports_path_list, testRunner):
+        report_save_dir = os.path.join(os.getcwd(), 'reports')
+        index_file_fullpath = os.path.join(report_save_dir, 'index.html')
+
+        report_content = render_html(
+            os.path.join(os.path.dirname(__file__), "templates", "_index.html"),
+            title=str(datetime.now()),
+            headers={},
+            tests_list=sorted(reports_path_list, key=lambda el: el[1])
+        )
+        with open(index_file_fullpath, 'wb') as report_file:
+            report_file.write(report_content.encode('utf-8'))
+
     def generate_reports(self, testRunner):
         """ Generate report for all given runned test object. """
         all_results = self._get_info_by_testcase()
         reports_path_list = []
+        for_index_data = []
         for testcase_class_name, all_tests in all_results.items():
             testRunner.report_name = testcase_class_name
             path_file = self._generate_html_file(testRunner, all_tests)
-            reports_path_list.append(path_file)
 
+            headers, tests_count = self._get_report_attributes(all_tests, testRunner.startTime, testRunner.timeTaken)
+            reports_path_list.append(path_file)
+            for_index_data.append([path_file.replace(os.getcwd() + '/reports/', ''), testRunner.report_name, tests_count, headers])
+
+        self.generate_index(for_index_data, testRunner)
         return reports_path_list
 
     def _report_testcase(self, testCase, test_cases_list):

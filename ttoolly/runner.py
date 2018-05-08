@@ -12,7 +12,7 @@ WITH_HTML_REPORT = getattr(settings, 'TEST_HTML_REPORT', False)
 if WITH_HTML_REPORT:
     try:
         from pyunitreport import HTMLTestRunner
-        from html_report import CustomHtmlTestResult
+        from ttoolly.html_report.report import CustomHtmlTestResult
     except ImportError:
         raise Exception('For html reports you should install pyunitreport:\n    pip install PyUnitReport')
 

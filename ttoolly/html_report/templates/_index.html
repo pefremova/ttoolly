@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{title}}</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+</head>
+<body>    
+        <div class="row">
+            <div class="col-xs-14 col-sm-10 col-md-10">
+                <table class='table table-hover table-responsive'>
+                    <thead>
+                        <tr>
+                            <th>Path</th>
+                            <th>Success</th>
+                            <th>Errors</th>
+                            <th>Failures</th>
+                            <th>Skips</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for file_path, test_name, tests_count, headers in tests_list %}
+                            <tr>
+                                <td class="col-xs-9"><a href="{{file_path}}">{{test_name}}</a></td>
+                                <td class="col-xs-1">{{headers.success}}</td>
+                                <td class="col-xs-1">{{headers.errors}}</td>
+                                <td class="col-xs-1">{{headers.failures}}</td>
+                                <td class="col-xs-1">{{headers.skips}}</td>
+                                <td class="col-xs-1">{{tests_count}}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
