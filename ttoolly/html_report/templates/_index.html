@@ -22,7 +22,7 @@
                     </thead>
                     <tbody>
                         {% for file_path, test_name, tests_count, headers in tests_list %}
-                            <tr>
+                            <tr class="{% if headers.errors==0 and headers.failures==0 and headers.success != 0  %}success{% else %}danger{% endif %}">
                                 <td class="col-xs-9"><a href="{{file_path}}">{{test_name}}</a></td>
                                 <td class="col-xs-1">{{headers.success}}</td>
                                 <td class="col-xs-1">{{headers.errors}}</td>
