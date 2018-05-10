@@ -1,10 +1,12 @@
+from datetime import datetime
+import os
+import traceback
 from unittest.runner import TextTestResult
 
+from django.utils.encoding import force_text
 import jinja2
 from pyunitreport.result import HtmlTestResult, _TestInfo, render_html
-from ttoolly.utils import to_bytes
-import os
-from datetime import datetime
+from ttoolly.utils import to_bytes, unicode_to_readable
 
 
 class CustomInfoClass(_TestInfo):
@@ -108,7 +110,9 @@ class CustomHtmlTestResult(HtmlTestResult):
         error_type = ""
         if testCase.outcome != testCase.SKIP and testCase.outcome != testCase.SUCCESS:
             error_type = testCase.err[0].__name__
-            error_message = testCase.err[1].message
+            etype, value, tb = testCase.err
+            error_message = ''.join([force_text(el) for el in traceback.format_exception(etype, value, tb, limit=None)])
+            error_message = unicode_to_readable(error_message)
         else:
             error_message = testCase.err
         error_message = jinja2.filters.do_mark_safe('<pre>%s</pre>' % error_message)
