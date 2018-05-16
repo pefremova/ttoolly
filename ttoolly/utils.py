@@ -22,6 +22,8 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.uploadhandler import MemoryFileUploadHandler
+from decimal import Decimal
+from random import uniform
 try:
     from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
 except:
@@ -56,6 +58,7 @@ __all__ = ('convert_size_to_bytes',
            'get_random_contentfile',
            'get_random_date_value',
            'get_random_datetime_value',
+           'get_random_decimal',
            'get_random_domain_value',
            'get_random_email_value',
            'get_random_file',
@@ -538,6 +541,10 @@ def get_random_date_value(date_from=date.today().replace(month=1, day=1), date_t
 def get_random_datetime_value(datetime_from=datetime.combine(datetime.today().replace(month=1, day=1), time(0, 0)),
                               datetime_to=date.today()):
     return datetime.fromtimestamp(random.randint(mktime(datetime_from.timetuple()), mktime(datetime_to.timetuple())))
+
+
+def get_random_decimal(value_from, value_to, places=10):
+    return Decimal(uniform(float(value_from), float(value_to))).quantize(Decimal('0.1')**places)
 
 
 def get_random_domain_value(length):
