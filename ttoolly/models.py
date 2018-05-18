@@ -721,27 +721,27 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         local_errors = []
         object_fields = get_all_field_names_from_model(obj)
-        object_related_field_names = [name for name in object_fields if
-                                      self.get_field_by_name(obj, name).__class__.__name__ in ('RelatedObject',
-                                                                                               'ManyToOneRel',
-                                                                                               'OneToOneField',
-                                                                                               'OneToOneRel',
-                                                                                               'ManyToManyField')]
+        fields_map = {name: self.get_field_by_name(obj, name) for name in object_fields}
+        object_related_field_names = [name for name in object_fields if fields_map[name].__class__.__name__ in ('RelatedObject',
+                                                                                                                'ManyToOneRel',
+                                                                                                                'OneToOneField',
+                                                                                                                'OneToOneRel',
+                                                                                                                'ManyToManyField')]
         fields_for_check = set(params.keys()).intersection(object_fields)
         fields_for_check.update([k.split('-')[0] for k in params.keys() if k.split('-')[0]
                                  in object_related_field_names])
         fields_for_check = fields_for_check.difference(exclude)
         obj_related_objects = self.get_related_names(obj)
         one_to_one_fields = [name for name in object_related_field_names if
-                             self.get_field_by_name(obj, name).__class__.__name__ == 'OneToOneField' or
-                             getattr(self.get_field_by_name(obj, name), 'field', None) and
-                             self.get_field_by_name(obj, name).field.__class__.__name__ == 'OneToOneField']
+                             fields_map[name].__class__.__name__ == 'OneToOneField' or
+                             getattr(fields_map[name], 'field', None) and
+                             fields_map[name].field.__class__.__name__ == 'OneToOneField']
 
         for field in fields_for_check:
             # TODO: refactor me
             if field in one_to_one_fields:
 
-                cls = self.get_field_by_name(obj, field)
+                cls = fields_map[name]
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
                 """OneToOneField.related_query_name() или OneToOneRel.remote_field.name или OneToOneRel.field.name"""
                 value = _model.objects.filter(**{cls.related_query_name and cls.related_query_name()
@@ -1231,29 +1231,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 6),
                                                                getattr(self, 'max_fields_length', {}).get(field_name, 254))
             return get_random_email_value(length)
-        elif self.is_file_field(field_name):
-            if length is None:
-                length = max(getattr(self, 'max_fields_length', {}).get(field_name, 1),
-                             max([1, ] + [len(ext) for ext in
-                                          (getattr(self, 'file_fields_params_add', {}).get(field_name, {}).get('extensions', ()) +
-                                           getattr(self, 'file_fields_params_edit', {}).get(field_name, {}).get('extensions', ()))]) + 2  # dot + 1 symbol
-                             )
-
-            value = self.get_random_file(field_name, length)
-            return value
-        elif self.is_choice_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, ''):
+        if self.is_choice_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, ''):
             return choice(self.choice_fields_values[field_name])
-        elif self.is_multiselect_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, []):
-            values = self.choice_fields_values[field_name]
-            return list(set([choice(values) for _ in xrange(randint(1, len(values)))]))
-        elif self.is_date_field(field_name):
-            if field_name.endswith('1'):
-                return datetime.now().strftime('%H:%M')
-            elif self.is_datetime_field(field_name):
-                return datetime.now().strftime(settings.DATETIME_INPUT_FORMATS[0])
-            else:
-                return datetime.now().strftime(settings.DATE_INPUT_FORMATS[0])
-        elif self.is_digital_field(field_name):
+        if self.is_digital_field(field_name):
             if getattr(self, 'obj', None):
                 try:
                     if 'ForeignKey' in [b.__name__ for b in
@@ -1272,10 +1252,29 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 if getattr(self, 'max_decimal_places', {}).get(field_name, None):
                     value = round(value, self.max_decimal_places[field_name])
                 return value
-        else:
-            length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 1),
-                                                               getattr(self, 'max_fields_length', {}).get(field_name, 100000))
-            return get_randname(length, 'w')
+        if self.is_file_field(field_name):
+            if length is None:
+                length = max(getattr(self, 'max_fields_length', {}).get(field_name, 1),
+                             max([1, ] + [len(ext) for ext in
+                                          (getattr(self, 'file_fields_params_add', {}).get(field_name, {}).get('extensions', ()) +
+                                           getattr(self, 'file_fields_params_edit', {}).get(field_name, {}).get('extensions', ()))]) + 2  # dot + 1 symbol
+                             )
+            value = self.get_random_file(field_name, length)
+            return value
+        if self.is_multiselect_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, []):
+            values = self.choice_fields_values[field_name]
+            return list(set([choice(values) for _ in xrange(randint(1, len(values)))]))
+        if self.is_date_field(field_name):
+            if field_name.endswith('1'):
+                return datetime.now().strftime('%H:%M')
+            elif self.is_datetime_field(field_name):
+                return datetime.now().strftime(settings.DATETIME_INPUT_FORMATS[0])
+            else:
+                return datetime.now().strftime(settings.DATE_INPUT_FORMATS[0])
+
+        length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 1),
+                                                           getattr(self, 'max_fields_length', {}).get(field_name, 100000))
+        return get_randname(length, 'w')
 
     def get_value_for_error_message(self, field, value):
         if self.is_file_field(field):
@@ -1293,12 +1292,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return get_url_for_negative(*args, **kwargs)
 
     def is_choice_field(self, field):
-        return any([field in (getattr(self, 'choice_fields', ()) or ()),
-                    field in (getattr(self, 'choice_fields_add', ()) or ()),
-                    field in (getattr(self, 'choice_fields_edit', ()) or ()),
-                    field in (getattr(self, 'choice_fields_with_value_in_error', ()) or ()),
-                    field in (getattr(self, 'choice_fields_add_with_value_in_error', ()) or ()),
-                    field in (getattr(self, 'choice_fields_edit_with_value_in_error', ()) or ()), ])
+        return ((field in (getattr(self, 'choice_fields', ()) or ())) or
+                (field in (getattr(self, 'choice_fields_add', ()) or ())) or
+                (field in (getattr(self, 'choice_fields_edit', ()) or ())) or
+                (field in (getattr(self, 'choice_fields_with_value_in_error', ()) or ())) or
+                (field in (getattr(self, 'choice_fields_add_with_value_in_error', ()) or ())) or
+                (field in (getattr(self, 'choice_fields_edit_with_value_in_error', ()) or ())))
 
     def is_date_field(self, field):
         return field in getattr(self, 'date_fields', ())
@@ -1307,17 +1306,17 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return field in getattr(self, 'datetime_fields', ())
 
     def is_digital_field(self, field):
-        return any([field in (getattr(self, 'digital_fields', ()) or ()),
-                    field in (getattr(self, 'digital_fields_add', ()) or ()),
-                    field in (getattr(self, 'digital_fields_edit', ()) or ()), ])
+        return ((field in (getattr(self, 'digital_fields', ()) or ())) or
+                (field in (getattr(self, 'digital_fields_add', ()) or ())) or
+                (field in (getattr(self, 'digital_fields_edit', ()) or ())))
 
     def is_email_field(self, field):
-        return ([getattr(self, 'email_fields', None),
-                 getattr(self, 'email_fields_add', None),
-                 getattr(self, 'email_fields_edit', None)] == [None, None, None] and 'email' in field) \
-            or any([field in (getattr(self, 'email_fields', ()) or ()),
-                    field in (getattr(self, 'email_fields_add', ()) or ()),
-                    field in (getattr(self, 'email_fields_edit', ()) or ()), ])
+        return ('email' in field and [getattr(self, 'email_fields', None),
+                                      getattr(self, 'email_fields_add', None),
+                                      getattr(self, 'email_fields_edit', None)] == [None, None, None]) \
+            or ((field in (getattr(self, 'email_fields', ()) or ())) or
+                (field in (getattr(self, 'email_fields_add', ()) or ())) or
+                (field in (getattr(self, 'email_fields_edit', ()) or ())))
 
     def is_file_list(self, field):
         if not self.is_file_field(field):
@@ -1329,9 +1328,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return False
 
     def is_int_field(self, field):
-        return any([field in (getattr(self, 'int_fields', ()) or ()),
-                    field in (getattr(self, 'int_fields_add', ()) or ()),
-                    field in (getattr(self, 'int_fields_edit', ()) or ()), ])
+        return ((field in (getattr(self, 'int_fields', ()) or ())) or
+                (field in (getattr(self, 'int_fields_add', ()) or ())) or
+                (field in (getattr(self, 'int_fields_edit', ()) or ())))
 
     def is_file_field(self, field):
         def check_by_params_name(name):
@@ -1346,17 +1345,17 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 return True
             return False
         return field not in getattr(self, 'not_file', []) and \
-            any([field in getattr(self, 'file_fields_params_add', {}).keys(),
-                 field in getattr(self, 'file_fields_params_edit', {}).keys(),
-                 re.findall(r'(^|[^a-zA-Z])(file)', field),
-                 check_by_params_name('default_params'),
-                 check_by_params_name('default_params_add'),
-                 check_by_params_name('default_params_edit')])
+            (field in getattr(self, 'file_fields_params_add', {}).keys() or
+             field in getattr(self, 'file_fields_params_edit', {}).keys() or
+             re.findall(r'(^|[^a-zA-Z])(file)', field) or
+             check_by_params_name('default_params') or
+             check_by_params_name('default_params_add') or
+             check_by_params_name('default_params_edit'))
 
     def is_multiselect_field(self, field):
-        return any([field in (getattr(self, 'multiselect_fields', ()) or ()),
-                    field in (getattr(self, 'multiselect_fields_add', ()) or ()),
-                    field in (getattr(self, 'multiselect_fields_edit', ()) or ()), ])
+        return ((field in (getattr(self, 'multiselect_fields', ()) or ())) or
+                (field in (getattr(self, 'multiselect_fields_add', ()) or ())) or
+                (field in (getattr(self, 'multiselect_fields_edit', ()) or ())))
 
     def savepoint_rollback(self, sp):
         if isinstance(self, TestCase):
