@@ -5894,11 +5894,11 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         self.assert_mail_count(mail.outbox, 1)
         m = mail.outbox[0]
         user = params['user']
-        self.assertEqual(m.to, [user.email])
-        self.assertEqual(m.subject, self.mail_subject)
         codes = self.get_codes(user)
         params['url_reset_password'] = self.get_url(self.url_reset_password, codes)
-        self.assert_text_equal_by_symbol(m.body, self.mail_body.format(**params))
+        self.assert_mail_content(m, {'to': [user.email],
+                                     'subject': self.mail_subject,
+                                     'body': self.mail_body.format(**params)})
 
     def check_after_password_change_request(self, params):
         pass
@@ -6059,6 +6059,28 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assert_mail_count(mail.outbox, 0)
         except:
             self.errors_append()
+
+    @only_with('with_captcha')
+    def test_request_reset_password_wrong_captcha_negative(self):
+        """
+        @note: Try reset password with wrong captcha value
+        """
+        for field in ('captcha_0', 'captcha_1'):
+            for value in (u'йцу', u'\r', u'\n', u' ', ':'):
+                user = self.get_obj_for_edit()
+                mail.outbox = []
+                params = self.deepcopy(self.request_password_params)
+                self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
+                params[field] = value
+                params[self.field_username] = self.get_login_name(user)
+                try:
+                    response = self.client.post(self.get_url(self.url_reset_password_request),
+                                                params, follow=True, **self.additional_params)
+                    self.assertEqual(self.get_all_form_errors(response),
+                                     self.get_error_message('wrong_captcha', 'captcha'))
+                    self.assert_mail_count(mail.outbox, 0)
+                except:
+                    self.errors_append()
 
     def test_reset_password_positive(self):
         """
