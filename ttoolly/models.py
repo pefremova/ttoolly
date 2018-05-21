@@ -741,7 +741,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             # TODO: refactor me
             if field in one_to_one_fields:
 
-                cls = fields_map[name]
+                cls = fields_map[field]
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
                 """OneToOneField.related_query_name() или OneToOneRel.remote_field.name или OneToOneRel.field.name"""
                 value = _model.objects.filter(**{cls.related_query_name and cls.related_query_name()
