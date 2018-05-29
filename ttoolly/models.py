@@ -1225,7 +1225,6 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def get_value_for_field(self, length, field_name):
         """for fill use name with -0-"""
-
         field_name = re.sub('\-\d+\-', '-0-', field_name)
         if self.is_email_field(field_name):
             length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 6),
@@ -1522,9 +1521,9 @@ class FormTestMixIn(GlobalTestMixIn):
 
         self._prepare_choice_fields()
         if self.with_captcha is None:
-            self.with_captcha = any([(self.all_fields and 'captcha' in self.all_fields)
-                                     or (self.all_fields_add and 'captcha' in self.all_fields_add)
-                                     or (self.all_fields_edit and 'captcha' in self.all_fields_edit)])
+            self.with_captcha = ((self.all_fields and 'captcha' in self.all_fields)
+                                 or (self.all_fields_add and 'captcha' in self.all_fields_add)
+                                 or (self.all_fields_edit and 'captcha' in self.all_fields_edit))
 
         self._prepare_filter_params()
         self._prepare_date_fields()
@@ -1858,6 +1857,8 @@ class FormTestMixIn(GlobalTestMixIn):
                     params[field] = self.get_value_for_field(None, field)
 
     def get_digital_values_range(self, field):
+        """use name with -0-"""
+        field = re.sub('\-\d+\-', '-0-', field)
         class_name = self.get_field_by_name(self.obj, field).__class__.__name__
         max_value_from_params = getattr(self, 'max_fields_length', {}).get(field, None)
         max_values = [max_value_from_params] if max_value_from_params is not None else []
