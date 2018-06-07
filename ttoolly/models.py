@@ -2054,7 +2054,6 @@ class FormAddTestMixIn(FormTestMixIn):
                              self._get_required_from_related(self.required_related_fields_add), params)
         self.update_params(params)
         self.update_captcha_params(self.get_url(self.url_add), params)
-
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -6412,6 +6411,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 class LoginTestMixIn(object):
 
     blacklist_model = None
+    login_retries = None
     default_params = None
     field_password = 'password'
     field_username = 'username'
@@ -6429,6 +6429,8 @@ class LoginTestMixIn(object):
             self.default_params = {self.field_username: self.username,
                                    self.field_password: self.password}
         self.passwords_for_check = self.passwords_for_check or [self.password, ]
+        if self.login_retries and self.login_retries < 2:
+            self.login_retries = None
 
     def add_csrf(self, params):
         response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
@@ -6439,13 +6441,16 @@ class LoginTestMixIn(object):
             self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
                              '%s blacklist objects created after valid login' % self.blacklist_model.objects.filter(host='127.0.0.1').count())
 
-    def check_blacklist_on_negative(self, response):
+    def check_blacklist_on_negative(self, response, captcha_on_form=True):
         if self.blacklist_model:
             self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 1,
                              '%s blacklist objects created after invalid login, expected 1' %
                              self.blacklist_model.objects.filter(host='127.0.0.1').count())
             fields = self.get_fields_list_from_response(response)['all_fields']
-            self.assertTrue('captcha' in fields)
+            if captcha_on_form:
+                self.assertTrue('captcha' in fields, 'No captcha fields on form')
+            else:
+                self.assertFalse('captcha' in fields, 'Captcha fields on form')
 
     def check_is_authenticated(self):
         request = HttpRequest()
@@ -6494,6 +6499,15 @@ class LoginTestMixIn(object):
         username = username or self.username
         return self.obj.objects.get(email=username)
 
+    def set_host_blacklist(self, host, count=None):
+        count = count or self.login_retries or 1
+        if count:
+            self.blacklist_model.objects.create(host=host, count=count)
+
+    def set_host_pre_blacklist(self, host):
+        if self.login_retries:
+            self.set_host_blacklist(host=host, count=self.login_retries - 1)
+
     def set_user_inactive(self, user):
         user.is_active = False
         user.save()
@@ -6531,6 +6545,7 @@ class LoginTestMixIn(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         params[self.field_password] = self.password + 'q'
+        self.set_host_pre_blacklist(host='127.0.0.1')
         try:
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
             message = self.get_error_message('wrong_login', self.field_username)
@@ -6548,6 +6563,7 @@ class LoginTestMixIn(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         params[self.field_username] = self.username + 'q'
+        self.set_host_pre_blacklist(host='127.0.0.1')
         try:
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
             message = self.get_error_message('wrong_login', self.field_username)
@@ -6557,12 +6573,31 @@ class LoginTestMixIn(object):
         except:
             self.errors_append()
 
+    @only_with('login_retries')
+    def test_login_wrong_login_not_max_retries_negative(self):
+        """
+        @note: login as not existing user. No captcha field: not max retries
+        """
+        params = self.deepcopy(self.default_params)
+        self.add_csrf(params)
+        params[self.field_username] = self.username + 'q'
+        self.clean_blacklist()
+        self.set_host_blacklist(host='127.0.0.1', count=self.login_retries - 2)
+        try:
+            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            message = self.get_error_message('wrong_login', self.field_username)
+            self.assertEqual(self.get_all_form_errors(response), message)
+            self.check_response_on_negative(response)
+            self.check_blacklist_on_negative(response, False)
+        except:
+            self.errors_append()
+
     @only_with('blacklist_model')
     def test_login_blacklist_user_positive(self):
         """
         @note: login as user from blacklist with correct data
         """
-        self.blacklist_model.objects.create(host='127.0.0.1')
+        self.set_host_blacklist(host='127.0.0.1')
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
@@ -6583,7 +6618,7 @@ class LoginTestMixIn(object):
         """
         @note: login as user from blacklist with empty captcha
         """
-        self.blacklist_model.objects.create(host='127.0.0.1')
+        self.set_host_blacklist(host='127.0.0.1')
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
@@ -6607,7 +6642,7 @@ class LoginTestMixIn(object):
         for field in ('captcha_0', 'captcha_1'):
             for value in (u'йцу', u'\r', u'\n', u' ', ':'):
                 self.client = self.client_class()
-                self.blacklist_model.objects.get_or_create(host='127.0.0.1')
+                self.set_host_blacklist(host='127.0.0.1')
                 params = self.deepcopy(self.default_params)
                 self.add_csrf(params)
                 self.update_captcha_params(self.get_url(self.url_login), params)
@@ -6649,6 +6684,7 @@ class LoginTestMixIn(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         params[self.field_password] = self.password + 'q'
+        self.set_host_pre_blacklist(host='127.0.0.1')
         try:
             response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
             message = self.get_error_message('wrong_login', self.field_username)
@@ -6670,6 +6706,7 @@ class LoginTestMixIn(object):
             self.add_csrf(params)
             self.set_empty_value_for_field(params, field)
             self.clean_blacklist()
+            self.set_host_pre_blacklist(host='127.0.0.1')
             try:
                 response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('empty_required', field))
@@ -6690,6 +6727,7 @@ class LoginTestMixIn(object):
             self.add_csrf(params)
             params.pop(field)
             self.clean_blacklist()
+            self.set_host_pre_blacklist(host='127.0.0.1')
             try:
                 response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('without_required', field))
@@ -6740,13 +6778,17 @@ class LoginTestMixIn(object):
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
+        urls_redirect_to = self.url_redirect_to
+        if not isinstance(self.url_redirect_to, (list, tuple)):
+            urls_redirect_to = [self.url_redirect_to, ]
+        expected_redirects = [(self.get_domain() + self.get_url(url), 302) for url in urls_redirect_to]
         try:
             redirect_url = 'http://google.com'
             response = self.client.post(self.get_url(self.url_login) + '?next=%s' %
                                         redirect_url, params, follow=True, **self.additional_params)
             self.check_is_authenticated()
             self.check_blacklist_on_positive()
-            self.assertRedirects(response, self.get_domain() + self.get_url(self.url_redirect_to))
+            self.assertEqual(response.redirect_chain, expected_redirects)
         except:
             self.errors_append()
 
