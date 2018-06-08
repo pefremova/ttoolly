@@ -51,7 +51,7 @@ import psycopg2.extensions
 
 from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
-                    get_fields_list_from_response, get_all_form_errors, generate_random_obj,
+                    get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_field_from_response,
                     get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model, FILE_TYPES)
 
 __all__ = ('ChangePasswordMixIn',
@@ -1462,6 +1462,9 @@ class FormTestMixIn(GlobalTestMixIn):
     email_fields_add = None
     email_fields_edit = None
     exclude_from_check = []
+    fields_helptext = None
+    fields_helptext_add = None
+    fields_helptext_edit = None
     filter_params = None
     file_fields_params = None
     """{'field_name': {'extensions': ('jpg', 'txt'),
@@ -1544,7 +1547,10 @@ class FormTestMixIn(GlobalTestMixIn):
         if not isinstance(self.max_fields_length, dict):
             warnings.warn('max_fields_length should be dict', FutureWarning)
             self.max_fields_length = dict(self.max_fields_length)
-        super(FormTestMixIn, self).__init__(*args, **kwargs)
+        if self.fields_helptext_add is None:
+            self.fields_helptext_add = self.deepcopy(self.fields_helptext or {})
+        if self.fields_helptext_edit is None:
+            self.fields_helptext_edit = self.deepcopy(self.fields_helptext or {})
 
     def _divide_common_and_related_fields(self, fields_list):
         related = []
@@ -2036,6 +2042,16 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_add)
             except:
                 self.errors_append(text='For hidden fields')
+
+        fields_helptext = getattr(self, 'fields_helptext_add', {})
+        for field_name, text in fields_helptext.items():
+            if field_name not in self.all_fields_add:
+                continue
+            try:
+                field = get_field_from_response(response, field_name)
+                self.assertEqual(field.help_text, text)
+            except Exception:
+                self.errors_append(text='Helptext for field %s' % field_name)
 
     @only_with_obj
     def test_add_object_all_fields_filled_positive(self):
@@ -3545,6 +3561,16 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_edit)
             except:
                 self.errors_append(text='For hidden fields')
+
+        fields_helptext = getattr(self, 'fields_helptext_edit', {})
+        for field_name, text in fields_helptext.items():
+            if field_name not in self.all_fields_add:
+                continue
+            try:
+                field = get_field_from_response(response, field_name)
+                self.assertEqual(field.help_text, text)
+            except Exception:
+                self.errors_append(text='Helptext for field %s' % field_name)
 
     @only_with_obj
     def test_edit_object_all_fields_filled_positive(self):

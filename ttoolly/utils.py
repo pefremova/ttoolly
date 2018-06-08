@@ -49,6 +49,7 @@ __all__ = ('convert_size_to_bytes',
            'get_captcha_codes_simplecaptcha',
            'get_captcha_codes_supercaptcha',
            'get_error',
+           'get_field_from_response',
            'get_fields_list_from_response',
            'get_fixtures_data',
            'get_keys_from_context',
@@ -360,6 +361,82 @@ def get_error(tr_limit=getattr(settings, 'TEST_TRACEBACK_LIMIT', None)):
     return result
 
 
+def get_field_from_response(response, field_name):
+    def get_form_fields(form):
+        fields = dict(form.fields)
+        if form.prefix:
+            fields = {'%s-%s' % (form.prefix, k): v for k, v in fields.items()}
+        return fields
+
+    fields = {}
+    forms = []
+    try:
+        forms.append(response.context['wizard']['form'])
+    except KeyError:
+        pass
+    try:
+        forms.append(response.context['form'])
+    except KeyError:
+        pass
+    try:
+        forms.extend([form for form in viewvalues(response.context['forms'])])
+    except KeyError:
+        pass
+    try:
+        forms.extend(response.context['form_set'])
+    except KeyError:
+        pass
+
+    try:
+        form = response.context['adminform'].form
+        forms.append(form)
+    except KeyError:
+        pass
+
+    for subcontext in response.context:
+        for key in get_keys_from_context(subcontext):
+            value = subcontext[key]
+            value = value if isinstance(value, list) else [value]
+            for v in value:
+                mro_names = [cn.__name__ for cn in getattr(v.__class__, '__mro__', [])]
+                if 'BaseFormSet' in mro_names:
+                    formset = v
+                    for form in getattr(formset, 'forms', formset):
+                        forms.append(form)
+                elif 'BaseForm' in mro_names:
+                    forms.append(v)
+
+    forms = list(set(forms))
+    n = 0
+    while n < len(forms):
+        _forms = getattr(forms[n], 'forms', [])
+        _formsets = getattr(forms[n], 'formsets', {})
+        if _formsets:
+            for fs_name, fs in viewitems(_formsets):
+                forms.extend(getattr(fs, 'forms', fs))
+        if _forms:
+            forms.pop(n)
+            if isinstance(_forms, dict):
+                forms.extend(_forms.values())
+            else:
+                forms.extend(_forms)
+        else:
+            n += 1
+
+    for form in filter(None, set(forms)):
+        fields.update(get_form_fields(form))
+    try:
+        for fs in response.context['inline_admin_formsets']:
+            fs_name = fs.formset.prefix
+            for number, form in enumerate(fs.formset.forms):
+                _fields = {fs_name + '-%d-' % number + f: v for f, v in form.fields.items()}
+                fields.update(_fields)
+    except KeyError:
+        pass
+
+    return fields[field_name]
+
+
 def get_fields_list_from_response(response, only_success=True):
     if only_success and response.status_code != 200:
         raise Exception('Response status code %s (expect 200 for getting fields list)' % response.status_code)
@@ -470,6 +547,7 @@ def get_fields_list_from_response(response, only_success=True):
                 hidden_fields.extend(_hidden_fields)
     except KeyError:
         pass
+
     return dict(all_fields=fields,
                 visible_fields=visible_fields,
                 hidden_fields=hidden_fields,

@@ -2,9 +2,16 @@
 from distutils.core import setup
 from setuptools import find_packages
 
+
+def readme():
+    with open('README.md') as f:
+        return f.read()
+
+
 setup(name='ttoolly',
-      version='0.23.3',
+      version='0.24.0',
       description="Django test tools",
+      long_description=readme(),
       author="Polina Efremova",
       author_email="pefremova@gmail.com",
       keywords=["django", "testing", "test tool"],

@@ -55,6 +55,9 @@ __FormTestMixIn(GlobalTestMixIn)__
 | exclude_from_check | []| Названия полей, которые нужно исключить из проверки значений во всех тестах. Актуально, например, для полей, содержащих дату обновления объекта | exclude_from_check = ('field1', 'field2')||
 | exclude_from_check_add |  exclude_from_check | Названия полей, которые нужно исключить из проверки значений в тестах создания объекта | exclude_from_check_add = ('field1', 'field2')||
 | exclude_from_check_edit |  exclude_from_check | Названия полей, которые нужно исключить из проверки значений в тестах редактирования объекта| exclude_from_check_edit = ('field1', 'field2')||
+| fields_helptext | None | Хелптекст в полях формы | fields_helptext = {'url': 'For example "http://example.com/test"'} | Проверка наличия хелптекста в соответствующих полях формы ||
+| fields_helptext_add | fields_helptext | Хелптекст в полях формы | fields_helptext_add = {'url': 'For example "http://example.com/test"'} | Проверка наличия хелптекста в соответствующих полях формы создания ||
+| fields_helptext_edit | fields_helptext | Хелптекст в полях формы | fields_helptext_edit = {'url': 'For example "http://example.com/test"'} | Проверка наличия хелптекста в соответствующих полях формы редактирования ||
 | file_fields_params | {} | Параметры файловых полей |file_fields_params = {'field\_name': {'extensions': ('jpg', 'txt'),<br>'max\_count': 3,<br>'one\_max\_size': '3Mb',<br>'wrong\_extensions': ('rar', 'zip'),<br>'min\_width': 200,<br>'min_height': 100}}||
 | file_fields_params_add | file_fields_params | Параметры файловых полей на форме создания ||
 | file_fields_params_edit | file_fields_params | Параметры файловых полей на форме редактирования ||
