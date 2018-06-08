@@ -6500,9 +6500,12 @@ class LoginTestMixIn(object):
         return self.obj.objects.get(email=username)
 
     def set_host_blacklist(self, host, count=None):
-        count = count or self.login_retries or 1
-        if count:
+        if count is None:
+            count = self.login_retries or 1
+        if count > 1:
             self.blacklist_model.objects.create(host=host, count=count)
+        elif count == 1:
+            self.blacklist_model.objects.create(host=host)
 
     def set_host_pre_blacklist(self, host):
         if self.login_retries:
@@ -6642,6 +6645,7 @@ class LoginTestMixIn(object):
         for field in ('captcha_0', 'captcha_1'):
             for value in (u'йцу', u'\r', u'\n', u' ', ':'):
                 self.client = self.client_class()
+                self.clean_blacklist()
                 self.set_host_blacklist(host='127.0.0.1')
                 params = self.deepcopy(self.default_params)
                 self.add_csrf(params)
