@@ -51,8 +51,9 @@ import psycopg2.extensions
 
 from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
-                    get_fields_list_from_response, get_all_form_errors, generate_random_obj, get_field_from_response,
-                    get_all_urls, convert_size_to_bytes, get_random_file, get_all_field_names_from_model, FILE_TYPES)
+                    get_fields_list_from_response, get_real_fields_list_from_response, get_all_form_errors,
+                    generate_random_obj, get_field_from_response, get_all_urls, convert_size_to_bytes,
+                    get_random_file, get_all_field_names_from_model, FILE_TYPES)
 
 __all__ = ('ChangePasswordMixIn',
            'CustomModel',
@@ -1072,6 +1073,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return model._meta.get_field(field)
 
     def get_fields_list_from_response(self, response):
+        if getattr(settings, 'TEST_REAL_FORM_FIELDS', False):
+            return get_real_fields_list_from_response(response)
         return get_fields_list_from_response(response)
 
     def get_object_fields(self, obj):
@@ -3651,7 +3654,6 @@ class FormEditTestMixIn(FormTestMixIn):
         params = self.deepcopy(self.default_params_edit)
         self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
         required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
-
         self.update_params(params)
         for field in set(params.keys()).difference(required_fields):
             self.set_empty_value_for_field(params, field)

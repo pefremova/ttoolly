@@ -202,3 +202,13 @@ __ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn)__
 | url_login | '' | URL для логина | url_login = 'admin:login' |
 | url_redirect_to | '' | URL на который выполняется редирект после логина | url_redirect_to = 'accounts:cabinet' |
 | urls_for_redirect | ['/', ] | Урлы, доступные пользователю (будет выбран один для проверки редиректа) | urls_for_redirect = ['accounts:profile',] |
+
+
+___Дополнительные настройки__
+COLORIZE_TESTS = False - раскраска вывода результатов тестов
+ERROR_MESSAGES = {} - переопределение сообщений об ошибках для всего проекта
+SIMPLE_TEST_EMAIL - False - генерация случайных значений адресов электронной почты исключая спецсимволы
+TEST_GENERATE_REAL_SIZE_FILE = True - генерация файлов с указанным размером. При False для обработки файлов используется FakeSizeMemoryFileUploadHandler
+TEST_REAL_FORM_FIELDS = False - получение полей из ответа сервера из content, а не context
+TEST_SPEEDUP_EXPERIMENTAL = False - ускоряет выполнение тестов путем ранней обработки декораторов
+TEST_TRACEBACK_LIMIT = None - глубина трейсбека в результатах тестов

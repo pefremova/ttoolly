@@ -24,6 +24,7 @@ from django.core.files.base import ContentFile
 from django.core.files.uploadhandler import MemoryFileUploadHandler
 from decimal import Decimal
 from random import uniform
+from lxml.html import document_fromstring
 try:
     from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
 except:
@@ -51,6 +52,7 @@ __all__ = ('convert_size_to_bytes',
            'get_error',
            'get_field_from_response',
            'get_fields_list_from_response',
+           'get_real_fields_list_from_response',
            'get_fixtures_data',
            'get_keys_from_context',
            'get_randname',
@@ -548,6 +550,37 @@ def get_fields_list_from_response(response, only_success=True):
     except KeyError:
         pass
 
+    return dict(all_fields=fields,
+                visible_fields=visible_fields,
+                hidden_fields=hidden_fields,
+                disabled_fields=disabled_fields)
+
+
+def get_real_fields_list_from_response(response, only_success=True):
+    """Not use django response.context"""
+    if only_success and response.status_code != 200:
+        raise Exception('Response status code %s (expect 200 for getting fields list)' % response.status_code)
+
+    doc = document_fromstring(response.content.decode('utf-8'))
+    fields = []
+    visible_fields = []
+    hidden_fields = []
+    disabled_fields = []
+    for field in doc.xpath('//form//*[@name and not(@type="submit")]'):
+        if field.attrib.get('type', '') == 'radio' and field.name in visible_fields and field.name in fields:
+            continue
+        else:
+            field_name = {'captcha_1': 'captcha',
+                          'captcha_0': 'captcha'}.get(field.attrib['name'], field.attrib['name'])
+            if field_name == 'csrfmiddlewaretoken':
+                continue
+            fields.append(field_name)
+            if field.attrib.get('type', '') == 'hidden':
+                hidden_fields.append(field_name)
+            elif field.attrib.get('disabled', '') == 'disabled':
+                disabled_fields.append(field_name)
+            else:
+                visible_fields.append(field_name)
     return dict(all_fields=fields,
                 visible_fields=visible_fields,
                 hidden_fields=hidden_fields,
