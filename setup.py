@@ -4,12 +4,12 @@ from setuptools import find_packages
 
 
 def readme():
-    with open('README.md') as f:
-        return f.read()
+    with open('README.md', 'rb') as f:
+        return f.read().decode('utf-8')
 
 
 setup(name='ttoolly',
-      version='0.24.1',
+      version='0.24.2',
       description="Django test tools",
       long_description=readme(),
       author="Polina Efremova",
