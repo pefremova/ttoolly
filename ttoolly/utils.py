@@ -846,11 +846,9 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
         content = get_random_bmp_content(size)
     else:
         width = width or random.randint(kwargs.get('min_width', 1),
-                                        max(kwargs.get('max_width', 100),
-                                            kwargs.get('min_width', 0) + 100))
+                                        kwargs.get('max_width', kwargs.get('min_width', 0) + 100))
         height = height or random.randint(kwargs.get('min_height', 1),
-                                          max(kwargs.get('max_height', 100),
-                                              kwargs.get('min_height', 0) + 100))
+                                          kwargs.get('max_height', kwargs.get('min_height', 0) + 100))
         content = {'.gif': get_random_gif_content,
                    '.svg': get_random_svg_content,
                    '.png': get_random_png_content}.get(os.path.splitext(filename)[1].lower(),

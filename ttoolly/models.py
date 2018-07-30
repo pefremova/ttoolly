@@ -988,10 +988,14 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                           'wrong_extension': 'Некорректный формат файла {filename}.' if
                                     previous_locals.get('filename', None) is None
                                     else 'Некорректный формат файла {filename}.'.format(**previous_locals),
-                          'min_dimensions': 'Минимальный размер изображения {min_width}x{min_height}' if
+                          'min_dimensions': 'Минимальный размер изображения {min_width}x{min_height}.' if
                                     (previous_locals.get('min_width', None) is None or
                                      previous_locals.get('min_height', None))
-                          else 'Минимальный размер изображения {min_width}x{min_height}'.format(**previous_locals),
+                          else 'Минимальный размер изображения {min_width}x{min_height}.'.format(**previous_locals),
+                          'max_dimensions': 'Максимальный размер изображения {max_width}x{max_height}.' if
+                                    (previous_locals.get('max_width', None) is None or
+                                     previous_locals.get('max_height', None))
+                          else 'Максимальный размер изображения {max_width}x{max_height}.'.format(**previous_locals),
                           'max_sum_size_file': 'Суммарный размер изображений не должен превышать {max_size}.' if
                                     previous_locals.get('max_size', None) is None
                                     else 'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
@@ -3424,7 +3428,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
     @only_with_obj
     @only_with('file_fields_params_add')
-    @only_with_any_files_params(['min_width', 'min_height'])
+    @only_with_any_files_params(['min_width', 'min_height', 'max_width', 'max_height'])
     def test_add_object_min_image_dimensions_positive(self):
         """
         @note: Create obj with minimum image file dimensions
@@ -3479,6 +3483,86 @@ class FormAddTestMixIn(FormTestMixIn):
             min_height = field_dict.get('min_height', None)
             if min_height:
                 values += ((field_dict.get('min_width', 1), min_height - 1),)
+
+            for width, height in values:
+                sp = transaction.savepoint()
+                try:
+                    initial_obj_count = self.obj.objects.count()
+                    old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                    params = self.deepcopy(self.default_params_add)
+                    self.update_params(params)
+                    self.update_captcha_params(self.get_url(self.url_add), params)
+                    f = self.get_random_file(field, width=width, height=height)
+                    filename = f[0].name if isinstance(f, (list, tuple)) else f.name
+                    params = self.deepcopy(self.default_params_add)
+                    self.update_params(params)
+                    params[field] = f
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
+                    self.assert_objects_count_on_add(False, initial_obj_count)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    new_objects = self.obj.objects.exclude(pk__in=old_pks)
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_any_files_params(['max_width', 'max_height', 'min_width', 'min_height'])
+    def test_add_object_max_image_dimensions_positive(self):
+        """
+        @note: Create obj with maximum image file dimensions
+        """
+        new_object = None
+        for field, field_dict in viewitems(self.file_fields_params_add):
+            width = field_dict.get('max_width', 10000)
+            height = field_dict.get('max_height', 10000)
+            sp = transaction.savepoint()
+            mail.outbox = []
+            if new_object:
+                self.obj.objects.filter(pk=new_object.pk).delete()
+            try:
+                initial_obj_count = self.obj.objects.count()
+                old_pks = list(self.obj.objects.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_add), params)
+                f = self.get_random_file(field, width=width, height=height)
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                params[field] = f
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+
+    @only_with_obj
+    @only_with('file_fields_params_add')
+    @only_with_any_files_params(['max_width', 'max_height'])
+    def test_add_object_image_dimensions_gt_max_negative(self):
+        """
+        @note: Create obj with image file dimensions > maximum
+        """
+        new_objects = None
+        message_type = 'max_dimensions'
+        for field, field_dict in viewitems(self.file_fields_params_add):
+            mail.outbox = []
+            if new_objects:
+                new_objects.delete()
+            values = ()
+            max_width = field_dict.get('max_width', None)
+            if max_width:
+                values += ((max_width + 1, field_dict.get('max_height', field_dict.get('min_height', 1))),)
+            max_height = field_dict.get('max_height', None)
+            if max_height:
+                values += ((field_dict.get('max_width', field_dict.get('min_width', 1)), max_height + 1),)
 
             for width, height in values:
                 sp = transaction.savepoint()
@@ -5059,6 +5143,76 @@ class FormEditTestMixIn(FormTestMixIn):
             min_height = field_dict.get('min_height', None)
             if min_height:
                 values += ((field_dict.get('min_width', 1), min_height - 1),)
+
+            for width, height in values:
+                sp = transaction.savepoint()
+                try:
+                    obj_for_edit = self.get_obj_for_edit()
+                    params = self.deepcopy(self.default_params_edit)
+                    self.update_params(params)
+                    self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+                    f = self.get_random_file(field, width=width, height=height)
+                    filename = f[0].name if isinstance(f, (list, tuple)) else f.name
+                    params[field] = f
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
+                                                **self.additional_params)
+                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                    self.assert_objects_equal(new_object, obj_for_edit)
+                    self.assertEqual(response.status_code, self.status_code_error,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_error))
+                except:
+                    self.savepoint_rollback(sp)
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_any_files_params(['max_width', 'max_height'])
+    def test_edit_object_max_image_dimensions_positive(self):
+        """
+        @note: Edit obj with maximum image file dimensions
+        """
+        for field, field_dict in viewitems(self.file_fields_params_edit):
+            width = field_dict.get('max_width', 10000)
+            height = field_dict.get('max_height', 10000)
+            sp = transaction.savepoint()
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+                f = self.get_random_file(field, width=width, height=height)
+                params[field] = f
+                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                            params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_edit,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except:
+                self.savepoint_rollback(sp)
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+            finally:
+                mail.outbox = []
+
+    @only_with_obj
+    @only_with('file_fields_params_edit')
+    @only_with_any_files_params(['max_width', 'max_height'])
+    def test_edit_object_image_dimensions_gt_max_negative(self):
+        """
+        @note: Edit obj with image file dimensions > maximum
+        """
+        message_type = 'max_dimensions'
+        for field, field_dict in viewitems(self.file_fields_params_edit):
+            values = ()
+            max_width = field_dict.get('max_width', None)
+            if max_width:
+                values += ((max_width + 1, field_dict.get('max_height', field_dict.get('min_height', 1))),)
+            max_height = field_dict.get('max_height', None)
+            if max_height:
+                values += ((field_dict.get('max_width', field_dict.get('min_width', 1)), max_height + 1),)
 
             for width, height in values:
                 sp = transaction.savepoint()

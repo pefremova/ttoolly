@@ -58,7 +58,7 @@ __FormTestMixIn(GlobalTestMixIn)__
 | fields_helptext | None | Хелптекст в полях формы | fields_helptext = {'url': 'For example "http://example.com/test"'} | Проверка наличия хелптекста в соответствующих полях формы ||
 | fields_helptext_add | fields_helptext | Хелптекст в полях формы | fields_helptext_add = {'url': 'For example "http://example.com/test"'} | Проверка наличия хелптекста в соответствующих полях формы создания ||
 | fields_helptext_edit | fields_helptext | Хелптекст в полях формы | fields_helptext_edit = {'url': 'For example "http://example.com/test"'} | Проверка наличия хелптекста в соответствующих полях формы редактирования ||
-| file_fields_params | {} | Параметры файловых полей |file_fields_params = {'field\_name': {'extensions': ('jpg', 'txt'),<br>'max\_count': 3,<br>'one\_max\_size': '3Mb',<br>'wrong\_extensions': ('rar', 'zip'),<br>'min\_width': 200,<br>'min_height': 100}}||
+| file_fields_params | {} | Параметры файловых полей |file_fields_params = {'field\_name': {'extensions': ('jpg', 'txt'),<br>'max\_count': 3,<br>'one\_max\_size': '3Mb',<br>'wrong\_extensions': ('rar', 'zip'),<br>'min\_width': 200,<br>'min_height': 100,<br>'max\_width': 300,<br>'max_height': 200}}||
 | file_fields_params_add | file_fields_params | Параметры файловых полей на форме создания ||
 | file_fields_params_edit | file_fields_params | Параметры файловых полей на форме редактирования ||
 | filter_params | None | Названия параметров для фильтрации списка объектов | filter_params = ('filter_name1', ('filter_name2', 'any_valid_value'), ) | Для тестов должен быть задан также url_list. Проверка с пустым, либо указанным в параметрах значением. Проверка со случайными значениями. В любом случае ожидается ответ 200 |
@@ -100,7 +100,9 @@ _file\_fields\_params_
 |max_count | максимальное количество файлов (для полей с множественным выбором файлов) | Максимальное число файлов. Число файлов больше максимального|
 |one_max_size| максимальный размер файла (одного файла для полей с множественным выбором файлов)| Максимальный размер файла. Размер файла больше максимального |
 |min_width| минимальная ширина изображения| Изображение с минимальной шириной. Изображение с шириной меньше минимальной |
-|min_height| минимальная высота изображения| Изображение с минимальной высотой. Изображение с высотой меньше минимальной|
+|min_height| минимальная высота изображения| Изображение с минимальной высотой. Изображение с высотой меньше минимальной |
+|max_width| максимальная ширина изображения| Изображение с максимальной шириной. Изображение с шириной меньше максимальной |
+|max_height| максимальная высота изображения| Изображение с максимальной высотой. Изображение с высотой меньше максимальной |
 
 _custom\_error_messages_
 (То же используется в settings.ERROR_MESSAGES)
