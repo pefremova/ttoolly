@@ -872,10 +872,17 @@ def get_random_image_contentfile(size=10, width=1, height=1, filename=None):
 def get_random_img_content(_format, size=10, width=1, height=1):
     try:
         import Image
+        import ImageDraw
     except ImportError:
-        from PIL import Image
+        from PIL import Image, ImageDraw
     size = convert_size_to_bytes(size)
     image = Image.new('RGB', (width, height), "#%06x" % random.randint(0, 0xFFFFFF))
+    draw = ImageDraw.Draw(image)
+    circle_r = int(min(width, height) / 2 - 1)
+    draw.ellipse((width / 2 - circle_r, height / 2 - circle_r,
+                  width / 2 + circle_r, height / 2 + circle_r),
+                 "#%06x" % random.randint(0, 0xFFFFFF),
+                 "#%06x" % random.randint(0, 0xFFFFFF),)
     if getattr(Image, 'PILLOW_VERSION', getattr(Image, 'VERSION', '2.')).split('.')[0] == '1':
         output = StringIO()
     else:
@@ -885,6 +892,7 @@ def get_random_img_content(_format, size=10, width=1, height=1):
     size -= len(content)
     if size > 0:
         content += bytearray(size)
+    del draw
     return content
 
 
