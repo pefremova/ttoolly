@@ -77,7 +77,6 @@ __all__ = ('convert_size_to_bytes',
            'get_url',
            'get_url_for_negative',
            'get_value_for_obj_field',
-           'move_dir',
            'prepare_custom_file_for_tests',
            'prepare_file_for_tests',
            'to_bytes',
@@ -1032,21 +1031,6 @@ def get_url_for_negative(url, args=()):
     except NoReverseMatch:
         url = repl(url, args)
     return url
-
-
-def move_dir(path_to_dir):
-    path_to_dir = os.path.normpath(path_to_dir)
-    basename = os.path.basename(path_to_dir)
-    tmp_path = os.path.join(os.path.split(path_to_dir)[0], '_%s' % basename)
-    if os.path.exists(tmp_path):
-        rmtree(path_to_dir)
-        os.rename(tmp_path, path_to_dir)
-    else:
-        if os.path.exists(path_to_dir):
-            os.rename(path_to_dir, tmp_path)
-        else:
-            os.makedirs(tmp_path)
-        os.makedirs(path_to_dir)
 
 
 def prepare_custom_file_for_tests(file_path, filename=''):

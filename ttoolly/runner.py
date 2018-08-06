@@ -32,6 +32,7 @@ ParentRunner = get_runner()
 
 
 class RegexpTestSuiteRunner(ParentRunner):
+    parallel = 1
     test_runner = HTMLTestRunner if WITH_HTML_REPORT else ParentRunner.test_runner
 
     mro_names = [m.__name__ for m in ParentRunner.__mro__]
@@ -42,7 +43,9 @@ class RegexpTestSuiteRunner(ParentRunner):
         return super(RegexpTestSuiteRunner, self).get_resultclass()
 
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
-        full_suite = ParentRunner.build_suite(self, None, extra_tests=None, **kwargs)
+        real_parallel = self.parallel
+        self.parallel = 1
+        full_suite = super(RegexpTestSuiteRunner, self).build_suite(None, extra_tests=None, **kwargs)
 
         my_suite = unittest.TestSuite()
         labels_for_suite = []
@@ -69,7 +72,23 @@ class RegexpTestSuiteRunner(ParentRunner):
                     my_suite.addTest(el)
         if labels_for_suite:
             my_suite.addTests(ParentRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
-        return reorder_suite(my_suite, (unittest.TestCase,))
+        suite = reorder_suite(my_suite, (unittest.TestCase,))
+
+        self.parallel = real_parallel
+        if self.parallel > 1:
+            parallel_suite = self.parallel_test_suite(suite, self.parallel, self.failfast)
+
+            # Since tests are distributed across processes on a per-TestCase
+            # basis, there's no need for more processes than TestCases.
+            parallel_units = len(parallel_suite.subsuites)
+            if self.parallel > parallel_units:
+                self.parallel = parallel_units
+
+            # If there's only one TestCase, parallelization isn't needed.
+            if self.parallel > 1:
+                suite = parallel_suite
+
+        return suite
 
     def run_suite(self, suite, **kwargs):
         if WITH_HTML_REPORT:

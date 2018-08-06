@@ -6,16 +6,19 @@ from copy import copy, deepcopy
 from datetime import datetime, date, time, timedelta
 from decimal import Decimal
 from functools import wraps, update_wrapper
-from lxml.html import document_fromstring
-from random import choice, randint, uniform
-from shutil import rmtree
-from unittest import SkipTest
 import inspect
+from itertools import cycle
 import json
+from lxml.html import document_fromstring
 import os
+import psycopg2.extensions
+from random import choice, randint, uniform
 import re
+from shutil import rmtree
 import sys
-import types
+import tempfile
+from unittest import SkipTest
+from unittest.util import strclass
 import warnings
 
 from builtins import str
@@ -27,12 +30,6 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.management import call_command
-from unittest.util import strclass
-try:
-    from django.core.urlresolvers import reverse, resolve
-except:
-    # Django 2.0
-    from django.urls import reverse, resolve
 from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
 from django.db.models import Model, Q, Manager, DateTimeField
 from django.db.models.fields import FieldDoesNotExist
@@ -40,20 +37,26 @@ from django.http import HttpRequest
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
+from django.test.utils import override_settings
 from django.utils.encoding import force_text, force_bytes
 from django.utils.http import urlsafe_base64_encode
 from freezegun import freeze_time
 from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
-from itertools import cycle
 from past.builtins import xrange, basestring
-import psycopg2.extensions
 
-
-from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes, move_dir,
+from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                     get_fields_list_from_response, get_real_fields_list_from_response, get_all_form_errors,
                     generate_random_obj, get_field_from_response, get_all_urls, convert_size_to_bytes,
                     get_random_file, get_all_field_names_from_model, FILE_TYPES)
+
+
+try:
+    from django.core.urlresolvers import reverse, resolve
+except:
+    # Django 2.0
+    from django.urls import reverse, resolve
+
 
 __all__ = ('ChangePasswordMixIn',
            'CustomModel',
@@ -81,14 +84,8 @@ __all__ = ('ChangePasswordMixIn',
            'only_with_obj',)
 
 
-TEMP_DIR = getattr(settings, 'TEST_TEMP_DIR', 'test_temp')
-
-
-def get_dirs_for_move():
-    DIRS_FOR_MOVE = getattr(settings, 'DIRS_FOR_MOVE', [])
-    DIRS_FOR_MOVE.extend([el for el in [getattr(settings, 'MEDIA_ROOT', ''), ] if
-                          el and not any([el.startswith(d) for d in DIRS_FOR_MOVE])])
-    return set(DIRS_FOR_MOVE)
+def get_settings_for_move():
+    return set(getattr(settings, 'SETTINGS_FOR_MOVE', []))
 
 
 class only_with_obj(object):
@@ -445,22 +442,20 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def for_post_tear_down(self):
         self.del_files()
-        if os.path.exists(TEMP_DIR):
-            try:
-                rmtree(TEMP_DIR)
-            except:
-                pass
         if getattr(self, 'with_files', False):
-            for path in get_dirs_for_move():
-                move_dir(path)
+            for name in get_settings_for_move():
+                path = getattr(settings, name)
+                if path.startswith(tempfile.gettempdir()):
+                    rmtree(path)
+            self._ttoolly_modified_settings.disable()
 
     def for_pre_setup(self):
         self.errors = []
-        if not os.path.exists(TEMP_DIR):
-            os.makedirs(TEMP_DIR)
         if getattr(self, 'with_files', False):
-            for path in get_dirs_for_move():
-                move_dir(path)
+            d = {name: tempfile.mkdtemp('_' + name)
+                 for name in get_settings_for_move()}
+            self._ttoolly_modified_settings = override_settings(**d)
+            self._ttoolly_modified_settings.enable()
 
     def assertEqual(self, *args, **kwargs):
         with warnings.catch_warnings(record=True) as warn:
