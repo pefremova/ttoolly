@@ -92,7 +92,10 @@ _redis_settings_by_worker = {}
 
 
 def new_redis_settings():
-    from django.test.runner import _worker_id
+    if DJANGO_VERSION < (1, 9):
+        _worker_id = 0
+    else:
+        from django.test.runner import _worker_id
 
     global _redis_settings_by_worker
     d = _redis_settings_by_worker.get(_worker_id, None)
