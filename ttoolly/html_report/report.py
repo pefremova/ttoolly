@@ -3,6 +3,7 @@ import os
 import traceback
 from unittest.runner import TextTestResult
 
+from django.conf import settings
 from django.utils.encoding import force_text
 import jinja2
 from pyunitreport.result import HtmlTestResult, _TestInfo, render_html
@@ -65,7 +66,7 @@ class CustomHtmlTestResult(HtmlTestResult):
 
     def generate_index(self, reports_path_list, testRunner):
         report_save_dir = os.path.join(os.getcwd(), 'reports')
-        index_file_fullpath = os.path.join(report_save_dir, 'index.html')
+        index_file_fullpath = os.path.join(report_save_dir, getattr(settings, 'TEST_HTML_REPORT_INDEX_NAME', 'index.html'))
 
         report_content = render_html(
             os.path.join(os.path.dirname(__file__), "templates", "_index.html"),
