@@ -88,6 +88,38 @@ def get_settings_for_move():
     return set(getattr(settings, 'SETTINGS_FOR_MOVE', []))
 
 
+_redis_settings_by_worker = {}
+
+
+def new_redis_settings():
+    from django.test.runner import _worker_id
+
+    global _redis_settings_by_worker
+    d = _redis_settings_by_worker.get(_worker_id, None)
+    if d is not None:
+        return d
+
+    def get_new_value(value):
+        if isinstance(value, basestring) and value.startswith('redis://'):
+            return '/'.join(value.split('/')[:-1] + [str(int(value.split('/')[-1]) + 10 * max(_worker_id, 1))])
+        elif isinstance(value, dict):
+            new_values_d = {k: get_new_value(v) for k, v in value.items()}
+            new_values_d = {k: v for k, v in new_values_d.items() if v}
+            if new_values_d:
+                new_d = deepcopy(value)
+                new_d.update(new_values_d)
+                return new_d
+
+    d = {}
+    for name, value in settings.__dict__.items():
+        value = getattr(settings, name)
+        new_value = get_new_value(value)
+        if new_value:
+            d[name] = new_value
+    _redis_settings_by_worker[_worker_id] = d
+    return d
+
+
 class only_with_obj(object):
 
     skip_text = 'Need "obj"'
@@ -442,20 +474,19 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def for_post_tear_down(self):
         self.del_files()
-        if getattr(self, 'with_files', False):
-            for name in get_settings_for_move():
-                path = getattr(settings, name)
-                if path.startswith(tempfile.gettempdir()):
-                    rmtree(path)
-            self._ttoolly_modified_settings.disable()
+        for name in get_settings_for_move():
+            path = getattr(settings, name)
+            if path.startswith(tempfile.gettempdir()):
+                rmtree(path)
+        self._ttoolly_modified_settings.disable()
 
     def for_pre_setup(self):
         self.errors = []
-        if getattr(self, 'with_files', False):
-            d = {name: tempfile.mkdtemp('_' + name)
-                 for name in get_settings_for_move()}
-            self._ttoolly_modified_settings = override_settings(**d)
-            self._ttoolly_modified_settings.enable()
+        d = new_redis_settings()
+        d.update({name: tempfile.mkdtemp('_' + name)
+                  for name in get_settings_for_move()})
+        self._ttoolly_modified_settings = override_settings(**d)
+        self._ttoolly_modified_settings.enable()
 
     def assertEqual(self, *args, **kwargs):
         with warnings.catch_warnings(record=True) as warn:
