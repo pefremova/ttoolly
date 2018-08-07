@@ -23,7 +23,9 @@ from django.db.models.fields.files import FieldFile
 from django.http import HttpResponse
 from django.test import TestCase
 from ttoolly import utils
-from ttoolly.models import TEMP_DIR, FormTestMixIn, GlobalTestMixIn
+from ttoolly.models import FormTestMixIn, GlobalTestMixIn
+import tempfile
+TEMP_DIR = tempfile.mkdtemp()
 
 from test_project.test_app.models import OtherModel, SomeModel
 import xml.etree.cElementTree as et
