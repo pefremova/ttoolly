@@ -4,7 +4,7 @@ from __future__ import (absolute_import, division,
 
 from datetime import datetime, date, time
 from io import StringIO
-from shutil import copyfile, rmtree
+from shutil import copyfile
 from time import mktime
 from xml.etree import ElementTree as et
 import decimal
@@ -240,6 +240,8 @@ def get_all_form_errors(response):
         pass
     try:
         forms.extend([form for form in viewvalues(response.context['forms'])])
+    except AttributeError:
+        forms.extend(response.context['forms'])
     except KeyError:
         pass
     try:
