@@ -389,14 +389,13 @@ class Ring(cycle):
 
 
 class DictWithPassword(dict):
-
     def __init__(self, d, password1='password1', password2='password2'):
         self.password1 = password1
         self.password2 = password2
         super(DictWithPassword, self).__init__(d)
 
     def __setitem__(self, k, v):
-        if k == self.password1 and v:
+        if hasattr(self, 'password1') and k == self.password1 and v:
             self[self.password2] = v
 
         super(DictWithPassword, self).__setitem__(k, v)
