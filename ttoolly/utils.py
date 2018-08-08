@@ -383,6 +383,8 @@ def get_field_from_response(response, field_name):
         pass
     try:
         forms.extend([form for form in viewvalues(response.context['forms'])])
+    except AttributeError:
+        forms.extend(response.context['forms'])
     except KeyError:
         pass
     try:
@@ -475,6 +477,8 @@ def get_fields_list_from_response(response, only_success=True):
         pass
     try:
         forms.extend([form for form in viewvalues(response.context['forms'])])
+    except AttributeError:
+        forms.extend(response.context['forms'])
     except KeyError:
         pass
     try:
