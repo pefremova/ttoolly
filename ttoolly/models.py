@@ -5751,7 +5751,8 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
 
     def check_positive(self, user, params):
         new_user = self.obj.objects.get(pk=user.pk)
-        self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
+        self.assertFalse(new_user.check_password(params.get(self.field_old_password or '', '') or self.current_password),
+                         'Password not changed')
         self.assertTrue(new_user.check_password(params[self.field_password]),
                         'Password not changed to "%s"' % params[self.field_password])
 
@@ -5761,7 +5762,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
 
     def get_obj_for_edit(self):
         user = choice(self.obj.objects.all())
-        self.user_login(user.email, self.current_password)
+        self.user_relogin(user.email, self.current_password)
         user.refresh_from_db()
         return user
 
@@ -6013,38 +6014,55 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         """
         @note: Change password: old password value not valid now
         """
-        user = self.get_obj_for_edit()
-        old_password = choice(self.password_wrong_values or ['йцу'])[:self.password_min_length or 3]
-        user.set_password(old_password)
-        user.save()
-        self.user_login(self.get_login_name(user), old_password, **self.additional_params)
-        params = self.deepcopy(self.password_params)
-        self.update_params(params)
-        self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
-        value = self.get_value_for_field(None, 'password')
-        params.update({self.field_old_password: old_password,
-                       self.field_password: value,
-                       self.field_password_repeat: value})
-        try:
-            response = self.client.post(
-                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
-            self.assert_no_form_errors(response)
-            self.check_positive(user, params)
-        except:
-            self.errors_append(text='Old password value "%s"' % old_password)
+        wrong_values = list(self.password_wrong_values or [])
+        if self.password_min_length:
+            wrong_values.append(self.get_value_for_field(self.password_min_length - 1, 'password'))
+        if self.password_max_length:
+            wrong_values.append(self.get_value_for_field(self.password_max_length + 1, 'password'))
+        for old_password in wrong_values:
+            user = self.get_obj_for_edit()
+            user.set_password(old_password)
+            user.save()
+            self.user_relogin(self.get_login_name(user), old_password, **self.additional_params)
+            user.refresh_from_db()
+            params = self.deepcopy(self.password_params)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
+            value = self.get_value_for_field(None, 'password')
+            params.update({self.field_old_password: old_password,
+                           self.field_password: value,
+                           self.field_password_repeat: value})
+            try:
+                response = self.client.post(
+                    self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.check_positive(user, params)
+            except:
+                self.errors_append(text='Old password value "%s"' % old_password)
 
     @only_with('password_similar_fields')
     def test_change_password_value_similar_to_user_field_negative(self):
         """
         Try change password to value similar to field from object
         """
+        def new_value(value, change_type):
+            if change_type == '':
+                return value
+            if change_type == 'swapcase':
+                return value.swapcase()
+            if change_type == 'add_before':
+                return get_randname(1, 'w') + value
+            if change_type == 'add_after':
+                return value + get_randname(1, 'w')
+
         for field in self.password_similar_fields:
             user_field_name = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field)
-            user = self.get_obj_for_edit()
-            value = self.get_value_for_field(self.password_min_length, field)
-            self.obj.objects.filter(pk=user.pk).update(**{field: value})
-            for password_value in (value, value.swapcase(), get_randname(1, 'w') + value, value + get_randname(1, 'w')):
+            for change_type in ('', 'swapcase', 'add_before', 'add_after'):
+                user = self.get_obj_for_edit()
+                value = self.get_value_for_field(self.password_min_length, field)
+                self.obj.objects.filter(pk=user.pk).update(**{field: value})
                 user.refresh_from_db()
+                password_value = new_value(value, change_type)
                 params = self.deepcopy(self.password_params)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
@@ -6536,9 +6554,9 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
-        codes = self.get_codes(user)
         user.is_active = False
         user.save()
+        codes = self.get_codes(user)
         try:
             response = self.client.post(self.get_url(self.url_reset_password, codes),
                                         params, **self.additional_params)
@@ -6594,12 +6612,22 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         """
         Try reset password to value similar to field from object
         """
+        def new_value(value, change_type):
+            if change_type == '':
+                return value
+            if change_type == 'swapcase':
+                return value.swapcase()
+            if change_type == 'add_before':
+                return get_randname(1, 'w') + value
+            if change_type == 'add_after':
+                return value + get_randname(1, 'w')
         for field in self.password_similar_fields:
             user_field_name = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field)
-            user = self.get_obj_for_edit()
-            value = self.get_value_for_field(self.password_min_length, field)
-            self.obj.objects.filter(pk=user.pk).update(**{field: value})
-            for password_value in (value, value.swapcase(), get_randname(1, 'w') + value, value + get_randname(1, 'w')):
+            for change_type in ('', 'swapcase', 'add_before', 'add_after'):
+                user = self.get_obj_for_edit()
+                value = self.get_value_for_field(self.password_min_length, field)
+                self.obj.objects.filter(pk=user.pk).update(**{field: value})
+                password_value = new_value(value, change_type)
                 user.refresh_from_db()
                 params = self.deepcopy(self.password_params)
 
