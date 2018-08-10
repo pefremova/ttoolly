@@ -2,7 +2,7 @@
 from django.core.management.base import BaseCommand
 try:
     from django.contrib.auth import get_user_model
-except:
+except ImportError:
     from django.contrib.auth.models import User
 
     def get_user_model():
@@ -15,7 +15,7 @@ class Command(BaseCommand):
     help = "Changes all users passwords to specified (qwerty by default)"
 
     def add_arguments(self, parser):
-        parser.add_argument('-p', '--password', default='qwerty',  help='New password. Default: %(default)s')
+        parser.add_argument('-p', '--password', default='qwerty', help='New password. Default: %(default)s')
 
     def handle(self, *args, **kwargs):
         password = kwargs.get('password')

@@ -27,7 +27,7 @@ from random import uniform
 from lxml.html import document_fromstring
 try:
     from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
-except:
+except ImportError:
     # Django 2.0
     from django.urls import reverse, resolve, Resolver404, NoReverseMatch
 from django.forms.forms import NON_FIELD_ERRORS

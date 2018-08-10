@@ -57,7 +57,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         fields_list_2 = ['test2', 'test1']
         try:
             self.btc.assert_form_equal(fields_list_1, fields_list_2)
-        except:
+        except Exception:
             self.assertTrue(False, 'With raise')
 
     def test_assert_form_equal_not_need(self):
@@ -115,7 +115,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         fields_list_2 = ['test2', 'test1']
         try:
             self.btc.assert_form_equal(fields_list_1, fields_list_2, 'тест')
-        except:
+        except Exception:
             self.assertTrue(False, 'With raise')
 
     def test_assert_form_equal_not_need_with_custom_message(self):
@@ -752,7 +752,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.btc.errors = []
         try:
             int('q')
-        except:
+        except Exception:
             self.btc.errors_append()
         self.assertEqual(len(self.btc.errors), 1)
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", self.btc.errors[0])
@@ -767,7 +767,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         settings.COLORIZE_TESTS = False
         try:
             int('q')
-        except:
+        except Exception:
             self.btc.errors_append(text='Тестовый текст')
         self.assertEqual(len(self.btc.errors), 1)
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", self.btc.errors[0])
@@ -778,7 +778,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         settings.COLORIZE_TESTS = True
         try:
             int('q')
-        except:
+        except Exception:
             self.btc.errors_append(text='Test text')
         self.assertEqual(len(self.btc.errors), 1)
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", self.btc.errors[0])
@@ -789,7 +789,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         settings.COLORIZE_TESTS = True
         try:
             int('q')
-        except:
+        except Exception:
             self.btc.errors_append(text='Test text', color=11)
         self.assertEqual(len(self.btc.errors), 1)
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", self.btc.errors[0])
@@ -800,7 +800,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         some_errors = []
         try:
             int('q')
-        except:
+        except Exception:
             self.btc.errors_append(some_errors)
         self.assertEqual(self.btc.errors, [])
         self.assertEqual(len(some_errors), 1)
@@ -819,7 +819,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         settings.COLORIZE_TESTS = False
         try:
             int('q')
-        except:
+        except Exception:
             self.btc.errors_append(some_errors, text='Тестовый текст')
         self.assertEqual(len(some_errors), 1)
         self.assertEqual(self.btc.errors, [])
@@ -832,7 +832,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         settings.COLORIZE_TESTS = True
         try:
             int('q')
-        except:
+        except Exception:
             self.btc.errors_append(some_errors, text='Test text')
         self.assertEqual(len(some_errors), 1)
         self.assertEqual(self.btc.errors, [])
@@ -845,7 +845,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         settings.COLORIZE_TESTS = True
         try:
             int('q')
-        except:
+        except Exception:
             self.btc.errors_append(some_errors, text='Test text', color=11)
         self.assertEqual(len(some_errors), 1)
         self.assertEqual(self.btc.errors, [])

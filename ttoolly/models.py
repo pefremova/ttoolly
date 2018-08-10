@@ -53,7 +53,7 @@ from .utils import (format_errors, get_error, get_randname, get_url_for_negative
 
 try:
     from django.core.urlresolvers import reverse, resolve
-except:
+except Exception:
     # Django 2.0
     from django.urls import reverse, resolve
 
@@ -343,11 +343,11 @@ class JsonResponseErrorsMixIn(object):
         if not 200 <= response.status_code < 300:
             try:
                 return json.loads(force_text(response.content))
-            except:
+            except Exception:
                 return super(JsonResponseErrorsMixIn, self).get_all_form_errors(response)
         try:
             return json.loads(response.content)['errors']
-        except:
+        except Exception:
             return super(JsonResponseErrorsMixIn, self).get_all_form_errors(response)
 
 
@@ -520,7 +520,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 elif isinstance(d1[key], list) and isinstance(d2[key], list):
                     try:
                         self.assert_list_equal(d1[key], d2[key])
-                    except:
+                    except Exception:
                         self.errors_append(errors)
                         text.append('%s[%s]:\n%s' % (parent_key if parent_key else '', key, '\n'.join(errors)))
                 else:
@@ -610,7 +610,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         else:
             try:
                 self.assertEqual(list1, list2)
-            except:
+            except Exception:
                 _, v, _ = sys.exc_info()
                 errors.append(force_text(v))
 
@@ -1416,7 +1416,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             try:
                 existing_values = [force_text(el) for el in self.obj.objects.values_list(key_for_get_values, flat=True)]
                 # Нельзя использовать exists, т.к. будет падать для некоторых типов, например UUID
-            except:
+            except Exception:
                 # FIXME: self.obj does not exists or FieldError
                 pass
             n = 0
@@ -1840,7 +1840,7 @@ class FormTestMixIn(GlobalTestMixIn):
                     if 'DateField' in mro_names:
                         try:
                             value = datetime.strptime(value, '%d.%m.%Y').date()
-                        except:
+                        except Exception:
                             pass
                     if 'ForeignKey' in mro_names:
                         value = field_class.related_model.objects.get(pk=value)
@@ -2004,7 +2004,7 @@ class FormTestMixIn(GlobalTestMixIn):
                 response = self.client.get(
                     self.get_url(self.url_list), {field: value}, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
-            except:
+            except Exception:
                 self.errors_append(text='For filter %s=%s' % (field, value))
 
     @only_with_obj
@@ -2020,7 +2020,7 @@ class FormTestMixIn(GlobalTestMixIn):
                     response = self.client.get(self.get_url(self.url_list), {field: value}, follow=True,
                                                **self.additional_params)
                     self.assertEqual(response.status_code, 200)
-                except:
+                except Exception:
                     self.errors_append(text='For filter %s=%s' % (field, value))
 
 
@@ -2065,17 +2065,17 @@ class FormAddTestMixIn(FormTestMixIn):
             """not set because of one field can be on form many times"""
             self.assert_form_equal(form_fields['visible_fields'],
                                    [el for el in self.all_fields_add if el not in (self.hidden_fields_add or ())])
-        except:
+        except Exception:
             self.errors_append(text='For visible fields')
         if self.disabled_fields_add is not None:
             try:
                 self.assert_form_equal(form_fields['disabled_fields'], self.disabled_fields_add)
-            except:
+            except Exception:
                 self.errors_append(text='For disabled fields')
         if self.hidden_fields_add is not None:
             try:
                 self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_add)
-            except:
+            except Exception:
                 self.errors_append(text='For hidden fields')
 
         fields_helptext = getattr(self, 'fields_helptext_add', {})
@@ -2114,7 +2114,7 @@ class FormAddTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -2160,7 +2160,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
+                except Exception:
                     self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
 
     @only_with_obj
@@ -2190,7 +2190,7 @@ class FormAddTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.errors_append()
 
         """если хотя бы одно поле из группы заполнено, объект создается"""
@@ -2220,7 +2220,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                     exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
+                except Exception:
                     self.errors_append(text='For filled field %s from group "%s"' %
                                        (field, force_text(group)))
 
@@ -2245,7 +2245,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty field "%s"' % field)
 
@@ -2265,7 +2265,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % force_text(group))
 
@@ -2290,7 +2290,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without field "%s"' % field)
 
@@ -2310,7 +2310,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % force_text(group))
 
@@ -2357,7 +2357,7 @@ class FormAddTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(list(max_length_params.keys()))
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all fields\n%s" %
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
@@ -2401,7 +2401,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, length, value if len(str(value)) <= 1000 else str(value)[:1000] + '...'))
@@ -2430,7 +2430,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
@@ -2459,7 +2459,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
@@ -2486,7 +2486,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                      self.get_error_message(message_type, field, locals=_locals))
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.errors_append(text='For %s value "%s"' % (field, value))
 
     @only_with_obj
@@ -2511,7 +2511,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                      self.get_error_message(message_type, field, locals=_locals))
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.errors_append(text='For %s value "%s"' % (field, value))
 
     @only_with_obj
@@ -2544,7 +2544,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
@@ -2576,7 +2576,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
@@ -2627,7 +2627,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
                                        (', '.join('field "%s" with value "%s"\n' % (field,
@@ -2659,7 +2659,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
@@ -2686,7 +2686,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
@@ -2723,7 +2723,7 @@ class FormAddTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all digital fields\n%s" %
                                     '\n\n'.join(['  %s with value %s' %
@@ -2757,7 +2757,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, value))
 
@@ -2785,7 +2785,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
@@ -2822,7 +2822,7 @@ class FormAddTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text="For min values in all digital fields\n%s" %
                                     '\n\n'.join(['  %s with value %s' %
@@ -2857,7 +2857,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, value))
 
@@ -2885,7 +2885,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
@@ -2918,7 +2918,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = ''
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
 
@@ -2947,7 +2947,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For filled %s fields from group %s' %
                                        (force_text(filled_group), force_text(group)))
@@ -2976,7 +2976,7 @@ class FormAddTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text="Max count in all (%s) blocks" % ', '.join('%s in %s' % (k, v) for k, v in
                                                                                viewitems(self.max_blocks)))
@@ -3008,7 +3008,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
             finally:
@@ -3041,7 +3041,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
             finally:
@@ -3078,7 +3078,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 new_objects = self.obj.objects.exclude(pk__in=old_pks)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
 
@@ -3116,7 +3116,7 @@ class FormAddTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text='For max count files in all fields\n%s' %
                                     '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
@@ -3149,7 +3149,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
 
@@ -3181,7 +3181,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
@@ -3215,7 +3215,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
                                         (self.humanize_file_size(current_size), current_size, one_size,
@@ -3257,7 +3257,7 @@ class FormAddTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text='For max size files in all fields\n%s' %
                                     '\n'.join(['%s: %s (%s)' %
@@ -3303,7 +3303,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             finally:
@@ -3343,7 +3343,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
                                    (max_size, one_size * field_dict['max_count'], one_size,
@@ -3377,7 +3377,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 new_objects = self.obj.objects.exclude(pk__in=old_pks)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
 
@@ -3416,7 +3416,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
 
@@ -3450,7 +3450,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                                 **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
 
@@ -3487,7 +3487,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
@@ -3530,7 +3530,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assert_objects_count_on_add(False, initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     new_objects = self.obj.objects.exclude(pk__in=old_pks)
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
@@ -3567,7 +3567,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
@@ -3610,7 +3610,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.assert_objects_count_on_add(False, initial_obj_count)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     new_objects = self.obj.objects.exclude(pk__in=old_pks)
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
@@ -3664,17 +3664,18 @@ class FormEditTestMixIn(FormTestMixIn):
             """not set because of one field can be on form many times"""
             self.assert_form_equal(form_fields['visible_fields'],
                                    [el for el in self.all_fields_edit if el not in (self.hidden_fields_edit or ())])
-        except:
+        except Exception:
             self.errors_append(text='For visible fields')
+
         if self.disabled_fields_edit is not None:
             try:
                 self.assert_form_equal(form_fields['disabled_fields'], self.disabled_fields_edit)
-            except:
+            except Exception:
                 self.errors_append(text='For disabled fields')
         if self.hidden_fields_edit is not None:
             try:
                 self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_edit)
-            except:
+            except Exception:
                 self.errors_append(text='For hidden fields')
 
         fields_helptext = getattr(self, 'fields_helptext_edit', {})
@@ -3699,6 +3700,7 @@ class FormEditTestMixIn(FormTestMixIn):
         only_independent_fields = set(self.all_fields_edit).difference(prepared_depends_fields.keys())
         for field in prepared_depends_fields.keys():
             self.set_empty_value_for_field(params, field)
+
         self.fill_all_fields(list(only_independent_fields) + self.required_fields_edit +
                              self._get_required_from_related(self.required_related_fields_edit), params)
         self.update_params(params)
@@ -3709,10 +3711,12 @@ class FormEditTestMixIn(FormTestMixIn):
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
+
             exclude = getattr(self, 'exclude_from_check_edit', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -3752,7 +3756,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                     exclude = getattr(self, 'exclude_from_check_edit', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
+                except Exception:
                     self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
                 finally:
                     mail.outbox = []
@@ -3782,7 +3786,7 @@ class FormEditTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.errors_append()
         finally:
             mail.outbox = []
@@ -3808,7 +3812,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
+                except Exception:
                     self.errors_append(text='For filled field %s from group "%s"' %
                                        (field, force_text(group)))
                 finally:
@@ -3836,7 +3840,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty field "%s"' % field)
 
@@ -3858,7 +3862,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty group "%s"' % force_text(group))
 
@@ -3884,7 +3888,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without field "%s"' % field)
 
@@ -3906,7 +3910,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without group "%s"' % force_text(group))
 
@@ -3925,7 +3929,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='GET request. For value %s' % value)
 
@@ -3940,7 +3944,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='POST request. For value %s' % value)
 
@@ -4008,11 +4012,11 @@ class FormEditTestMixIn(FormTestMixIn):
                         list(max_length_params.keys()))
                     self.assert_object_fields(new_object, params, exclude=exclude,
                                               other_values=other_values)
-                except:
+                except Exception:
                     self.errors_append(_errors, text='Second save for check max file length')
                 if _errors:
                     raise Exception(format_errors(_errors))
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all fields\n%s" %
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
@@ -4071,11 +4075,11 @@ class FormEditTestMixIn(FormTestMixIn):
                         exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                         self.assert_object_fields(new_object, params, exclude=exclude,
                                                   other_values=other_values)
-                    except:
+                    except Exception:
                         self.errors_append(_errors, text='Second save with file max length')
                     if _errors:
                         raise Exception(format_errors(_errors))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, length, value if len(str(value)) <= 1000 else str(value)[:1000] + '...'))
@@ -4108,7 +4112,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
@@ -4139,7 +4143,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
                                    (field, current_length, params[field]))
@@ -4169,7 +4173,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.errors_append(text='For %s value "%s"' % (field, value))
 
     @only_with_obj
@@ -4196,7 +4200,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.errors_append(text='For %s value "%s"' % (field, value))
 
     @only_with_obj
@@ -4231,7 +4235,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
@@ -4265,7 +4269,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % (field, params[field])
                                                              for field in el if field in params.keys()))
@@ -4307,7 +4311,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                     exclude = getattr(self, 'exclude_from_check_edit', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
                                        (', '.join('field "%s" with value "%s"\n' % (field,
@@ -4343,7 +4347,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
@@ -4371,7 +4375,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
@@ -4405,7 +4409,7 @@ class FormEditTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text="For max values in all digital fields\n%s" %
                                     '\n\n'.join(['  %s with value %s' %
@@ -4437,7 +4441,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, value))
             finally:
@@ -4468,7 +4472,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
@@ -4502,7 +4506,7 @@ class FormEditTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text="For min values in all digital fields\n%s" %
                                     '\n\n'.join(['  %s with value %s' %
@@ -4534,7 +4538,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with value "%s"' % (field, value))
             finally:
@@ -4565,7 +4569,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
@@ -4593,7 +4597,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assertEqual(self.get_value_for_compare(new_object, field),
                                      getattr(self, 'other_values_for_check',
                                              {}).get(field, self.get_value_for_compare(obj_for_edit, field)))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s"' % field)
 
@@ -4623,7 +4627,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For filled %s fields from group %s' %
                                        (force_text(filled_group), force_text(group)))
@@ -4651,7 +4655,7 @@ class FormEditTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text="Max count in all (%s) blocks" % ', '.join('%s in %s' % (k, v) for k, v in
                                                                                viewitems(self.max_blocks)))
@@ -4681,7 +4685,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = getattr(self, 'exclude_from_check_edit', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
             finally:
@@ -4712,7 +4716,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
 
@@ -4745,7 +4749,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
 
@@ -4782,7 +4786,7 @@ class FormEditTestMixIn(FormTestMixIn):
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text='For max count files in all fields\n%s' %
                                     '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
@@ -4813,7 +4817,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
             finally:
@@ -4851,7 +4855,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
                                                                                current_size, field))
@@ -4890,7 +4894,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
                                    (self.humanize_file_size(current_size), current_size, one_size,
@@ -4926,13 +4930,14 @@ class FormEditTestMixIn(FormTestMixIn):
             params.update(max_size_params)
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
+
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_edit,
                              'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
             new_object = self.obj.objects.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
-        except:
+        except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(text='For max size files in all fields\n%s' %
                                     '\n'.join(['%s: %s (%s)' %
@@ -4976,7 +4981,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             finally:
@@ -5014,7 +5019,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
                                    (max_size, one_size * field_dict['max_count'], one_size, field_dict['max_count'],
@@ -5047,7 +5052,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.assert_objects_equal(new_object, obj_for_edit)
                 self.assertEqual(response.status_code, self.status_code_error,
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
 
@@ -5080,7 +5085,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
                 finally:
@@ -5119,7 +5124,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
 
@@ -5149,7 +5154,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
             finally:
@@ -5189,7 +5194,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
@@ -5219,7 +5224,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 new_object = self.obj.objects.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
             finally:
@@ -5259,7 +5264,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.assert_objects_equal(new_object, obj_for_edit)
                     self.assertEqual(response.status_code, self.status_code_error,
                                      'Status code %s != %s' % (response.status_code, self.status_code_error))
-                except:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
@@ -5283,7 +5288,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
-            except:
+            except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For value %s error' % value)
 
@@ -5322,7 +5327,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
             self.assertEqual(self.obj.objects.count(), initial_obj_count - len(obj_ids),
                              'Objects count after delete = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count - len(obj_ids)))
-        except:
+        except Exception:
             self.errors_append()
 
 
@@ -5356,7 +5361,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.client.post(self.get_url(self.url_delete, (obj_id,)), **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_id)))
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -5374,7 +5379,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.client.post(recovery_url, **self.additional_params)
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_id)))
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -5391,7 +5396,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
                 self.assertEqual(response.status_code, 200)
                 error_message = self.get_error_message('delete_not_exists', None)
                 self.assertEqual(self.get_all_form_messages(response), [error_message])
-            except:
+            except Exception:
                 self.errors_append(text='For value "%s" error' % value)
 
     @only_with_obj
@@ -5408,7 +5413,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
                 self.assertEqual(response.status_code, 200)
                 error_message = self.get_error_message('recovery_not_exists', None)
                 self.assertEqual(self.get_all_form_messages(response), [error_message])
-            except:
+            except Exception:
                 self.errors_append(text='For value "%s" error' % value)
 
     @only_with_obj
@@ -5428,7 +5433,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(response.status_code, 200)
             error_message = 'Вы не можете изменять объекты в корзине.'
             self.assertEqual(self.get_all_form_messages(response), [error_message])
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -5449,7 +5454,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             if self.status_code_not_exist == 200:
                 """for Django 1.11 admin"""
                 self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -5465,7 +5470,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), ['Произошла ошибка. Попробуйте позже.'])
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -5482,7 +5487,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.assertEqual(self.obj.objects.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.obj.objects.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), ['Произошла ошибка. Попробуйте позже.'])
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -5504,7 +5509,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
                              'Objects count after remove (should not be changed) = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count))
             self.assertTrue(all([self.get_is_removed(obj) for obj in self.obj.objects.filter(pk__in=obj_ids)]))
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -5526,7 +5531,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
                              'Objects count after recovery (should not be changed) = %s (expect %s)' %
                              (self.obj.objects.count(), initial_obj_count))
             self.assertFalse(any(self.obj.objects.filter(pk__in=obj_ids).values_list('is_removed', flat=True)))
-        except:
+        except Exception:
             self.errors_append()
 
 
@@ -5563,7 +5568,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                     res_args = tuple([v if force_text(v) != '123' else 1 for v in res.args])
                     result += ((':'.join([el for el in [res.namespace, res.url_name] if el]),
                                 res_kwargs or res_args),)
-            except:
+            except Exception:
                 result += (aa,)
                 print('!!!!!', res, aa)
         return result
@@ -5601,7 +5606,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 url = self.get_url(url_name, args)
                 response = self.get_method(url, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
-            except:
+            except Exception:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with(('links_redirect',))
@@ -5616,7 +5621,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             try:
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertRedirects(response, self.get_url(self.redirect_to))
-            except:
+            except Exception:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with(('links_400',))
@@ -5631,7 +5636,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             try:
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 400)
-            except:
+            except Exception:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with('links_401')
@@ -5648,7 +5653,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.assertEqual(response.status_code, 401)
                 self.assertEqual(self.get_all_form_errors(response),
                                  {"detail": 'Учетные данные не были предоставлены.'})
-            except:
+            except Exception:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with(('links_403',))
@@ -5663,7 +5668,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             try:
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 403)
-            except:
+            except Exception:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with('urlpatterns')
@@ -5687,7 +5692,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 self.login()
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404)
-            except:
+            except Exception:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with(('links_405',))
@@ -5702,7 +5707,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
             try:
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 405)
-            except:
+            except Exception:
                 self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
 
@@ -5780,17 +5785,17 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         form_fields = self.get_fields_list_from_response(response)
         try:
             self.assert_form_equal(form_fields['visible_fields'], self.all_fields)
-        except:
+        except Exception:
             self.errors_append(text='For visible fields')
 
         try:
             self.assert_form_equal(form_fields['disabled_fields'], self.disabled_fields)
-        except:
+        except Exception:
             self.errors_append(text='For disabled fields')
 
         try:
             self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields)
-        except:
+        except Exception:
             self.errors_append(text='For hidden fields')
 
     @only_with_obj
@@ -5810,7 +5815,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                     self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.check_positive(user, params)
-            except:
+            except Exception:
                 self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with_obj
@@ -5831,7 +5836,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-            except:
+            except Exception:
                 self.errors_append(text='Empty field "%s"' % field)
 
     @only_with_obj
@@ -5852,7 +5857,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-            except:
+            except Exception:
                 self.errors_append(text='Without field "%s"' % field)
 
     @only_with_obj
@@ -5872,7 +5877,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             self.check_negative(user, params, response)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_password_repeat', self.field_password_repeat))
-        except:
+        except Exception:
             self.errors_append(text='New passwords "%s", "%s"' %
                                (params[self.field_password], params[self.field_password_repeat]))
 
@@ -5897,7 +5902,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             self.check_negative(user, params, response)
             error_message = self.get_error_message('min_length', self.field_password,)
             self.assertEqual(self.get_all_form_errors(response), error_message)
-        except:
+        except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with_obj
@@ -5918,7 +5923,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
             self.assert_no_form_errors(response)
             self.check_positive(user, params)
-        except:
+        except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with_obj
@@ -5939,7 +5944,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
             self.assert_no_form_errors(response)
             self.check_positive(user, params)
-        except:
+        except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with_obj
@@ -5962,7 +5967,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             self.check_negative(user, params, response)
             error_message = self.get_error_message('max_length', self.field_password,)
             self.assertEqual(self.get_all_form_errors(response), error_message)
-        except:
+        except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with_obj
@@ -5984,7 +5989,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message('wrong_value', self.field_password,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
-            except:
+            except Exception:
                 self.errors_append(text='New password value "%s"' % value)
 
     @only_with_obj
@@ -6005,7 +6010,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             self.check_negative(user, params, response)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_old_password', self.field_old_password))
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with_obj
@@ -6037,7 +6042,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                     self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.check_positive(user, params)
-            except:
+            except Exception:
                 self.errors_append(text='Old password value "%s"' % old_password)
 
     @only_with('password_similar_fields')
@@ -6074,7 +6079,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                     self.check_negative(user, params, response)
                     error_message = self.get_error_message('wrong_password_similar', self.field_password, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                except:
+                except Exception:
                     self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' % (password_value, field, value))
 
 
@@ -6166,7 +6171,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             user.refresh_from_db()
             self.assertTrue(user.check_password(self.current_password), 'Password was changed after request code')
             self.check_after_password_change_request(locals())
-        except:
+        except Exception:
             self.errors_append()
 
     def test_request_reset_password_empty_required_negative(self):
@@ -6181,7 +6186,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                 response = self.client.post(
                     self.get_url(self.url_reset_password_request), params, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('required', field))
-            except:
+            except Exception:
                 self.errors_append(text='For empty field %s' % field)
 
     def test_request_reset_password_without_required_negative(self):
@@ -6196,7 +6201,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                 response = self.client.post(
                     self.get_url(self.url_reset_password_request), params, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('required', field))
-            except:
+            except Exception:
                 self.errors_append(text='Without field %s' % field)
 
     @only_with('username_is_email')
@@ -6213,7 +6218,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                     self.get_url(self.url_reset_password_request), params, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response),
                                  self.get_error_message('wrong_value_email', self.field_username))
-            except:
+            except Exception:
                 self.errors_append(text='For email %s' % value)
 
     def test_request_reset_password_username_not_exists_wo_captcha_negative(self):
@@ -6230,7 +6235,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assert_mail_count(mail.outbox, 0)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('with_captcha')
@@ -6247,7 +6252,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('user_not_exists', self.field_username))
             self.assert_mail_count(mail.outbox, 0)
-        except:
+        except Exception:
             self.errors_append()
 
     def test_request_reset_password_inactive_user_wo_captcha_negative(self):
@@ -6265,7 +6270,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assert_mail_count(mail.outbox, 0)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('with_captcha')
@@ -6284,7 +6289,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('inactive_user', self.field_username))
             self.assert_mail_count(mail.outbox, 0)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('with_captcha')
@@ -6306,7 +6311,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message('wrong_captcha', 'captcha'))
                     self.assert_mail_count(mail.outbox, 0)
-                except:
+                except Exception:
                     self.errors_append()
 
     def test_reset_password_positive(self):
@@ -6328,7 +6333,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                 self.assertTrue(user.check_password(params[self.field_password]),
                                 'Password not changed to "%s"' % params[self.field_password])
                 self.check_after_password_change(locals())
-            except:
+            except Exception:
                 self.errors_append(text='New password value "%s"' % value)
 
     def test_reset_password_twice_negative(self):
@@ -6355,7 +6360,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assertFalse(self.obj.objects.get(pk=user.pk).check_password(value2),
                              'Password was changed twice by one link')
             self.check_after_second_change(locals())
-        except:
+        except Exception:
             self.errors_append()
 
     def test_reset_password_empty_required_negative(self):
@@ -6376,7 +6381,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                                  self.get_error_message('required', field))
                 new_user = self.obj.objects.get(pk=user.pk)
                 self.assert_objects_equal(new_user, user)
-            except:
+            except Exception:
                 self.errors_append(text='For empty field %s' % field)
 
     def test_reset_password_without_required_negative(self):
@@ -6397,7 +6402,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                                  self.get_error_message('required', field))
                 new_user = self.obj.objects.get(pk=user.pk)
                 self.assert_objects_equal(new_user, user)
-            except:
+            except Exception:
                 self.errors_append(text='For empty field %s' % field)
 
     def test_reset_password_different_new_passwords_negative(self):
@@ -6416,7 +6421,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assert_objects_equal(new_user, user)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_password_repeat', self.field_password_repeat))
-        except:
+        except Exception:
             self.errors_append(text='New passwords "%s", "%s"' %
                                (params[self.field_password], params[self.field_password_repeat]))
 
@@ -6440,7 +6445,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assert_objects_equal(new_user, user)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('min_length', self.field_password))
-        except:
+        except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with('password_min_length')
@@ -6463,7 +6468,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assertTrue(new_user.check_password(params[self.field_password]),
                             'Password not changed to "%s"' % params[self.field_password])
             self.check_after_password_change(locals())
-        except:
+        except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with('password_max_length')
@@ -6486,7 +6491,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assert_objects_equal(new_user, user)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('max_length', self.field_password))
-        except:
+        except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with('password_max_length')
@@ -6509,7 +6514,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assertTrue(new_user.check_password(params[self.field_password]),
                             'Password not changed to "%s"' % params[self.field_password])
             self.check_after_password_change(locals())
-        except:
+        except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with('password_wrong_values')
@@ -6530,7 +6535,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                 self.assert_objects_equal(new_user, user)
                 self.assertEqual(self.get_all_form_errors(response),
                                  self.get_error_message('wrong_value', self.field_password))
-            except:
+            except Exception:
                 self.errors_append(text='New password "%s"' % value)
 
     def test_reset_password_by_get_positive(self):
@@ -6545,7 +6550,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                                        params, follow=True, **self.additional_params)
             new_user = self.obj.objects.get(pk=user.pk)
             self.assert_objects_equal(new_user, user)
-        except:
+        except Exception:
             self.errors_append()
 
     def test_reset_password_inactive_user_negative(self):
@@ -6564,7 +6569,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assert_objects_equal(new_user, user)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('inactive_user', self.field_password))
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('code_lifedays')
@@ -6580,7 +6585,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             response = self.client.post(self.get_url(self.url_reset_password, codes),
                                         self.password_params, **self.additional_params)
             self.assertEqual(response.status_code, 404)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('code_lifedays')
@@ -6604,7 +6609,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.assertTrue(new_user.check_password(params[self.field_password]),
                             'Password not changed to "%s"' % params[self.field_password])
             self.check_after_password_change(locals())
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('password_similar_fields')
@@ -6642,7 +6647,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                     self.assert_objects_equal(new_user, user)
                     error_message = self.get_error_message('wrong_password_similar', self.field_password, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
-                except:
+                except Exception:
                     self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' % (password_value, field, value))
 
 
@@ -6776,7 +6781,7 @@ class LoginTestMixIn(object):
                 self.check_is_authenticated()
                 self.check_response_on_positive(response)
                 self.check_blacklist_on_positive()
-            except:
+            except Exception:
                 self.errors_append(text='User with password "%s"' % value)
 
     def test_login_wrong_password_negative(self):
@@ -6794,7 +6799,7 @@ class LoginTestMixIn(object):
             self.check_is_not_authenticated()
             self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response)
-        except:
+        except Exception:
             self.errors_append()
 
     def test_login_wrong_login_negative(self):
@@ -6811,7 +6816,7 @@ class LoginTestMixIn(object):
             self.assertEqual(self.get_all_form_errors(response), message)
             self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('login_retries')
@@ -6830,7 +6835,7 @@ class LoginTestMixIn(object):
             self.assertEqual(self.get_all_form_errors(response), message)
             self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response, False)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('blacklist_model')
@@ -6851,7 +6856,7 @@ class LoginTestMixIn(object):
             self.check_response_on_positive(response)
             self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
                              'Blacklist object not deleted after successful login')
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('blacklist_model')
@@ -6872,7 +6877,7 @@ class LoginTestMixIn(object):
             self.check_is_not_authenticated()
             self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response)
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('blacklist_model')
@@ -6896,7 +6901,7 @@ class LoginTestMixIn(object):
                     self.check_is_not_authenticated()
                     self.check_response_on_negative(response)
                     self.check_blacklist_on_negative(response)
-                except:
+                except Exception:
                     self.errors_append(text='For field %s value %s' % (field, repr(value)))
 
     def test_login_inactive_user_negative(self):
@@ -6914,7 +6919,7 @@ class LoginTestMixIn(object):
             self.check_is_not_authenticated()
             self.check_response_on_negative(response)
             self.check_blacklist_on_positive()
-        except:
+        except Exception:
             self.errors_append()
 
     def test_login_wrong_password_inactive_user_negative(self):
@@ -6934,7 +6939,7 @@ class LoginTestMixIn(object):
             self.check_is_not_authenticated()
             self.check_response_on_negative(response)
             self.check_blacklist_on_negative(response)
-        except:
+        except Exception:
             self.errors_append()
 
     def test_login_empty_fields_negative(self):
@@ -6955,7 +6960,7 @@ class LoginTestMixIn(object):
                 self.check_is_not_authenticated()
                 self.check_response_on_negative(response)
                 self.check_blacklist_on_negative(response)
-            except:
+            except Exception:
                 self.errors_append(text="For empty field %s" % field)
 
     def test_login_without_fields_negative(self):
@@ -6976,7 +6981,7 @@ class LoginTestMixIn(object):
                 self.check_is_not_authenticated()
                 self.check_response_on_negative(response)
                 self.check_blacklist_on_negative(response)
-            except:
+            except Exception:
                 self.errors_append(text="For empty field %s" % field)
 
     @only_with('urls_for_redirect')
@@ -6993,7 +6998,7 @@ class LoginTestMixIn(object):
             self.check_is_authenticated()
             self.assertRedirects(response, self.get_domain() + next_url)
             self.check_blacklist_on_positive()
-        except:
+        except Exception:
             self.errors_append()
 
     @only_with('urls_for_redirect')
@@ -7011,7 +7016,7 @@ class LoginTestMixIn(object):
             self.check_is_authenticated()
             self.assertRedirects(response, redirect_url)
             self.check_blacklist_on_positive()
-        except:
+        except Exception:
             self.errors_append()
 
     def test_login_with_redirect_with_host_negative(self):
@@ -7031,7 +7036,7 @@ class LoginTestMixIn(object):
             self.check_is_authenticated()
             self.check_blacklist_on_positive()
             self.assertEqual(response.redirect_chain, expected_redirects)
-        except:
+        except Exception:
             self.errors_append()
 
     def test_open_login_page_already_logged_positive(self):
@@ -7046,7 +7051,7 @@ class LoginTestMixIn(object):
             self.check_is_authenticated()
             self.check_blacklist_on_positive()
             self.check_response_on_positive(response)
-        except:
+        except Exception:
             self.errors_append()
 
 
@@ -7080,7 +7085,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                 conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
                 try:
                     cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
-                except:
+                except Exception:
                     cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
                     cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
             conn.close()
@@ -7156,7 +7161,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                 for table in tables:
                     try:
                         cursor.execute("DELETE FROM %s" % table)
-                    except:
+                    except Exception:
                         transaction.rollback_unless_managed(using=db)
                     else:
                         transaction.commit_unless_managed(using=db)
@@ -7251,7 +7256,7 @@ class CustomTestCaseNew(CustomTestCase):
                 conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
                 try:
                     cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
-                except:
+                except Exception:
                     cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
                     cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
             conn.close()
