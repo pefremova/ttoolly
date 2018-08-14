@@ -756,40 +756,49 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                                                                                                 'OneToOneField',
                                                                                                                 'OneToOneRel',
                                                                                                                 'ManyToManyField')]
+
+        form_to_field_map = self.get_related_names(obj)
+        field_to_form_map = {v: k for k, v in iter(form_to_field_map.items()) if v != k}
+        form_related_names = [field_to_form_map.get(name, name) for name in object_related_field_names]
+
         fields_for_check = set(params.keys()).intersection(object_fields)
         fields_for_check.update([k.split('-')[0] for k in params.keys() if k.split('-')[0]
-                                 in object_related_field_names])
+                                 in form_related_names])
         fields_for_check = fields_for_check.difference(exclude)
-        obj_related_objects = self.get_related_names(obj)
-        one_to_one_fields = [name for name in object_related_field_names if
-                             fields_map[name].__class__.__name__ == 'OneToOneField' or
-                             getattr(fields_map[name], 'field', None) and
-                             fields_map[name].field.__class__.__name__ == 'OneToOneField']
+
+        object_one_to_one_field_names = [name for name in object_related_field_names if
+                                         fields_map[name].__class__.__name__ == 'OneToOneField' or
+                                         getattr(fields_map[name], 'field', None) and
+                                         fields_map[name].field.__class__.__name__ == 'OneToOneField']
+        form_one_to_one_names = [field_to_form_map.get(name, name) for name in object_one_to_one_field_names]
+        form_to_object_map = {field_to_form_map.get(name, name): fields_map[name].get_accessor_name() for name in object_related_field_names if
+                              hasattr(fields_map[name], 'get_accessor_name')}
 
         for field in fields_for_check:
-            # TODO: refactor me
-            if field in one_to_one_fields:
+            name_on_form = field
+            name_in_field = form_to_field_map.get(field, field)
+            name_in_object = form_to_object_map.get(field, field)
 
-                cls = fields_map[field]
+            # TODO: refactor me
+            if name_on_form in form_one_to_one_names:
+                cls = fields_map[name_in_field]
+                obj_field_in_related_query = self.get_related_field_name(cls)
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
-                """OneToOneField.related_query_name() или OneToOneRel.remote_field.name или OneToOneRel.field.name"""
-                value = _model.objects.filter(**{cls.related_query_name and cls.related_query_name()
-                                                 or getattr(cls, 'remote_field', None) and cls.remote_field.name
-                                                 or cls.field.name: obj})
+
+                value = _model.objects.filter(**{obj_field_in_related_query: obj})
                 if value:
                     value = value[0]
                 else:
                     value = None
             else:
-                value = getattr(obj, field)
-            if value is not None and field in obj_related_objects.keys() or field in obj_related_objects.values() and \
+                value = getattr(obj, name_in_object)
+            if (value is not None and name_on_form in form_to_field_map.keys()or name_in_field in field_to_form_map.keys() and
                 (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
-                 set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase'])):
-
-                if hasattr(params.get(field, None), '__len__'):
-                    count_for_check = len(params[field])
+                 set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase']))):
+                if hasattr(params.get(name_on_form, None), '__len__'):
+                    count_for_check = len(params[name_on_form])
                 else:
-                    count_for_check = params.get('%s-TOTAL_FORMS' % obj_related_objects.get(field, field), None)
+                    count_for_check = params.get('%s-TOTAL_FORMS' % name_on_form, None)
                 if count_for_check is not None and value.__class__.__name__ == 'RelatedManager':
                     try:
                         self.assertEqual(value.all().count(), count_for_check)
@@ -800,18 +809,19 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 for i, el in enumerate(value.all().order_by('pk')
                                        if value.__class__.__name__ in ('RelatedManager', 'QuerySet')
                                        else [value, ]):
-                    _params = dict([(k.replace('%s-%d-' % (obj_related_objects.get(field, field), i), ''),
+
+                    _params = dict([(k.replace('%s-%d-' % (name_on_form, i), ''),
                                      params[k]) for k in params.keys() if
-                                    k.startswith('%s-%d-' % (obj_related_objects.get(field, field), i))
-                                    and k not in exclude and re.sub('\-\d+\-', '-_-', k) not in exclude])
-                    if (not _params and params.get(field, None) and isinstance(params[field], (list, tuple)) and
-                            all([isinstance(value_el, FILE_TYPES + (ContentFile,)) for value_el in params[field]])):
+                                    k.startswith('%s-%d-' % (name_on_form, i)) and
+                                    k not in exclude and re.sub('\-\d+\-', '-_-', k) not in exclude])
+                    if (not _params and params.get(name_on_form, None) and isinstance(params[name_on_form], (list, tuple)) and
+                            all([isinstance(value_el, FILE_TYPES + (ContentFile,)) for value_el in params[name_on_form]])):
                         """Try check multiple file field.
                         But you should redefine assert_object_fields in test with params like `field-0-file_obj`"""
                         el_file_fields = [f.name for f in el._meta.fields if
                                           set([m.__name__ for m in f.__class__.__mro__]).intersection(['FileField', 'ImageField'])]
                         if len(el_file_fields) == 1:
-                            _params = {el_file_fields[0]: params[field][i] if len(params[field]) > i else ''}
+                            _params = {el_file_fields[0]: params[name_on_form][i] if len(params[name_on_form]) > i else ''}
                     try:
                         self.assert_object_fields(el, _params)
                     except Exception as e:
@@ -819,12 +829,16 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                                          else field, '\n  '.join(force_text(e).splitlines())))
                 continue
 
-            params_value = params[field]
+            params_value = params[name_on_form]
             value, params_value = self.get_params_according_to_type(value, params_value)
 
             try:
                 self.assertEqual(value, params_value)
             except AssertionError:
+                if isinstance(value, basestring):
+                    value = value if len(str(value)) <= 1000 else str(value)[:1000] + '...'
+                if isinstance(params_value, basestring):
+                    params_value = params_value if len(str(params_value)) <= 1000 else str(params_value)[:1000] + '...'
                 text = '[%s]: %s != %s' % (force_text(field), force_text(repr(value)), force_text(repr(params_value)))
                 local_errors.append(text)
 
@@ -1239,6 +1253,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                     get_all_related_objects(model)])
         obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
+
+    def get_related_field_name(self, field):
+        """OneToOneField.related_query_name() или OneToOneRel.remote_field.name или OneToOneRel.field.name"""
+        return (field.related_query_name and field.related_query_name() or
+                getattr(field, 'remote_field', None) and field.remote_field.name or
+                field.field.name)
 
     def get_value_for_compare(self, obj, field):
         # Because python2 return False on any exception, but python3 only on AttributeError.
@@ -2433,7 +2453,7 @@ class FormAddTestMixIn(FormTestMixIn):
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
-                                   (field, current_length, params[field]))
+                                   (field, current_length, params[field] if len(str(params[field])) <= 1000 else str(params[field])[:1000] + '...'))
 
     @only_with_obj
     @only_with('min_fields_length')
@@ -4115,7 +4135,7 @@ class FormEditTestMixIn(FormTestMixIn):
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
-                                   (field, current_length, params[field]))
+                                   (field, current_length, params[field] if len(str(params[field])) <= 1000 else str(params[field])[:1000] + '...'))
 
     @only_with_obj
     @only_with('min_fields_length')

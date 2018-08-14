@@ -9,7 +9,7 @@ def readme():
 
 
 setup(name='ttoolly',
-      version='0.26.6',
+      version='0.26.7',
       description="Django test tools",
       long_description=readme(),
       author="Polina Efremova",
