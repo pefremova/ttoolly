@@ -1252,7 +1252,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         obj_related_objects = dict([(el.get_accessor_name(), getattr(el, 'var_name', el.get_accessor_name())) for el in
                                     get_all_related_objects(model)])
-        if isinstance(model, self.obj) or model == self.obj:
+
+        if not(getattr(self, 'obj', None)) or isinstance(model, self.obj) or model == self.obj:
             obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
 
