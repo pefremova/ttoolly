@@ -792,9 +792,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     value = None
             else:
                 value = getattr(obj, name_in_object)
-            if (value is not None and name_on_form in form_to_field_map.keys()or name_in_field in field_to_form_map.keys() and
-                (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
-                 set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase']))):
+            if (value is not None and name_on_form in form_to_field_map.keys() or name_in_field in field_to_form_map.keys() and
+                (hasattr(params.get(name_on_form, []), '__len__') and  # params value is list or not exists (inline form)
+                 (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
+                  set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase'])))):
                 if hasattr(params.get(name_on_form, None), '__len__'):
                     count_for_check = len(params[name_on_form])
                 else:
@@ -1251,7 +1252,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         obj_related_objects = dict([(el.get_accessor_name(), getattr(el, 'var_name', el.get_accessor_name())) for el in
                                     get_all_related_objects(model)])
-        obj_related_objects.update(getattr(self, 'related_names', {}))
+        if isinstance(model, self.obj) or model == self.obj:
+            obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
 
     def get_related_field_name(self, field):
