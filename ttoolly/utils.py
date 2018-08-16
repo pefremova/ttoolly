@@ -143,7 +143,7 @@ def generate_random_obj(obj_model, additional_params=None, filename=None, with_s
         params[f.name] = get_value_for_obj_field(f, filename)
     params.update(additional_params)
     if with_save:
-        return obj_model.objects.create(**params)
+        return obj_model._base_manager.create(**params)
     return obj_model(**params)
 
 
@@ -335,7 +335,7 @@ def get_captcha_codes_supercaptcha():
 
 def get_captcha_codes_simplecaptcha():
     from captcha.models import CaptchaStore
-    captchas = CaptchaStore.objects.all()
+    captchas = CaptchaStore._base_manager.all()
     if captchas:
         captcha = captchas[0]
         captcha_form_prefix = getattr(settings, 'TEST_CAPTCHA_FORM_PREFIX', '')
@@ -736,7 +736,7 @@ def get_value_for_obj_field(f, filename=None):
         if related_model == f.model:
             # fix recursion
             return None
-        objects = related_model.objects.all()
+        objects = related_model._base_manager.all()
         if objects.count() > 0:
             return objects[random.randint(0, objects.count() - 1)] if objects.count() > 1 else objects[0]
         else:
@@ -1057,7 +1057,7 @@ def prepare_custom_file_for_tests(file_path, filename=''):
 def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
 
     mro_names = [m.__name__ for m in model_name._meta.get_field(field).__class__.__mro__]
-    for obj in model_name.objects.all():
+    for obj in model_name._base_manager.all():
         file_from_obj = getattr(obj, field, None)
         if file_from_obj:
             full_path = os.path.join(settings.MEDIA_ROOT, file_from_obj.path)
