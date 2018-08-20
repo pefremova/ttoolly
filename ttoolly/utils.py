@@ -143,7 +143,7 @@ def generate_random_obj(obj_model, additional_params=None, filename=None, with_s
         params[f.name] = get_value_for_obj_field(f, filename)
     params.update(additional_params)
     if with_save:
-        return obj_model._base_manager.create(**params)
+        return obj_model.objects.create(**params)
     return obj_model(**params)
 
 

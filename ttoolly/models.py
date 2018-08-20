@@ -6702,15 +6702,15 @@ class LoginTestMixIn(object):
 
     def check_blacklist_on_positive(self):
         if self.blacklist_model:
-            self.assertEqual(self.blacklist_model._base_manager.filter(host='127.0.0.1').count(), 0,
-                             '%s blacklist objects created after valid login' % self.blacklist_model._base_manager.filter(host='127.0.0.1').count())
+            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
+                             '%s blacklist objects created after valid login' % self.blacklist_model.objects.filter(host='127.0.0.1').count())
 
     def check_blacklist_on_negative(self, response, captcha_on_form=True):
         # TODO: login_retries
         if self.blacklist_model:
-            self.assertEqual(self.blacklist_model._base_manager.filter(host='127.0.0.1').count(), 1,
+            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 1,
                              '%s blacklist objects created after invalid login, expected 1' %
-                             self.blacklist_model._base_manager.filter(host='127.0.0.1').count())
+                             self.blacklist_model.objects.filter(host='127.0.0.1').count())
             fields = self.get_fields_list_from_response(response)['all_fields']
             if captcha_on_form:
                 self.assertTrue('captcha' in fields, 'No captcha fields on form')
@@ -6755,7 +6755,7 @@ class LoginTestMixIn(object):
 
     def clean_blacklist(self):
         if self.blacklist_model:
-            self.blacklist_model._base_manager.all().delete()
+            self.blacklist_model.objects.all().delete()
 
     def get_domain(self):
         return 'http://%s' % self.additional_params.get('HTTP_HOST', 'testserver')
@@ -6768,9 +6768,9 @@ class LoginTestMixIn(object):
         if count is None:
             count = self.login_retries or 1
         if count > 1:
-            self.blacklist_model._base_manager.create(host=host, count=count)
+            self.blacklist_model.objects.create(host=host, count=count)
         elif count == 1:
-            self.blacklist_model._base_manager.create(host=host)
+            self.blacklist_model.objects.create(host=host)
 
     def set_host_pre_blacklist(self, host):
         if self.login_retries:
@@ -6876,7 +6876,7 @@ class LoginTestMixIn(object):
             response = self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
             self.check_is_authenticated()
             self.check_response_on_positive(response)
-            self.assertEqual(self.blacklist_model._base_manager.filter(host='127.0.0.1').count(), 0,
+            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
                              'Blacklist object not deleted after successful login')
         except Exception:
             self.errors_append()
