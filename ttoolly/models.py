@@ -7165,7 +7165,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         if getattr(settings, 'TEST_CASE_NAME', '') != self.__class__.__name__:
             settings.TEST_CASE_NAME = self.__class__.__name__
             settings.FIRST_DB = True
-        ContentType._base_manager.clear_cache()
+        ContentType.objects.clear_cache()
         self.custom_fixture_setup()
         super(CustomTestCase, self)._pre_setup()
 

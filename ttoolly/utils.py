@@ -450,7 +450,8 @@ def get_fields_list_from_response(response, only_success=True):
         fields = list(form.fields.keys())
         visible_fields = set(fields).intersection([f.name for f in form.visible_fields()])
         hidden_fields = [f.name for f in form.hidden_fields()]
-        disabled_fields = [k for k, v in viewitems(form.fields) if v.widget.attrs.get('readonly', False)]
+        disabled_fields = [k for k, v in viewitems(form.fields) if getattr(v, 'disabled', False) or
+                           v.widget.attrs.get('readonly', False)]
         visible_fields = visible_fields.difference(disabled_fields)
         if form.prefix:
             fields = ['%s-%s' % (form.prefix, field) for field in fields]
@@ -485,23 +486,26 @@ def get_fields_list_from_response(response, only_success=True):
         forms.extend(response.context['form_set'])
     except KeyError:
         pass
-
     try:
         form = response.context['adminform'].form
         _fields = []
-
         for f in response.context['adminform'].fieldsets:
             for ff in f[1]['fields']:
                 if type(ff) in (list, tuple):
                     _fields.extend(ff)
                 else:
                     _fields.append(ff)
+
         fields.extend(_fields)
+        _disabled_fields = list(set(response.context['adminform'].readonly_fields).intersection(_fields))
         _visible_fields = [f.name for f in form.visible_fields()]
+        _disabled_fields.extend([k for k, v in viewitems(form.fields) if getattr(v, 'disabled', False) or
+                                 v.widget.attrs.get('readonly', False)])
+        _visible_fields = set(_visible_fields).difference(_disabled_fields)
         visible_fields.extend(set(_fields).intersection(_visible_fields))
         _hidden_fields = [f.name for f in form.hidden_fields()]
         hidden_fields.extend(_hidden_fields)
-        disabled_fields.extend(set(_fields).difference(_visible_fields).difference(_hidden_fields))
+        disabled_fields.extend(_disabled_fields)
     except KeyError:
         pass
 
@@ -547,10 +551,13 @@ def get_fields_list_from_response(response, only_success=True):
             for number, form in enumerate(fs.formset.forms):
                 _fields = [fs_name + '-%d-' % number + f for f in viewkeys(form.fields)]
                 _visible_fields = [fs_name + '-%d-' % number + f.name for f in form.visible_fields()]
+                _disabled_fields = [k for k, v in viewitems(form.fields) if getattr(v, 'disabled', False) or
+                                    v.widget.attrs.get('readonly', False)]
+                _visible_fields = set(_visible_fields).difference(_disabled_fields)
                 _hidden_fields = [fs_name + '-%d-' % number + f.name for f in form.hidden_fields()]
                 fields.extend(_fields)
                 visible_fields.extend(set(_fields).intersection(_visible_fields))
-                disabled_fields.extend(set(_fields).difference(_visible_fields).difference(_hidden_fields))
+                disabled_fields.extend(_disabled_fields)
                 hidden_fields.extend(_hidden_fields)
     except KeyError:
         pass
