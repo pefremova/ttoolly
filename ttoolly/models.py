@@ -7103,6 +7103,9 @@ class LoginTestMixIn(object):
             self.errors_append()
 
 
+base_db_initialized = False
+
+
 class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
 
     multi_db = True
@@ -7111,9 +7114,9 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
     def _fixture_setup(self):
 
         databases = self._databases_names(include_mirrors=False)
-
-        if settings.FIRST_DB:
-            settings.FIRST_DB = False
+        global base_db_initialized
+        if not base_db_initialized:
+            base_db_initialized = True
             for db in databases:
                 call_command('flush', verbosity=0, interactive=False, database=db)
 
@@ -7155,7 +7158,14 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             cursor = conn.cursor()
             conn.connection.rollback()
             conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
+            is_old_postgres = cursor.connection.server_version < 90200  # < 9.2.0
+            pid_name = 'procpid' if is_old_postgres else 'pid'
+            disconnect_sql = '''SELECT pg_terminate_backend(pg_stat_activity.{0})
+                            FROM pg_stat_activity
+                            WHERE pg_stat_activity.datname = %s
+                              AND {0} <> pg_backend_pid();'''.format(pid_name)
+            cursor.execute(disconnect_sql, (db_name + '_',))
+            cursor.execute('DROP DATABASE "%s";' % (db_name + '_',))
 
     def _post_teardown(self):
         self.custom_fixture_teardown()
@@ -7164,7 +7174,8 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
     def _pre_setup(self):
         if getattr(settings, 'TEST_CASE_NAME', '') != self.__class__.__name__:
             settings.TEST_CASE_NAME = self.__class__.__name__
-            settings.FIRST_DB = True
+            global base_db_initialized
+            base_db_initialized = False
         ContentType.objects.clear_cache()
         self.custom_fixture_setup()
         super(CustomTestCase, self)._pre_setup()
@@ -7172,7 +7183,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
     def custom_fixture_setup(self, **options):
         verbosity = int(options.get('verbosity', 1))
         for db in self._databases_names(include_mirrors=False):
-            if hasattr(self, 'fixtures_for_custom_db') and settings.FIRST_DB:
+            if hasattr(self, 'fixtures_for_custom_db') and not base_db_initialized:
                 fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
                 sequence_sql = []
