@@ -1430,6 +1430,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 (field in (getattr(self, 'multiselect_fields_add', ()) or ())) or
                 (field in (getattr(self, 'multiselect_fields_edit', ()) or ())))
 
+    def pop_field_from_params(self, params, field):
+        params.pop(field, None)
+
     def savepoint_rollback(self, sp):
         if isinstance(self, TestCase):
             transaction.savepoint_rollback(sp)
@@ -2262,6 +2265,67 @@ class FormAddTestMixIn(FormTestMixIn):
                                        (field, force_text(group)))
 
     @only_with_obj
+    def test_add_object_without_not_required_fields_positive(self):
+        """
+        @note: Create object: send only required fields
+        """
+        initial_obj_count = self.get_obj_manager.count()
+        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+        params = self.deepcopy(self.default_params_add)
+        required_fields = self.required_fields_add + \
+            self._get_required_from_related(self.required_related_fields_add)
+        self.update_params(params)
+        new_object = None
+        for field in set(viewkeys(params)).difference(required_fields):
+            self.pop_field_from_params(params, field)
+        for field in required_fields:
+            params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
+                self.get_value_for_field(None, field)
+        self.update_captcha_params(self.get_url(self.url_add), params)
+        try:
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
+            exclude = getattr(self, 'exclude_from_check_add', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except Exception:
+            self.errors_append()
+
+        """если хотя бы одно поле из группы заполнено, объект создается"""
+        for group in self.required_related_fields_add:
+            _params = self.deepcopy(self.default_params_add)
+            for field in group:
+                self.pop_field_from_params(_params, field)
+            for field in group:
+                """if unique fields"""
+                mail.outbox = []
+                if new_object:
+                    self.get_obj_manager.filter(pk=new_object.pk).delete()
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+                params = self.deepcopy(_params)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_add), params)
+                params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
+                    self.get_value_for_field(None, field)
+                try:
+                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                                **self.additional_params)
+                    self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_add,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                    self.assert_objects_count_on_add(True, initial_obj_count)
+                    new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
+                    exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
+                    self.assert_object_fields(new_object, params, exclude=exclude)
+                except Exception:
+                    self.errors_append(text='For filled field %s from group "%s"' %
+                                       (field, force_text(group)))
+
+    @only_with_obj
     def test_add_object_empty_required_fields_negative(self):
         """
         @note: Try create object: empty required fields
@@ -2320,7 +2384,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
-                params.pop(field)
+                self.pop_field_from_params(params, field)
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 error_message = self.get_error_message(message_type, field)
@@ -2338,7 +2402,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             for field in group:
-                params.pop(field)
+                self.pop_field_from_params(params, field)
             self.update_captcha_params(self.get_url(self.url_add), params)
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -3855,6 +3919,62 @@ class FormEditTestMixIn(FormTestMixIn):
                     mail.outbox = []
 
     @only_with_obj
+    def test_edit_object_without_not_required_fields_positive(self):
+        """
+        @note: Edit object: send only required fields
+        """
+        obj_for_edit = self.get_obj_for_edit()
+        params = self.deepcopy(self.default_params_edit)
+        self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+        required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
+        self.update_params(params)
+        for field in set(viewkeys(params)).difference(required_fields):
+            self.pop_field_from_params(params, field)
+        for field in required_fields:
+            params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
+                self.get_value_for_field(None, field)
+        try:
+            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                        params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_edit,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+            new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+            exclude = getattr(self, 'exclude_from_check_edit', [])
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except Exception:
+            self.errors_append()
+        finally:
+            mail.outbox = []
+
+        """если хотя бы одно поле из группы заполнено, объект редактируется"""
+        for group in self.required_related_fields_edit:
+            obj_for_edit = self.get_obj_for_edit()
+            _params = self.deepcopy(self.default_params_edit)
+            for field in group:
+                self.pop_field_from_params(_params, field)
+            for field in group:
+                params = self.deepcopy(_params)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+                params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
+                    self.get_value_for_field(None, field)
+                try:
+                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
+                                                params, follow=True, **self.additional_params)
+                    self.assert_no_form_errors(response)
+                    self.assertEqual(response.status_code, self.status_code_success_edit,
+                                     'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+                    new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                    self.assert_object_fields(new_object, params, exclude=exclude)
+                except Exception:
+                    self.errors_append(text='For filled field %s from group "%s"' %
+                                       (field, force_text(group)))
+                finally:
+                    mail.outbox = []
+
+    @only_with_obj
     def test_edit_object_empty_required_fields_negative(self):
         """
         @note: Try edit object: empty required fields
@@ -3915,7 +4035,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
-                params.pop(field)
+                self.pop_field_from_params(params, field)
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
@@ -3935,7 +4055,7 @@ class FormEditTestMixIn(FormTestMixIn):
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             for field in group:
-                params.pop(field)
+                self.pop_field_from_params(params, field)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.id,)),
@@ -5898,7 +6018,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 params = self.deepcopy(self.password_params)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
-                params.pop(field, None)
+                self.pop_field_from_params(params, field)
                 response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.check_negative(user, params, response)
@@ -6243,7 +6363,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         for field in self.request_fields:
             params = self.deepcopy(self.request_password_params)
             self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
-            params.pop(field)
+            self.pop_field_from_params(params, field)
             try:
                 response = self.client.post(
                     self.get_url(self.url_reset_password_request), params, **self.additional_params)
@@ -6440,7 +6560,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             user.set_password(self.current_password)
             user.save()
             params = self.deepcopy(self.password_params)
-            params.pop(field)
+            self.pop_field_from_params(params, field)
             codes = self.get_codes(user)
             try:
                 response = self.client.post(self.get_url(self.url_reset_password, codes),
@@ -7020,7 +7140,7 @@ class LoginTestMixIn(object):
             self.client = self.client_class()
             params = self.deepcopy(_params)
             self.add_csrf(params)
-            params.pop(field)
+            self.pop_field_from_params(params, field)
             self.clean_blacklist()
             self.set_host_pre_blacklist(host='127.0.0.1')
             try:
