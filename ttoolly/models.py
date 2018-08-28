@@ -3495,11 +3495,11 @@ class FormAddTestMixIn(FormTestMixIn):
                 extensions = (get_randname(3, 'wd'), '')
             extensions += tuple([e.upper() for e in extensions if e])
             for ext in extensions:
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 sp = transaction.savepoint()
                 mail.outbox = []
                 if new_object:
                     self.get_obj_manager.filter(pk=new_object.pk).delete()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 filename = '.'.join([el for el in ['test', ext] if el])
                 f = self.get_random_file(field, filename=filename)
                 params = self.deepcopy(self.default_params_add)
