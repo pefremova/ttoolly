@@ -3893,12 +3893,11 @@ class FormEditTestMixIn(FormTestMixIn):
 
         """если хотя бы одно поле из группы заполнено, объект редактируется"""
         for group in self.required_related_fields_edit:
-            obj_for_edit = self.get_obj_for_edit()
-            _params = self.deepcopy(self.default_params_edit)
             for field in group:
-                self.set_empty_value_for_field(_params, field)
-            for field in group:
-                params = self.deepcopy(_params)
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                for f in group:
+                    self.set_empty_value_for_field(params, f)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
@@ -3949,12 +3948,11 @@ class FormEditTestMixIn(FormTestMixIn):
 
         """если хотя бы одно поле из группы заполнено, объект редактируется"""
         for group in self.required_related_fields_edit:
-            obj_for_edit = self.get_obj_for_edit()
-            _params = self.deepcopy(self.default_params_edit)
             for field in group:
-                self.pop_field_from_params(_params, field)
-            for field in group:
-                params = self.deepcopy(_params)
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                for f in group:
+                    self.pop_field_from_params(params, f)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
