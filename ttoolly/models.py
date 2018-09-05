@@ -2218,8 +2218,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
-            params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                self.get_value_for_field(None, field)
+            self.fill_all_fields(required_fields, params)
         self.update_captcha_params(self.get_url(self.url_add), params)
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2248,8 +2247,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(_params)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
-                params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                    self.get_value_for_field(None, field)
+                self.fill_all_fields((field,), params)
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
@@ -2279,8 +2277,7 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
         for field in required_fields:
-            params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                self.get_value_for_field(None, field)
+            self.fill_all_fields(required_fields, params)
         self.update_captcha_params(self.get_url(self.url_add), params)
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2309,8 +2306,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(_params)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
-                params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                    self.get_value_for_field(None, field)
+                self.fill_all_fields((field,), params)
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
@@ -3875,8 +3871,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
-            params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                self.get_value_for_field(None, field)
+            self.fill_all_fields(required_fields, params)
         try:
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
@@ -3900,8 +3895,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.set_empty_value_for_field(params, f)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
-                params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                    self.get_value_for_field(None, field)
+                self.fill_all_fields((field,), params)
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
@@ -3930,8 +3924,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
         for field in required_fields:
-            params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                self.get_value_for_field(None, field)
+            self.fill_all_fields(required_fields, params)
         try:
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
@@ -3955,8 +3948,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.pop_field_from_params(params, f)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
-                params[field] = params[field] if params.get(field, None) not in (None, '', [], ()) else \
-                    self.get_value_for_field(None, field)
+                self.fill_all_fields((field,), params)
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
