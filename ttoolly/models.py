@@ -77,7 +77,6 @@ __all__ = ('ChangePasswordMixIn',
            'ResetPasswordMixIn',
            'Ring',
            'UserPermissionsTestMixIn',
-           'get_dirs_for_move',
            'only_with',
            'only_with_any_files_params',
            'only_with_files_params',
@@ -389,6 +388,7 @@ class Ring(cycle):
 
 
 class DictWithPassword(dict):
+
     def __init__(self, d, password1='password1', password2='password2'):
         self.password1 = password1
         self.password2 = password2
