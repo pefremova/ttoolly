@@ -250,7 +250,7 @@ def get_all_form_errors(response):
         pass
     try:
         forms.append(response.context_data['form'])
-    except KeyError:
+    except (KeyError, AttributeError):
         pass
 
     try:
@@ -403,7 +403,7 @@ def get_field_from_response(response, field_name):
         pass
     try:
         forms.append(response.context_data['form'])
-    except KeyError:
+    except (KeyError, AttributeError):
         pass
 
     for subcontext in response.context:
@@ -496,7 +496,7 @@ def get_fields_list_from_response(response, only_success=True):
         pass
     try:
         forms.append(response.context_data['form'])
-    except KeyError:
+    except (KeyError, AttributeError):
         pass
 
     try:
