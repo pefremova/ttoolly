@@ -4131,6 +4131,8 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(max_length_params)
+            for depended_field in fields_for_clean:
+                self.set_empty_value_for_field(params, depended_field)
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -4143,6 +4145,8 @@ class FormEditTestMixIn(FormTestMixIn):
             if file_fields:
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 self.update_params(params)
+                for depended_field in fields_for_clean:
+                    self.set_empty_value_for_field(params, depended_field)
                 for ff in file_fields:
                     self.set_empty_value_for_field(params, ff)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
