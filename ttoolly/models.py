@@ -6249,6 +6249,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     field_password_repeat = None
     mail_subject = ''
     mail_body = ''
+    mail_from = None
     password_max_length = 128
     password_min_length = 6
     password_params = None
@@ -6287,7 +6288,8 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         params['url_reset_password'] = self.get_url(self.url_reset_password, codes)
         self.assert_mail_content(m, {'to': [user.email],
                                      'subject': self.mail_subject,
-                                     'body': self.mail_body.format(**params)})
+                                     'body': self.mail_body.format(**params),
+                                     'from_email': self.mail_from or settings.DEFAULT_FROM_EMAIL})
 
     def check_after_password_change_request(self, params):
         pass
