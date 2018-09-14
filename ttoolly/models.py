@@ -2014,14 +2014,15 @@ class FormTestMixIn(GlobalTestMixIn):
             elif field_class_name == 'RelatedObject':
                 next_obj = getattr(field, 'related_model', field.model)
             else:
-                existing_values = set((self.get_obj_manager if next_obj == self.obj else next_obj._base_manager).all().values_list(name, flat=True))
+                existing_values = set((self.get_obj_manager if next_obj ==
+                                       self.obj else next_obj._base_manager).all().values_list(name, flat=True))
                 break
         if existing_values is None:
             existing_values = (self.get_obj_manager if next_obj == self.obj else next_obj._base_manager).all()
         if len(existing_values) > 1:
             return
         else:
-            generate_random_obj(next_obj)
+            self.generate_random_obj(next_obj)
 
     def prepare_depend_from_one_of(self, one_of):
         res = {}
