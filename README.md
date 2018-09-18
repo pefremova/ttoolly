@@ -32,6 +32,11 @@ __FormTestMixIn(GlobalTestMixIn)__
 | all_fields | default_params.keys() | Список всех полей, которые должны присутствовать на форме. | all_fields = ('field1', 'field2') | Проверка наличия полей на форме. Все поля заполнены (исключаются указанные в one_of_fields) |
 | all_fields_add | all_fields or default_params_add.keys() | Список всех полей, которые должны присутствовать на форме создания | all_fields_add = ('field1', 'field2') | |
 | all_fields_edit | all_fields or default_params_edit.keys() | Список всех полей, которые должны присутствовать на форме редактирования | all_fields_edit = ('field1', 'field2') | |
+| check_null | None | Включать ли проверки на NULL байт? | check_null = True | NULL байт в строковых полях и именах файлов | 
+| check_null_file_positive | False, если установлено check_null | check_null_file_positive = True | NULL байт вырезается из имен файлов при сохранении |
+| check_null_file_negative | True, если установлено check_null | check_null_file_negative = True | NULL байт в именах файлов. Ожидается сообщение об ошибке |
+| check_null_str_positive | False, если установлено check_null | check_null_str_positive = True | NULL байт вырезается из строковых полей при сохранении |
+| check_null_str_negative | True, если установлено check_null | check_null_str_negative = True | NULL байт в строковых полях. Ожидается сообщение об ошибке |
 | choice_fields | [] | Список select полей | choice_fields = ('field1', 'field2') | Невалидные значения в полях (строка, число) |
 | choice_fields_add | choice_fields | Список select полей на форме создания | choice_fields_add = ('field1', 'field2') ||
 | choice_fields_edit | choice_fields | Список select полей на форме редактирования | choice_fields_edit = ('field1', 'field2') ||

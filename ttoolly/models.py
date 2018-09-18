@@ -828,7 +828,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                         el_file_fields = [f.name for f in el._meta.fields if
                                           set([m.__name__ for m in f.__class__.__mro__]).intersection(['FileField', 'ImageField'])]
                         if len(el_file_fields) == 1:
-                            _params = {el_file_fields[0]: params[name_on_form][i] if len(params[name_on_form]) > i else ''}
+                            _params = {el_file_fields[0]: params[name_on_form]
+                                       [i] if len(params[name_on_form]) > i else ''}
                     try:
                         self.assert_object_fields(el, _params)
                     except Exception as e:
@@ -1065,6 +1066,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                           'wrong_password_similar': 'Введённый пароль слишком похож на {user_field_name}.' if
                           previous_locals.get('user_field_name', '') == '' else
                           'Введённый пароль слишком похож на {user_field_name}.'.format(**previous_locals),
+                          'with_null': 'Данные содержат запрещённый символ: ноль-байт.',
                           }
 
         messages_from_settings = getattr(settings, 'ERROR_MESSAGES', {})
@@ -1456,7 +1458,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
             existing_values = [default_value]
             try:
-                existing_values = [force_text(el) for el in self.get_obj_manager.values_list(key_for_get_values, flat=True)]
+                existing_values = [force_text(el)
+                                   for el in self.get_obj_manager.values_list(key_for_get_values, flat=True)]
                 # Нельзя использовать exists, т.к. будет падать для некоторых типов, например UUID
             except Exception:
                 # FIXME: self.obj does not exists or FieldError
@@ -1518,6 +1521,11 @@ class FormTestMixIn(GlobalTestMixIn):
     all_fields = None
     all_fields_add = None
     all_fields_edit = None
+    check_null = None
+    check_null_file_positive = None
+    check_null_file_negative = None
+    check_null_str_positive = None
+    check_null_str_negative = None
     choice_fields = []
     choice_fields_add = []
     choice_fields_edit = []
@@ -1610,6 +1618,7 @@ class FormTestMixIn(GlobalTestMixIn):
         self._prepare_digital_fields()
         self._prepare_email_fields()
         self._prepare_multiselect_fields()
+        self._prepare_null()
         self._prepare_one_of_fields()
         self.unique_fields_add = [el for el in viewkeys(self.all_unique) if
                                   any([field in self.all_fields_add for field in el])]
@@ -1712,7 +1721,8 @@ class FormTestMixIn(GlobalTestMixIn):
                                            .difference(self.choice_fields_add_with_value_in_error))
         if self.digital_fields_edit is None:
             if self.digital_fields is not None:
-                self.digital_fields_edit = set(copy(self.digital_fields)).intersection(viewkeys(self.default_params_edit))
+                self.digital_fields_edit = set(copy(self.digital_fields)).intersection(
+                    viewkeys(self.default_params_edit))
             else:
                 self.digital_fields_edit = (set([k for k, v in viewitems(self.default_params_edit) if
                                                  'FORMS' not in k and isinstance(v, (float, int))
@@ -1765,6 +1775,30 @@ class FormTestMixIn(GlobalTestMixIn):
             else:
                 self.multiselect_fields_edit = (set([k for k, v in viewitems(self.default_params_edit) if
                                                      'FORMS' not in k and isinstance(v, (list, tuple))]))
+
+    def _prepare_null(self):
+        if self.check_null:
+            if self.check_null_str_positive is None:
+                if self.check_null_str_negative is not None:
+                    self.check_null_str_positive = not(self.check_null_str_negative)
+                else:
+                    self.check_null_str_positive = False
+            if self.check_null_str_negative is None:
+                if self.check_null_str_positive is not None:
+                    self.check_null_str_negative = not(self.check_null_str_positive)
+                else:
+                    self.check_null_str_negative = True
+
+            if self.check_null_file_positive is None:
+                if self.check_null_file_negative is not None:
+                    self.check_null_file_positive = not(self.check_null_file_negative)
+                else:
+                    self.check_null_file_positive = False
+            if self.check_null_file_negative is None:
+                if self.check_null_file_positive is not None:
+                    self.check_null_file_negative = not(self.check_null_file_positive)
+                else:
+                    self.check_null_file_negative = True
 
     def _prepare_disabled_fields(self):
         if self.disabled_fields_add is None:
@@ -3711,6 +3745,234 @@ class FormAddTestMixIn(FormTestMixIn):
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
+
+    @only_with_obj
+    @only_with(('check_null', 'check_null_str_negative'))
+    def test_add_object_str_with_null_negative(self):
+        """
+        Create object with \\x00 in str fields
+        """
+        message_type = 'with_null'
+        other_fields = ['captcha', 'captcha_0', 'captcha_1']
+        for field_type_name in ('digital_fields_add', 'date_fields', 'datetime_fields', 'choice_fields_add',
+                                'choice_fields_add_with_value_in_error', 'disabled_fields_add', 'hidden_fields_add',
+                                'int_fields_add', 'multiselect_fields_add', 'not_str_fields',):
+            other_fields.extend(getattr(self, field_type_name, []) or [])
+        other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
+
+        fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
+        if not fields_for_check:
+            self.skipTest('No any string fields')
+        test_params = {}
+        for field in fields_for_check:
+            test_params[field] = '\x00' + self.get_value_for_field(None, field)[1:]
+
+        for field in fields_for_check:
+            try:
+                initial_obj_count = self.get_obj_manager.count()
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_add), params)
+                params[field] = test_params[field]
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_objects_count_on_add(False, initial_obj_count)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(response.status_code, self.status_code_error,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_error))
+            except Exception:
+                self.errors_append(text='\\x00 value in field %s' % field)
+
+    @only_with_obj
+    @only_with(('check_null', 'check_null_str_positive'))
+    def test_add_object_str_with_null_positive(self):
+        """
+        Create object with \\x00 in str fields
+        """
+        new_object = None
+        other_fields = ['captcha', 'captcha_0', 'captcha_1']
+        for field_type_name in ('digital_fields_add', 'date_fields', 'datetime_fields', 'choice_fields_add',
+                                'choice_fields_add_with_value_in_error', 'disabled_fields_add', 'hidden_fields_add',
+                                'int_fields_add', 'multiselect_fields_add', 'not_str_fields',):
+            other_fields.extend(getattr(self, field_type_name, []) or [])
+        other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
+
+        fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
+        if not fields_for_check:
+            self.skipTest('No any string fields')
+
+        test_params = {}
+        prepared_depends_fields = self.prepare_depend_from_one_of(
+            self.one_of_fields_add) if self.one_of_fields_add else {}
+        fields_for_clean = []
+        for field in fields_for_check:
+            test_params[field] = '\x00' + self.get_value_for_field(None, field)[1:]
+            if field in viewkeys(prepared_depends_fields):
+                fields_for_clean.extend(prepared_depends_fields[field])
+
+        try:
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+            self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(test_params)
+            for depended_field in fields_for_clean:
+                self.set_empty_value_for_field(params, depended_field)
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
+            self.assert_object_fields(new_object, params, exclude=exclude, other_values={
+                                      field: test_params[field].name.replace('\x00', '') for
+                                      field in fields_for_check})
+        except Exception:
+            self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(prepared_depends_fields)):
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field in fields_for_check:
+            """if unique fields"""
+            mail.outbox = []
+            if new_object:
+                self.get_obj_manager.filter(pk=new_object.pk).delete()
+            try:
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_add), params)
+                for depended_field in prepared_depends_fields.get(field, []):
+                    self.set_empty_value_for_field(params, depended_field)
+                params[field] = test_params[field]
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
+                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
+                self.assert_object_fields(new_object, params, exclude=exclude,
+                                          other_values={field: test_params[field].replace('\x00', '')})
+            except Exception:
+                self.errors_append(text='\\x00 value in field %s' % field)
+
+    @only_with_obj
+    @only_with(('check_null', 'file_fields_params_add', 'check_null_file_negative'))
+    def test_add_object_with_null_in_file_negative(self):
+        """
+        Add object with \\x00 in filenames
+        """
+        message_type = 'with_null'
+        for field, field_dict in viewitems(self.file_fields_params_add):
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url(self.url_add), params)
+
+            f = self.get_random_file(field, filename='qwe\x00' + get_randname(10, 'wrd') + '.' +
+                                     choice(field_dict.get('extensions', ['', ])))
+            params[field] = f
+            initial_obj_count = self.get_obj_manager.count()
+            try:
+                response = self.client.post(self.get_url(self.url_add), params, follow=True,
+                                            **self.additional_params)
+                self.assert_objects_count_on_add(False, initial_obj_count)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+            except Exception:
+                self.errors_append(text='\\x00 value in field %s' % field)
+
+    @only_with_obj
+    @only_with(('check_null', 'file_fields_params_add', 'check_null_file_positive'))
+    def test_add_object_with_null_in_file_positive(self):
+        """
+        Add object with \\x00 in filenames
+        """
+        new_object = None
+        fields_for_check = list(self.file_fields_params_add.keys())
+        test_params = {}
+        for field in fields_for_check:
+            field_dict = self.file_fields_params_add[field]
+            f = self.get_random_file(field, filename='qwe\x00' + get_randname(10, 'wrd') + '.' +
+                                     choice(field_dict.get('extensions', ['', ])))
+            test_params[field] = f
+
+        try:
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(test_params)
+            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            self.assert_no_form_errors(response)
+            self.assertEqual(response.status_code, self.status_code_success_add,
+                             'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+            self.assert_objects_count_on_add(True, initial_obj_count)
+            new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
+            self.assert_object_fields(new_object, params, exclude=exclude, other_values={
+                                      field: test_params[field].name.replace('\x00', '') for
+                                      field in fields_for_check})
+        except Exception:
+            self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
+        if not self.errors:
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field, field_dict in fields_for_check:
+            mail.outbox = []
+            if new_object:
+                self.get_obj_manager.filter(pk=new_object.pk).delete()
+            try:
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+                params = self.deepcopy(self.default_params_add)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url(self.url_add), params)
+                params[field] = test_params[field]
+                if self.is_file_list(field):
+                    for f in params[field]:
+                        f.seek(0)
+                else:
+                    params[field].seek(0)
+                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                self.assert_no_form_errors(response)
+                self.assertEqual(response.status_code, self.status_code_success_add,
+                                 'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+                self.assert_objects_count_on_add(True, initial_obj_count)
+                new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
+                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude,
+                                          other_values={field: test_params[field].name.replace('\x00', '')})
+            except Exception:
+                self.errors_append(text='\\x00 value in field %s' % field)
+
+    @only_with_obj
+    @only_with('with_captcha')
+    def test_add_object_with_null_in_captcha_negative(self):
+        """
+        Add object with \\x00 in captcha fields
+        """
+        message_type = 'with_null'
+        for field in ('captcha_0', 'captcha_1'):
+            try:
+                params = self.deepcopy(self.default_params_add)
+                self.update_captcha_params('', params)
+                params[field] = 'te\x00st'
+                response = self.client.post(self.get_url(self.url_add), params,
+                                            follow=True, **self.additional_params)
+                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+            except Exception:
+                self.errors_append(text='\\x00 value in field %s' % field)
 
 
 class FormEditTestMixIn(FormTestMixIn):
@@ -6239,10 +6501,12 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                     response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                                 params, **self.additional_params)
                     self.check_negative(user, params, response)
-                    error_message = self.get_error_message('wrong_password_similar', self.field_password, locals=locals())
+                    error_message = self.get_error_message(
+                        'wrong_password_similar', self.field_password, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except Exception:
-                    self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' % (password_value, field, value))
+                    self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' %
+                                       (password_value, field, value))
 
 
 class ResetPasswordMixIn(GlobalTestMixIn):
@@ -6809,10 +7073,12 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                                                 params, **self.additional_params)
                     new_user = self.get_obj_manager.get(pk=user.pk)
                     self.assert_objects_equal(new_user, user)
-                    error_message = self.get_error_message('wrong_password_similar', self.field_password, locals=locals())
+                    error_message = self.get_error_message(
+                        'wrong_password_similar', self.field_password, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except Exception:
-                    self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' % (password_value, field, value))
+                    self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' %
+                                       (password_value, field, value))
 
 
 class LoginTestMixIn(object):
