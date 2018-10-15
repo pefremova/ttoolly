@@ -1670,10 +1670,11 @@ class FormTestMixIn(GlobalTestMixIn):
     def _get_field_value_by_name(self, obj, field):
         if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
             model_name, index, field_name = field.split('-')
-            value = getattr(getattr(obj, model_name).all().order_by('pk')[int(index)], field_name)
+            qs = getattr(obj, model_name).all().order_by('pk')
+            if qs.count() > int(index):
+                return getattr(qs[int(index)], field_name)
         else:
-            value = getattr(obj, field)
-        return value
+            return getattr(obj, field)
 
     def _get_required_from_related(self, fields_list):
         return [l[0] for l in fields_list]
