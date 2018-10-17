@@ -1677,7 +1677,7 @@ class FormTestMixIn(GlobalTestMixIn):
             return getattr(obj, field)
 
     def _get_required_from_related(self, fields_list):
-        return [l[0] for l in fields_list]
+        return [choice(l) for l in fields_list]
 
     def _prepare_all_form_fields_list(self):
         if self.all_fields_add is None:
@@ -2180,6 +2180,7 @@ class FormAddTestMixIn(FormTestMixIn):
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         params = self.deepcopy(self.default_params_add)
+
         prepared_depends_fields = self.prepare_depend_from_one_of(
             self.one_of_fields_add) if self.one_of_fields_add else {}
         only_independent_fields = set(self.all_fields_add).difference(viewkeys(prepared_depends_fields))
@@ -2189,6 +2190,7 @@ class FormAddTestMixIn(FormTestMixIn):
                              self._get_required_from_related(self.required_related_fields_add), params)
         self.update_params(params)
         self.update_captcha_params(self.get_url(self.url_add), params)
+
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -2279,6 +2281,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """если хотя бы одно поле из группы заполнено, объект создается"""
         for group in self.required_related_fields_add:
             _params = self.deepcopy(self.default_params_add)
+            self.fill_all_fields(sum((tuple(el) for el in self.required_related_fields_add), ()), _params)
             for field in group:
                 self.set_empty_value_for_field(_params, field)
             for field in group:
@@ -2338,6 +2341,7 @@ class FormAddTestMixIn(FormTestMixIn):
         """если хотя бы одно поле из группы заполнено, объект создается"""
         for group in self.required_related_fields_add:
             _params = self.deepcopy(self.default_params_add)
+            self.fill_all_fields(sum((tuple(el) for el in self.required_related_fields_add), ()), _params)
             for field in group:
                 self.pop_field_from_params(_params, field)
             for field in group:
@@ -4099,6 +4103,7 @@ class FormEditTestMixIn(FormTestMixIn):
                              self._get_required_from_related(self.required_related_fields_edit), params)
         self.update_params(params)
         self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+
         try:
             response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                         params, follow=True, **self.additional_params)
@@ -4188,6 +4193,7 @@ class FormEditTestMixIn(FormTestMixIn):
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
+                self.fill_all_fields(sum((tuple(el) for el in self.required_related_fields_edit), ()), params)
                 for f in group:
                     self.set_empty_value_for_field(params, f)
                 self.update_params(params)
@@ -4220,6 +4226,7 @@ class FormEditTestMixIn(FormTestMixIn):
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
+
         for field in required_fields:
             self.fill_all_fields(required_fields, params)
         try:
@@ -4241,6 +4248,7 @@ class FormEditTestMixIn(FormTestMixIn):
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
+                self.fill_all_fields(sum((tuple(el) for el in self.required_related_fields_edit), ()), params)
                 for f in group:
                     self.pop_field_from_params(params, f)
                 self.update_params(params)
