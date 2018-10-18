@@ -5684,7 +5684,7 @@ class FormEditTestMixIn(FormTestMixIn):
 
     @only_with_obj
     @only_with('file_fields_params_edit')
-    @only_with_any_files_params(['max_width', 'max_height'])
+    @only_with_any_files_params(['max_width', 'max_height',  'min_width', 'min_height'])
     def test_edit_object_max_image_dimensions_positive(self):
         """
         @note: Edit obj with maximum image file dimensions
