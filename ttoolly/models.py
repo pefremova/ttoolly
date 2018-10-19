@@ -791,7 +791,6 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 cls = fields_map[name_in_field]
                 obj_field_in_related_query = self.get_related_field_name(cls)
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
-
                 value = _model._base_manager.filter(**{obj_field_in_related_query: obj})
                 if value:
                     value = value[0]
@@ -2177,8 +2176,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         @note: Create object: fill all fields
         """
-        initial_obj_count = self.get_obj_manager.count()
-        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         params = self.deepcopy(self.default_params_add)
 
         prepared_depends_fields = self.prepare_depend_from_one_of(
@@ -2190,7 +2187,8 @@ class FormAddTestMixIn(FormTestMixIn):
                              self._get_required_from_related(self.required_related_fields_add), params)
         self.update_params(params)
         self.update_captcha_params(self.get_url(self.url_add), params)
-
+        initial_obj_count = self.get_obj_manager.count()
+        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -2215,7 +2213,6 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in viewkeys(prepared_depends_fields):
             self.set_empty_value_for_field(default_params, field)
         self.fill_all_fields(list(only_independent_fields), default_params)
-
         fields_from_groups = set(viewkeys(prepared_depends_fields))
         for group in self.one_of_fields_add:
             field = choice(group)
@@ -2229,13 +2226,14 @@ class FormAddTestMixIn(FormTestMixIn):
                 mail.outbox = []
                 if new_object:
                     self.get_obj_manager.filter(pk=new_object.pk).delete()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                initial_obj_count = self.get_obj_manager.count()
+
                 for f in prepared_depends_fields[field]:
                     self.set_empty_value_for_field(params, f)
                 self.fill_all_fields((field,), params)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
                     response = self.client.post(
                         self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2254,8 +2252,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         @note: Create object: fill only required fields
         """
-        initial_obj_count = self.get_obj_manager.count()
-        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         params = self.deepcopy(self.default_params_add)
         required_fields = self.required_fields_add + \
             self._get_required_from_related(self.required_related_fields_add)
@@ -2266,6 +2262,8 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in required_fields:
             self.fill_all_fields(required_fields, params)
         self.update_captcha_params(self.get_url(self.url_add), params)
+        initial_obj_count = self.get_obj_manager.count()
+        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -2314,8 +2312,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         @note: Create object: send only required fields
         """
-        initial_obj_count = self.get_obj_manager.count()
-        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         params = self.deepcopy(self.default_params_add)
         required_fields = self.required_fields_add + \
             self._get_required_from_related(self.required_related_fields_add)
@@ -2326,6 +2322,8 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in required_fields:
             self.fill_all_fields(required_fields, params)
         self.update_captcha_params(self.get_url(self.url_add), params)
+        initial_obj_count = self.get_obj_manager.count()
+        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -2349,12 +2347,12 @@ class FormAddTestMixIn(FormTestMixIn):
                 mail.outbox = []
                 if new_object:
                     self.get_obj_manager.filter(pk=new_object.pk).delete()
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(_params)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.fill_all_fields((field,), params)
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
@@ -2377,13 +2375,13 @@ class FormAddTestMixIn(FormTestMixIn):
         message_type = 'empty_required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
-            initial_obj_count = self.get_obj_manager.count()
             sp = transaction.savepoint()
             try:
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.set_empty_value_for_field(params, field)
+                initial_obj_count = self.get_obj_manager.count()
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 error_message = self.get_error_message(message_type, field)
@@ -2396,13 +2394,13 @@ class FormAddTestMixIn(FormTestMixIn):
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
         for group in self.required_related_fields_add:
-            initial_obj_count = self.get_obj_manager.count()
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             for field in group:
                 self.set_empty_value_for_field(params, field)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
@@ -2422,13 +2420,13 @@ class FormAddTestMixIn(FormTestMixIn):
         message_type = 'without_required'
         """обязательные поля должны быть заполнены"""
         for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
-            initial_obj_count = self.get_obj_manager.count()
             sp = transaction.savepoint()
             try:
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.pop_field_from_params(params, field)
+                initial_obj_count = self.get_obj_manager.count()
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 error_message = self.get_error_message(message_type, field)
@@ -2441,13 +2439,13 @@ class FormAddTestMixIn(FormTestMixIn):
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
         for group in self.required_related_fields_add:
-            initial_obj_count = self.get_obj_manager.count()
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             for field in group:
                 self.pop_field_from_params(params, field)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
@@ -2488,12 +2486,12 @@ class FormAddTestMixIn(FormTestMixIn):
         try:
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
-            initial_obj_count = self.get_obj_manager.count()
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(max_length_params)
             for depended_field in fields_for_clean:
                 self.set_empty_value_for_field(params, depended_field)
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2523,8 +2521,6 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -2538,6 +2534,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     else:
                         params[field].seek(0)
                 value = self.get_value_for_error_message(field, params[field])
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2568,8 +2566,8 @@ class FormAddTestMixIn(FormTestMixIn):
             self.clean_depend_fields_add(params, field)
             current_length = length + 1
             params[field] = self.get_value_for_field(current_length, field)
+            initial_obj_count = self.get_obj_manager.count()
             try:
-                initial_obj_count = self.get_obj_manager.count()
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2598,8 +2596,8 @@ class FormAddTestMixIn(FormTestMixIn):
             self.clean_depend_fields_add(params, field)
             current_length = length - 1
             params[field] = self.get_value_for_field(current_length, field)
+            initial_obj_count = self.get_obj_manager.count()
             try:
-                initial_obj_count = self.get_obj_manager.count()
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2621,10 +2619,10 @@ class FormAddTestMixIn(FormTestMixIn):
             params = self.deepcopy(self.default_params_add)
             for value in ('qwe', '12345678', 'йцу'):
                 self.update_params(params)
-                initial_obj_count = self.get_obj_manager.count()
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 params[field] = value
+                initial_obj_count = self.get_obj_manager.count()
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
@@ -2648,10 +2646,10 @@ class FormAddTestMixIn(FormTestMixIn):
             params = self.deepcopy(self.default_params_add)
             for value in ('12345678',):
                 self.update_params(params)
-                initial_obj_count = self.get_obj_manager.count()
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 params[field] = [value, ]
+                initial_obj_count = self.get_obj_manager.count()
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
@@ -2675,7 +2673,6 @@ class FormAddTestMixIn(FormTestMixIn):
             field = self.all_unique[el]
             existing_obj = self.get_existing_obj_with_filled(el)
             sp = transaction.savepoint()
-            initial_obj_count = self.get_obj_manager.count()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
@@ -2685,6 +2682,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_add(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
+            initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
@@ -2708,7 +2706,6 @@ class FormAddTestMixIn(FormTestMixIn):
             if not any([isinstance(params[el_field], basestring) and el_field not in self.unique_with_case for el_field in el]):
                 continue
             sp = transaction.savepoint()
-            initial_obj_count = self.get_obj_manager.count()
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             for el_field in el:
@@ -2719,6 +2716,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
                 if isinstance(params[el_field], basestring):
                     params[el_field] = params[el_field].swapcase()
+            initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
@@ -2750,12 +2748,9 @@ class FormAddTestMixIn(FormTestMixIn):
                 mail.outbox = []
                 if new_object:
                     self.get_obj_manager.filter(pk=new_object.pk).delete()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
 
                 existing_obj = self.get_existing_obj_with_filled(el)
                 params = self.deepcopy(self.default_params_add)
-
-                initial_obj_count = self.get_obj_manager.count()
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 for el_field in el:
@@ -2769,6 +2764,8 @@ class FormAddTestMixIn(FormTestMixIn):
                         self.get_obj_manager.filter(pk=existing_obj.pk).update(
                             **{el_field: getattr(value, existing_command)()})
                         params[el_field] = getattr(params[el_field], new_command)()
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
                     response = self.client.post(
                         self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -2782,8 +2779,9 @@ class FormAddTestMixIn(FormTestMixIn):
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
-                                       (', '.join('field "%s" with value "%s"\n' % (field,
-                                                                                    self._get_field_value_by_name(existing_obj, el_field))
+                                       (', '.join('field "%s" with value "%s"\n' %
+                                                  (field,
+                                                   self._get_field_value_by_name(existing_obj, el_field))
                                                   for field in el),
                                         ', '.join('field "%s" with value "%s"\n' % (field, params[field])
                                                   for field in el if field in viewkeys(params))))
@@ -2797,7 +2795,6 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in [f for f in self.digital_fields_add]:
             message_type = 'wrong_value_int' if field in self.int_fields_add else 'wrong_value_digital'
             for value in ('q', 'й', 'NaN', 'inf', '-inf'):
-                initial_obj_count = self.get_obj_manager.count()
                 sp = transaction.savepoint()
                 try:
                     params = self.deepcopy(self.default_params_add)
@@ -2805,6 +2802,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.clean_depend_fields_add(params, field)
                     params[field] = value
+                    initial_obj_count = self.get_obj_manager.count()
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
@@ -2825,7 +2823,6 @@ class FormAddTestMixIn(FormTestMixIn):
         message_type = 'wrong_value_email'
         for field in [f for f in self.email_fields_add]:
             for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
-                initial_obj_count = self.get_obj_manager.count()
                 sp = transaction.savepoint()
                 try:
                     params = self.deepcopy(self.default_params_add)
@@ -2833,6 +2830,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.clean_depend_fields_add(params, field)
                     params[field] = value
+                    initial_obj_count = self.get_obj_manager.count()
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
@@ -2863,12 +2861,12 @@ class FormAddTestMixIn(FormTestMixIn):
 
         sp = transaction.savepoint()
         try:
-            initial_obj_count = self.get_obj_manager.count()
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(max_value_params)
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2897,12 +2895,12 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 params[field] = value
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2925,7 +2923,6 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in [f for f in self.digital_fields_add]:
             max_value = min(self.get_digital_values_range(field)['max_values'])
             for value in self.get_gt_max_list(field, self.get_digital_values_range(field)['max_values']):
-                initial_obj_count = self.get_obj_manager.count()
                 sp = transaction.savepoint()
                 try:
                     params = self.deepcopy(self.default_params_add)
@@ -2933,6 +2930,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.clean_depend_fields_add(params, field)
                     params[field] = value
+                    initial_obj_count = self.get_obj_manager.count()
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
@@ -2963,12 +2961,12 @@ class FormAddTestMixIn(FormTestMixIn):
 
         sp = transaction.savepoint()
         try:
-            initial_obj_count = self.get_obj_manager.count()
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(min_value_params)
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -2998,12 +2996,12 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 params[field] = value
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3026,7 +3024,6 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in [f for f in self.digital_fields_add]:
             min_value = max(self.get_digital_values_range(field)['min_values'])
             for value in self.get_lt_min_list(field, self.get_digital_values_range(field)['min_values']):
-                initial_obj_count = self.get_obj_manager.count()
                 sp = transaction.savepoint()
                 try:
                     params = self.deepcopy(self.default_params_add)
@@ -3034,6 +3031,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.clean_depend_fields_add(params, field)
                     params[field] = value
+                    initial_obj_count = self.get_obj_manager.count()
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
@@ -3058,13 +3056,13 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 params[field] = params.get(field, None) or self.get_value_for_field(None, field)
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3121,9 +3119,9 @@ class FormAddTestMixIn(FormTestMixIn):
         for name, max_count in viewitems(self.max_blocks):
             self.fill_all_block_fields(name, max_count, params,
                                        set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add or ())))
+        sp = transaction.savepoint()
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-        sp = transaction.savepoint()
         try:
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
@@ -3148,14 +3146,14 @@ class FormAddTestMixIn(FormTestMixIn):
             self.formatted_assert_errors()
 
         for name, max_count in viewitems(self.max_blocks):
-            initial_obj_count = self.get_obj_manager.count()
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             self.fill_all_block_fields(name, max_count, params,
                                        set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add or ())))
             sp = transaction.savepoint()
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
@@ -3180,16 +3178,15 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         message_type = 'max_block_count'
         for name, max_count in viewitems(self.max_blocks):
-            initial_obj_count = self.get_obj_manager.count()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             gt_max_count = max_count + 1
-
             self.fill_all_block_fields(name, gt_max_count, params,
                                        set(tuple(self.all_fields_add) + tuple(self.hidden_fields_add or ())))
             sp = transaction.savepoint()
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             try:
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
@@ -3222,8 +3219,6 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_objects:
                 new_objects.delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3231,6 +3226,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                  choice(field_dict.get('extensions', ('',)))] if s])
                 params[field] = self.get_random_file(field, filename=filename, count=max_count + 1)
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -3259,12 +3256,12 @@ class FormAddTestMixIn(FormTestMixIn):
 
         sp = transaction.savepoint()
         try:
-            initial_obj_count = self.get_obj_manager.count()
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(max_count_params)
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3290,14 +3287,14 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 params[field] = max_count_params[field]
                 for f in params[field]:
                     f.seek(0)
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3328,7 +3325,6 @@ class FormAddTestMixIn(FormTestMixIn):
             current_size = size + 100
             human_current_size = self.humanize_file_size(current_size)
             try:
-                initial_obj_count = self.get_obj_manager.count()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3336,6 +3332,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, size=current_size)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
+                initial_obj_count = self.get_obj_manager.count()
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -3364,13 +3361,13 @@ class FormAddTestMixIn(FormTestMixIn):
             max_size = self.humanize_file_size(size)
             one_size = current_size / field_dict['max_count']
             try:
-                initial_obj_count = self.get_obj_manager.count()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 f = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
                 params[field] = f
+                initial_obj_count = self.get_obj_manager.count()
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -3402,12 +3399,12 @@ class FormAddTestMixIn(FormTestMixIn):
 
         sp = transaction.savepoint()
         try:
-            initial_obj_count = self.get_obj_manager.count()
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(max_size_params)
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3443,8 +3440,6 @@ class FormAddTestMixIn(FormTestMixIn):
             size = convert_size_to_bytes(one_max_size)
             max_size = self.humanize_file_size(size)
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3454,6 +3449,8 @@ class FormAddTestMixIn(FormTestMixIn):
                         f.seek(0)
                 else:
                     params[field].seek(0)
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3488,13 +3485,13 @@ class FormAddTestMixIn(FormTestMixIn):
             max_size = self.humanize_file_size(size)
             one_size = size / field_dict['max_count']
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 params[field] = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3525,8 +3522,6 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_objects:
                 new_objects.delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3534,6 +3529,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, size=0)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -3559,7 +3556,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 mail.outbox = []
                 if new_object:
                     self.get_obj_manager.filter(pk=new_object.pk).delete()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 filename = '.'.join([el for el in ['test', ext] if el])
                 f = self.get_random_file(field, filename=filename)
                 params = self.deepcopy(self.default_params_add)
@@ -3568,6 +3564,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_add(params, field)
                 params[field] = f
                 initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
@@ -3633,8 +3630,6 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3643,6 +3638,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 params[field] = f
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3679,8 +3676,6 @@ class FormAddTestMixIn(FormTestMixIn):
             for width, height in values:
                 sp = transaction.savepoint()
                 try:
-                    initial_obj_count = self.get_obj_manager.count()
-                    old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3690,6 +3685,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     params[field] = f
+                    initial_obj_count = self.get_obj_manager.count()
+                    old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
@@ -3715,8 +3712,6 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3725,6 +3720,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 params[field] = f
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3761,8 +3758,6 @@ class FormAddTestMixIn(FormTestMixIn):
             for width, height in values:
                 sp = transaction.savepoint()
                 try:
-                    initial_obj_count = self.get_obj_manager.count()
-                    old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3772,6 +3767,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     params[field] = f
+                    initial_obj_count = self.get_obj_manager.count()
+                    old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     response = self.client.post(self.get_url(self.url_add), params, follow=True,
                                                 **self.additional_params)
                     self.assert_objects_count_on_add(False, initial_obj_count)
@@ -3804,11 +3801,11 @@ class FormAddTestMixIn(FormTestMixIn):
 
         for field in fields_for_check:
             try:
-                initial_obj_count = self.get_obj_manager.count()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 params[field] = test_params[field]
+                initial_obj_count = self.get_obj_manager.count()
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_objects_count_on_add(False, initial_obj_count)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -3847,12 +3844,12 @@ class FormAddTestMixIn(FormTestMixIn):
         try:
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
-            initial_obj_count = self.get_obj_manager.count()
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(test_params)
             for depended_field in fields_for_clean:
                 self.set_empty_value_for_field(params, depended_field)
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3878,14 +3875,14 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 for depended_field in prepared_depends_fields.get(field, []):
                     self.set_empty_value_for_field(params, depended_field)
                 params[field] = test_params[field]
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3938,12 +3935,12 @@ class FormAddTestMixIn(FormTestMixIn):
             test_params[field] = f
 
         try:
-            initial_obj_count = self.get_obj_manager.count()
-            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(test_params)
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
             self.assert_no_form_errors(response)
             self.assertEqual(response.status_code, self.status_code_success_add,
@@ -3968,8 +3965,6 @@ class FormAddTestMixIn(FormTestMixIn):
             if new_object:
                 self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
-                initial_obj_count = self.get_obj_manager.count()
-                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -3979,6 +3974,8 @@ class FormAddTestMixIn(FormTestMixIn):
                         f.seek(0)
                 else:
                     params[field].seek(0)
+                initial_obj_count = self.get_obj_manager.count()
+                old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
                 self.assert_no_form_errors(response)
                 self.assertEqual(response.status_code, self.status_code_success_add,
@@ -4283,6 +4280,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.set_empty_value_for_field(params, field)
+                obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
@@ -4304,6 +4302,7 @@ class FormEditTestMixIn(FormTestMixIn):
             for field in group:
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.set_empty_value_for_field(params, field)
+            obj_for_edit.refresh_from_db()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.id,)),
                                             params, follow=True, **self.additional_params)
@@ -4331,6 +4330,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.pop_field_from_params(params, field)
+                obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field)
@@ -4352,6 +4352,7 @@ class FormEditTestMixIn(FormTestMixIn):
             for field in group:
                 self.pop_field_from_params(params, field)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+            obj_for_edit.refresh_from_db()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.id,)),
                                             params, follow=True, **self.additional_params)
@@ -4560,6 +4561,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = self.get_value_for_field(current_length, field)
+                obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field, length)
@@ -4592,6 +4594,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = self.get_value_for_field(current_length, field)
+                obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 error_message = self.get_error_message(message_type, field, length)
@@ -4619,6 +4622,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = value
+                obj_for_edit.refresh_from_db()
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
@@ -4649,6 +4653,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = [value, ]
+                obj_for_edit.refresh_from_db()
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
@@ -4685,6 +4690,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
+            obj_for_edit.refresh_from_db()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -4720,6 +4726,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
                 if isinstance(params[el_field], basestring):
                     params[el_field] = params[el_field].swapcase()
+            obj_for_edit.refresh_from_db()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -4800,6 +4807,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
+                    obj_for_edit.refresh_from_db()
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
@@ -4830,6 +4838,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
+                    obj_for_edit.refresh_from_db()
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
@@ -4928,6 +4937,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
+                    obj_for_edit.refresh_from_db()
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
@@ -5026,6 +5036,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
+                    obj_for_edit.refresh_from_db()
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, field)
@@ -5085,6 +5096,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.update_params(params)
                     self.fill_all_fields(filled_group, params)
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+                    obj_for_edit.refresh_from_db()
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                                 params, follow=True, **self.additional_params)
                     error_message = self.get_error_message(message_type, group)
@@ -5173,6 +5185,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.fill_all_block_fields(name, gt_max_count, params,
                                        set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
             sp = transaction.savepoint()
+            obj_for_edit.refresh_from_db()
             try:
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
@@ -5210,6 +5223,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                                  choice(field_dict.get('extensions', ('',)))] if s])
                 f = self.get_random_file(field, filename=filename, count=max_count + 1)
                 params[field] = f
+                obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -5318,6 +5332,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, size=current_size)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
+                obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -5359,6 +5374,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = []
                 f = self.get_random_file(field, count=field_dict['max_count'], size=one_size)
                 params[field] = f
+                obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -5521,6 +5537,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, size=0)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
+                obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                             **self.additional_params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -5596,6 +5613,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, filename=filename)
                 params[field] = f
+                obj_for_edit.refresh_from_db()
                 try:
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                                 **self.additional_params)
@@ -5671,6 +5689,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     self.clean_depend_fields_edit(params, field)
                     params[field] = f
+                    obj_for_edit.refresh_from_db()
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                                 **self.additional_params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -5745,6 +5764,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     f = self.get_random_file(field, width=width, height=height)
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     params[field] = f
+                    obj_for_edit.refresh_from_db()
                     response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
                                                 **self.additional_params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
@@ -5790,7 +5810,6 @@ class FormDeleteTestMixIn(FormTestMixIn):
         else:
             obj_pk = choice(self.get_obj_manager.all()).pk
         initial_obj_count = self.get_obj_manager.count()
-
         self.client.post(self.get_url(self.url_delete, (obj_pk,)), {'post': 'yes'}, **self.additional_params)
         self.assertEqual(self.get_obj_manager.count(), initial_obj_count - 1,
                          'Objects count after delete = %s (expect %s)' %
@@ -5861,9 +5880,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         obj_id = obj_for_test.id
-        initial_obj_count = self.get_obj_manager.count()
         try:
             recovery_url = self.get_url(self.url_recovery, (obj_id,))
+            initial_obj_count = self.get_obj_manager.count()
             self.client.post(recovery_url, **self.additional_params)
             self.assertEqual(self.get_obj_manager.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.get_obj_manager.get(id=obj_id)))
@@ -5951,9 +5970,9 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_for_test = choice(self.others_objects)
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
-        initial_obj_count = self.get_obj_manager.count()
         try:
             recovery_url = self.get_url_for_negative(self.url_recovery, (obj_for_test.pk,))
+            initial_obj_count = self.get_obj_manager.count()
             response = self.client.post(recovery_url, follow=True, **self.additional_params)
             self.assertEqual(self.get_obj_manager.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.get_obj_manager.get(id=obj_for_test.pk)))
@@ -5968,7 +5987,6 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, False)
         obj_for_test.save()
         initial_obj_count = self.get_obj_manager.count()
-
         try:
             response = self.client.post(self.get_url_for_negative(self.url_delete, (obj_for_test.pk,)), follow=True,
                                         **self.additional_params)
@@ -6319,6 +6337,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
                 self.set_empty_value_for_field(params, field)
+                user.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.check_negative(user, params, response)
@@ -6340,6 +6359,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
                 self.pop_field_from_params(params, field)
+                user.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.check_negative(user, params, response)
@@ -6359,6 +6379,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
         params.update({self.field_password: self.get_value_for_field(None, 'password'),
                        self.field_password_repeat: self.get_value_for_field(None, 'password')})
+        user.refresh_from_db()
         try:
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
@@ -6384,6 +6405,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         value = self.get_value_for_field(current_length, 'password')
         params.update({self.field_password: value,
                        self.field_password_repeat: value})
+        user.refresh_from_db()
         try:
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
@@ -6449,6 +6471,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         current_length = length + 1
         params[self.field_password] = self.get_value_for_field(current_length, 'password')
         params[self.field_password_repeat] = params[self.field_password]
+        user.refresh_from_db()
         try:
             response = self.client.post(
                 self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
@@ -6471,9 +6494,10 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
             params.update({self.field_password: value,
                            self.field_password_repeat: value})
+            user.refresh_from_db()
             try:
-                response = self.client.post(
-                    self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+                response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
+                                            params, **self.additional_params)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message('wrong_value', self.field_password,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -6492,9 +6516,10 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
         value = self.field_old_password + get_randname(1, 'w')
         params[self.field_old_password] = value
+        user.refresh_from_db()
         try:
-            response = self.client.post(
-                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
+                                        params, **self.additional_params)
             self.check_negative(user, params, response)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_old_password', self.field_old_password))
@@ -6561,6 +6586,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
                 params.update({self.field_password: password_value,
                                self.field_password_repeat: password_value})
+                user.refresh_from_db()
                 try:
                     response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                                 params, **self.additional_params)
@@ -6866,6 +6892,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             params = self.deepcopy(self.password_params)
             self.set_empty_value_for_field(params, field)
             codes = self.get_codes(user)
+            user.refresh_from_db()
             try:
                 response = self.client.post(self.get_url(self.url_reset_password, codes),
                                             params, **self.additional_params)
@@ -6887,6 +6914,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             params = self.deepcopy(self.password_params)
             self.pop_field_from_params(params, field)
             codes = self.get_codes(user)
+            user.refresh_from_db()
             try:
                 response = self.client.post(self.get_url(self.url_reset_password, codes),
                                             params, **self.additional_params)
@@ -6906,6 +6934,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         params.update({self.field_password: self.get_value_for_field(None, 'password'),
                        self.field_password_repeat: self.get_value_for_field(9, 'password'), })
         codes = self.get_codes(user)
+        user.refresh_from_db()
         try:
             response = self.client.post(self.get_url(self.url_reset_password, codes),
                                         params, **self.additional_params)
@@ -6930,6 +6959,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         params.update({self.field_password: value,
                        self.field_password_repeat: value})
         codes = self.get_codes(user)
+        user.refresh_from_db()
         try:
             response = self.client.post(self.get_url(self.url_reset_password, codes),
                                         params, **self.additional_params)
@@ -6976,6 +7006,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         params.update({self.field_password: value,
                        self.field_password_repeat: value})
         codes = self.get_codes(user)
+        user.refresh_from_db()
         try:
             response = self.client.post(self.get_url(self.url_reset_password, codes),
                                         params, **self.additional_params)
@@ -7020,6 +7051,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             params.update({self.field_password: value,
                            self.field_password_repeat: value})
             codes = self.get_codes(user)
+            user.refresh_from_db()
             try:
                 response = self.client.post(self.get_url(self.url_reset_password, codes),
                                             params, **self.additional_params)
@@ -7037,6 +7069,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
         codes = self.get_codes(user)
+        user.refresh_from_db()
         try:
             response = self.client.get(self.get_url(self.url_reset_password, codes),
                                        params, follow=True, **self.additional_params)
@@ -7054,6 +7087,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         user.is_active = False
         user.save()
         codes = self.get_codes(user)
+        user.refresh_from_db()
         try:
             response = self.client.post(self.get_url(self.url_reset_password, codes),
                                         params, **self.additional_params)
@@ -7132,6 +7166,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                 params.update({self.field_password: password_value,
                                self.field_password_repeat: password_value})
                 codes = self.get_codes(user)
+                user.refresh_from_db()
                 try:
                     response = self.client.post(self.get_url(self.url_reset_password, codes),
                                                 params, **self.additional_params)
