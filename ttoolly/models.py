@@ -5,7 +5,7 @@ from __future__ import (absolute_import, division,
 from copy import copy, deepcopy
 from datetime import datetime, date, time, timedelta
 from decimal import Decimal
-from functools import wraps, update_wrapper
+
 import inspect
 from itertools import cycle
 import json
@@ -50,6 +50,10 @@ from .utils import (format_errors, get_error, get_randname, get_url_for_negative
                     generate_random_obj, get_field_from_response, get_all_urls, convert_size_to_bytes,
                     get_random_file, get_all_field_names_from_model, FILE_TYPES)
 
+if sys.version[0] == '2':
+    from functools32 import wraps, update_wrapper
+else:
+    from functools import wraps, update_wrapper
 
 try:
     from django.core.urlresolvers import reverse, resolve

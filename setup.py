@@ -9,7 +9,7 @@ def readme():
 
 
 setup(name='ttoolly',
-      version='0.28.5',
+      version='0.28.6',
       description="Django test tools",
       long_description=readme(),
       author="Polina Efremova",
@@ -17,7 +17,8 @@ setup(name='ttoolly',
       keywords=["django", "testing", "test tool"],
       include_package_data=True,
       packages=find_packages(exclude=["tests", "test_project"]),
-      install_requires=['django>=1.8', ' psycopg2-binary', 'lxml', 'chardet', 'Pillow', 'rstr', 'future', 'freezegun'],
+      install_requires=['django>=1.8', ' psycopg2-binary', 'lxml', 'chardet', 'Pillow', 'rstr', 'future',
+                        'freezegun', 'functools32;python_version<"3"'],
       classifiers=(
           "Framework :: Django",
           "Framework :: Django :: 1.10",
