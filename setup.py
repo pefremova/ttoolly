@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from distutils.core import setup
 from setuptools import find_packages
+import sys
 
 
 def readme():
@@ -8,8 +9,13 @@ def readme():
         return f.read().decode('utf-8')
 
 
+install_requires = ['django>=1.8', ' psycopg2-binary', 'lxml', 'chardet', 'Pillow', 'rstr', 'future',
+                    'freezegun', ]
+if sys.version[0] == '2':
+    install_requires.append('functools32')
+
 setup(name='ttoolly',
-      version='0.28.6',
+      version='0.28.7',
       description="Django test tools",
       long_description=readme(),
       author="Polina Efremova",
@@ -17,8 +23,7 @@ setup(name='ttoolly',
       keywords=["django", "testing", "test tool"],
       include_package_data=True,
       packages=find_packages(exclude=["tests", "test_project"]),
-      install_requires=['django>=1.8', ' psycopg2-binary', 'lxml', 'chardet', 'Pillow', 'rstr', 'future',
-                        'freezegun', 'functools32;python_version<"3"'],
+      install_requires=install_requires,
       classifiers=(
           "Framework :: Django",
           "Framework :: Django :: 1.10",
