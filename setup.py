@@ -11,11 +11,11 @@ def readme():
 
 install_requires = ['django>=1.8', ' psycopg2-binary', 'lxml', 'chardet', 'Pillow', 'rstr', 'future',
                     'freezegun', ]
-if sys.version[0] == '2':
+if sys.version < (3,):
     install_requires.append('functools32')
 
 setup(name='ttoolly',
-      version='0.28.7',
+      version='0.28.8',
       description="Django test tools",
       long_description=readme(),
       author="Polina Efremova",
