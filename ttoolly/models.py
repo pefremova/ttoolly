@@ -879,19 +879,23 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                              second[n:n + 1],
                              text + full_error_text)
 
-    def assert_xpath_count(self, response, path, count=1, status_code=200):
-        self.assertEqual(response.status_code, status_code, "Response status code %s != %s" %
-                         (response.status_code, status_code))
+    def assert_xpath_count(self, response, path, count=1, status_code=200, msg=None):
+        error_message = "Response status code %s != %s" % (response.status_code, status_code)
+        if msg:
+            error_message = msg + ':\n' + error_message
+        self.assertEqual(response.status_code, status_code, error_message)
         if not ('xml' in force_text(response.content) and 'encoding' in force_text(response.content)):
             res = force_text(response.content)
         else:
             res = response.content
         self.assert_xpath_count_in_html(res, path, count)
 
-    def assert_xpath_count_in_html(self, html, path, count):
+    def assert_xpath_count_in_html(self, html, path, count, msg=None):
         doc = document_fromstring(html)
         real_count = len(doc.xpath(path))
         error_message = 'Found %s instances of \'%s\' (Should be %s)' % (real_count, path, count)
+        if msg:
+            error_message = msg + ':\n' + error_message
         self.assertEqual(real_count, count, error_message)
 
     def deepcopy(self, params):
