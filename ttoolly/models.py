@@ -2010,6 +2010,34 @@ class FormTestMixIn(GlobalTestMixIn):
             min_values.append(-sys.float_info.max)
         return {'max_values': set(max_values), 'min_values': set(min_values)}
 
+    def get_existing_obj(self):
+        if 'get_obj_for_edit' in dir(self):
+            return self.get_obj_for_edit()
+        return choice(self.get_obj_manager.all())
+
+    def get_existing_obj_with_filled(self, param_names):
+        obj = self.get_existing_obj()
+        if all([self._get_field_value_by_name(obj, field) for field in param_names]):
+            return obj
+        filters = Q()
+        obj_related_objects = self.get_related_names(self.obj)
+        for field in param_names:
+            if not re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
+                filters &= ~Q(**{'%s__isnull' % field: True})
+                field_class = self.get_field_by_name(self.obj, field)
+                if field_class.empty_strings_allowed:
+                    filters &= ~Q(**{field: ''})
+            else:
+                related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
+                filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
+                field_class = self.get_field_by_name(self.obj, field)
+                if field_class.empty_strings_allowed:
+                    filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
+        qs = self.get_obj_manager.filter(filters)
+        if qs.exists():
+            obj = choice(qs)
+        return obj
+
     def get_gt_max(self, field, value):
         if ('Integer' in self.get_field_by_name(self.obj, field).__class__.__name__) or \
                 (isinstance(value, int) and value < 1.0e+10):
@@ -2116,34 +2144,6 @@ class FormAddTestMixIn(FormTestMixIn):
     def clean_depend_fields_add(self, params, field):
         for field_for_clean in self._depend_one_of_fields_add.get(field, ()):
             self.set_empty_value_for_field(params, field_for_clean)
-
-    def get_existing_obj(self):
-        if 'get_obj_for_edit' in dir(self):
-            return self.get_obj_for_edit()
-        return choice(self.get_obj_manager.all())
-
-    def get_existing_obj_with_filled(self, param_names):
-        obj = self.get_existing_obj()
-        if all([self._get_field_value_by_name(obj, field) for field in param_names]):
-            return obj
-        filters = Q()
-        obj_related_objects = self.get_related_names(self.obj)
-        for field in param_names:
-            if not re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
-                filters &= ~Q(**{'%s__isnull' % field: True})
-                field_class = self.get_field_by_name(self.obj, field)
-                if field_class.empty_strings_allowed:
-                    filters &= ~Q(**{field: ''})
-            else:
-                related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
-                filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
-                field_class = self.get_field_by_name(self.obj, field)
-                if field_class.empty_strings_allowed:
-                    filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
-        qs = self.get_obj_manager.filter(filters)
-        if qs.exists():
-            obj = choice(qs)
-        return obj
 
     @only_with_obj
     def test_add_page_fields_list_positive(self):
