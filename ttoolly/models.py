@@ -3222,6 +3222,7 @@ class FormAddTestMixIn(FormTestMixIn):
             if field_dict.get('max_count', 1) <= 1:
                 continue
             max_count = field_dict['max_count']
+            current_count = max_count + 1
             sp = transaction.savepoint()
             mail.outbox = []
             if new_objects:
@@ -3233,7 +3234,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_add(params, field)
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                  choice(field_dict.get('extensions', ('',)))] if s])
-                params[field] = self.get_random_file(field, filename=filename, count=max_count + 1)
+                params[field] = self.get_random_file(field, filename=filename, count=current_count)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
@@ -3242,7 +3243,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
+                self.errors_append(text='For %s files in field %s' % (current_count, field))
 
     @only_with_obj
     @only_with('file_fields_params_add')
@@ -5220,6 +5221,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in fields_for_check:
             field_dict = self.file_fields_params_edit[field]
             max_count = field_dict['max_count']
+            current_count = max_count + 1
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
@@ -5229,7 +5231,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                  choice(field_dict.get('extensions', ('',)))] if s])
-                f = self.get_random_file(field, filename=filename, count=max_count + 1)
+                f = self.get_random_file(field, filename=filename, count=current_count)
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
@@ -5241,7 +5243,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                  'Status code %s != %s' % (response.status_code, self.status_code_error))
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For %s files in field %s' % (max_count + 1, field))
+                self.errors_append(text='For %s files in field %s' % (current_count, field))
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -5711,7 +5713,7 @@ class FormEditTestMixIn(FormTestMixIn):
 
     @only_with_obj
     @only_with('file_fields_params_edit')
-    @only_with_any_files_params(['max_width', 'max_height',  'min_width', 'min_height'])
+    @only_with_any_files_params(['max_width', 'max_height', 'min_width', 'min_height'])
     def test_edit_object_max_image_dimensions_positive(self):
         """
         @note: Edit obj with maximum image file dimensions
@@ -7462,7 +7464,7 @@ class LoginTestMixIn(object):
 
     def test_login_wrong_password_inactive_user_negative(self):
         """
-        @note: login as inactive user with invalid password 
+        @note: login as inactive user with invalid password
         """
         user = self.get_user()
         self.set_user_inactive(user)
