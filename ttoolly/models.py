@@ -198,7 +198,8 @@ class only_with_files_params(object):
         to_run = any([check_params(field_dict, self.param_names)
                       for field_dict in getattr(cls, params_dict_name).values()])
         if to_run:
-            if not all([check_params(field_dict, self.param_names) for field_dict in getattr(cls, params_dict_name).values()]):
+            if not all([check_params(field_dict, self.param_names) for field_dict in
+                        getattr(cls, params_dict_name).values()]):
                 warnings.warn('%s not set for all fields' % force_text(self.param_names))
         return to_run
 
@@ -672,7 +673,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         try:
             self.assertEqual(len(m.attachments), len(default_params['attachments']),
-                             '%s attachments in mail, expected %s' % (len(m.attachments), len(default_params['attachments'])))
+                             '%s attachments in mail, expected %s' % (len(m.attachments),
+                                                                      len(default_params['attachments'])))
             for n, attachment in enumerate(default_params['attachments']):
                 m_attachment = m.attachments[n]
                 self.assertEqual(m_attachment[0], attachment[0])
@@ -688,7 +690,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         for n, alternative in enumerate(getattr(m, 'alternatives', [])):
             if alternative[1] not in ('html', 'text/html') and re.match('<[\w]|/\w>', alternative[0]):
                 errors.append(
-                    '[alternatives][%d]: Not html message type (%s), but contains html tags in body' % (n, alternative[1]))
+                    '[alternatives][%d]: Not html message type (%s), but contains html tags in body' %
+                    (n, alternative[1]))
         if errors:
             raise AssertionError('\n'.join(errors))
 
@@ -769,11 +772,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         local_errors = []
         object_fields = get_all_field_names_from_model(obj)
         fields_map = {name: self.get_field_by_name(obj, name) for name in object_fields}
-        object_related_field_names = [name for name in object_fields if fields_map[name].__class__.__name__ in ('RelatedObject',
-                                                                                                                'ManyToOneRel',
-                                                                                                                'OneToOneField',
-                                                                                                                'OneToOneRel',
-                                                                                                                'ManyToManyField')]
+        object_related_field_names = [name for name in object_fields if
+                                      fields_map[name].__class__.__name__ in ('RelatedObject',
+                                                                              'ManyToOneRel',
+                                                                              'OneToOneField',
+                                                                              'OneToOneRel',
+                                                                              'ManyToManyField')]
 
         form_to_field_map = self.get_related_names(obj)
         field_to_form_map = {v: k for k, v in iter(viewitems(form_to_field_map)) if v != k}
@@ -2042,8 +2046,8 @@ class FormTestMixIn(GlobalTestMixIn):
         return {'max_values': set(max_values), 'min_values': set(min_values)}
 
     def get_existing_obj(self):
-        if 'get_obj_for_edit' in dir(self):
-            return self.get_obj_for_edit()
+        if '_get_obj_for_edit' in dir(self):
+            return self._get_obj_for_edit()
         return choice(self.get_obj_manager.all())
 
     def get_existing_obj_with_filled(self, param_names):
@@ -2142,7 +2146,7 @@ class FormTestMixIn(GlobalTestMixIn):
     @only_with(('url_list', 'filter_params'))
     def test_view_list_with_filter_positive(self):
         """
-        @note: View list with filter positive
+        View list with filter positive
         """
         for field, value in viewitems(self.filter_params):
             value = value if value else ''
@@ -2157,7 +2161,7 @@ class FormTestMixIn(GlobalTestMixIn):
     @only_with(('url_list', 'filter_params'))
     def test_view_list_with_filter_negative(self):
         """
-        @note: View list with filter negative
+        View list with filter negative
         """
         for field in viewkeys(self.filter_params):
             self.check_and_create_objects_for_filter(field)
@@ -2172,6 +2176,9 @@ class FormTestMixIn(GlobalTestMixIn):
 
 class FormAddTestMixIn(FormTestMixIn):
 
+    def send_add_request(self, params):
+        return self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+
     def clean_depend_fields_add(self, params, field):
         for field_for_clean in self._depend_one_of_fields_add.get(field, ()):
             self.set_empty_value_for_field(params, field_for_clean)
@@ -2179,7 +2186,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_page_fields_list_positive(self):
         """
-        @note: check that all and only need fields is visible at add page
+        check that all and only need fields is visible at add page
         """
         response = self.client.get(self.get_url(self.url_add), follow=True, **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
@@ -2213,7 +2220,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_all_fields_filled_positive(self):
         """
-        @note: Create object: fill all fields
+        Create object: fill all fields
         """
         params = self.deepcopy(self.default_params_add)
 
@@ -2229,7 +2236,7 @@ class FormAddTestMixIn(FormTestMixIn):
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         try:
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
@@ -2241,7 +2248,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_add',))
     def test_add_object_with_group_all_fields_filled_positive(self):
         """
-        @note: Create object: fill all fields
+        Create object: fill all fields
         """
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_add)
         only_independent_fields = set(self.all_fields_add).difference(viewkeys(prepared_depends_fields))
@@ -2283,7 +2290,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_only_required_fields_positive(self):
         """
-        @note: Create object: fill only required fields
+        Create object: fill only required fields
         """
         params = self.deepcopy(self.default_params_add)
         required_fields = self.required_fields_add + \
@@ -2298,7 +2305,7 @@ class FormAddTestMixIn(FormTestMixIn):
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         try:
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
@@ -2324,8 +2331,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.fill_all_fields((field,), params)
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_success(response, initial_obj_count, locals())
                     new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                     exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
@@ -2337,7 +2343,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_without_not_required_fields_positive(self):
         """
-        @note: Create object: send only required fields
+        Create object: send only required fields
         """
         params = self.deepcopy(self.default_params_add)
         required_fields = self.required_fields_add + \
@@ -2352,7 +2358,7 @@ class FormAddTestMixIn(FormTestMixIn):
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         try:
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
@@ -2378,8 +2384,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_success(response, initial_obj_count, locals())
                     new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                     exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
@@ -2391,7 +2396,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_empty_required_fields_negative(self):
         """
-        @note: Try create object: empty required fields
+        Try create object: empty required fields
         """
         message_type = 'empty_required'
         """обязательные поля должны быть заполнены"""
@@ -2403,7 +2408,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.set_empty_value_for_field(params, field)
                 initial_obj_count = self.get_obj_manager.count()
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2421,7 +2426,7 @@ class FormAddTestMixIn(FormTestMixIn):
             self.update_captcha_params(self.get_url(self.url_add), params)
             initial_obj_count = self.get_obj_manager.count()
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
@@ -2432,7 +2437,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_without_required_fields_negative(self):
         """
-        @note: Try create object: required fields are not exists in params
+        Try create object: required fields are not exists in params
         """
         message_type = 'without_required'
         """обязательные поля должны быть заполнены"""
@@ -2444,7 +2449,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.pop_field_from_params(params, field)
                 initial_obj_count = self.get_obj_manager.count()
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2462,7 +2467,7 @@ class FormAddTestMixIn(FormTestMixIn):
             self.update_captcha_params(self.get_url(self.url_add), params)
             initial_obj_count = self.get_obj_manager.count()
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
@@ -2473,7 +2478,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_max_length_values_positive(self):
         """
-        @note: Create object: fill all fields with maximum length values
+        Create object: fill all fields with maximum length values
         """
         new_object = None
         other_fields = []
@@ -2505,7 +2510,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.set_empty_value_for_field(params, depended_field)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(list(max_length_params.keys()))
@@ -2546,7 +2551,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 value = self.get_value_for_error_message(field, params[field])
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
@@ -2560,7 +2565,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('max_fields_length')
     def test_add_object_values_length_gt_max_negative(self):
         """
-        @note: Create object: values length > maximum
+        Create object: values length > maximum
         """
         message_type = 'max_length'
         other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
@@ -2575,20 +2580,21 @@ class FormAddTestMixIn(FormTestMixIn):
             params[field] = self.get_value_for_field(current_length, field)
             initial_obj_count = self.get_obj_manager.count()
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 error_message = self.get_error_message(message_type, field,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For field "%s" with length %d\n(value "%s")' %
-                                   (field, current_length, params[field] if len(str(params[field])) <= 1000 else str(params[field])[:1000] + '...'))
+                                   (field, current_length, params[field] if len(str(params[field])) <= 1000
+                                    else str(params[field])[:1000] + '...'))
 
     @only_with_obj
     @only_with('min_fields_length')
     def test_add_object_values_length_lt_min_negative(self):
         """
-        @note: Create object: values length < minimum
+        Create object: values length < minimum
         """
         message_type = 'min_length'
         other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
@@ -2603,7 +2609,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params[field] = self.get_value_for_field(current_length, field)
             initial_obj_count = self.get_obj_manager.count()
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 error_message = self.get_error_message(message_type, field,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
@@ -2615,7 +2621,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_add_object_with_wrong_choices_negative(self):
         """
-        @note: Try create object with choices, that not exists
+        Try create object with choices, that not exists
         """
         message_type = 'wrong_value'
         for field in set(tuple(self.choice_fields_add) + tuple(self.choice_fields_add_with_value_in_error)):
@@ -2627,7 +2633,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = value
                 initial_obj_count = self.get_obj_manager.count()
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     _locals = {'field': field,
                                'value': value if field in self.choice_fields_add_with_value_in_error else ''}
@@ -2640,7 +2646,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('multiselect_fields_add',))
     def test_add_object_with_wrong_multiselect_choices_negative(self):
         """
-        @note: Try create object with choices in multiselect, that not exists
+        Try create object with choices in multiselect, that not exists
         """
         message_type = 'wrong_value'
         for field in self.multiselect_fields_add:
@@ -2652,7 +2658,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = [value, ]
                 initial_obj_count = self.get_obj_manager.count()
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     _locals = {'field': field, 'value': value}
                     self.assertEqual(self.get_all_form_errors(response),
@@ -2664,7 +2670,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('unique_fields_add',))
     def test_add_object_unique_already_exists_negative(self):
         """
-        @note: Try add object with unique field values, that already used in other objects
+        Try add object with unique field values, that already used in other objects
         """
         message_type = 'unique'
         """values exactly equals"""
@@ -2683,7 +2689,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
             initial_obj_count = self.get_obj_manager.count()
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
 
@@ -2715,7 +2721,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[el_field] = params[el_field].swapcase()
             initial_obj_count = self.get_obj_manager.count()
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2730,7 +2736,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('unique_fields_add', 'unique_with_case',))
     def test_add_object_unique_alredy_exists_in_other_case_positive(self):
         """
-        @note: Add object with unique field values, to values, that already used in other objects but in other case
+        Add object with unique field values, to values, that already used in other objects but in other case
         """
         new_object = None
         for el in self.unique_fields_edit:
@@ -2762,8 +2768,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
-                    response = self.client.post(
-                        self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_success(response, initial_obj_count, locals())
                     new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
@@ -2782,7 +2787,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_wrong_values_in_digital_negative(self):
         """
-        @note: Try add obj with wrong values in digital fields
+        Try add obj with wrong values in digital fields
         """
         for field in [f for f in self.digital_fields_add]:
             message_type = 'wrong_value_int' if field in self.int_fields_add else 'wrong_value_digital'
@@ -2795,8 +2800,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_add(params, field)
                     params[field] = value
                     initial_obj_count = self.get_obj_manager.count()
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2808,7 +2812,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('email_fields_add',))
     def test_add_object_wrong_values_in_email_negative(self):
         """
-        @note: Try add obj with wrong values in email fields
+        Try add obj with wrong values in email fields
         """
         message_type = 'wrong_value_email'
         for field in [f for f in self.email_fields_add]:
@@ -2821,8 +2825,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_add(params, field)
                     params[field] = value
                     initial_obj_count = self.get_obj_manager.count()
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2834,7 +2837,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_value_max_in_digital_positive(self):
         """
-        @note: Add obj with value in digital fields == max
+        Add obj with value in digital fields == max
         """
         new_object = None
         fields_for_check = []
@@ -2855,7 +2858,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params.update(max_value_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
@@ -2886,7 +2889,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = value
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
@@ -2899,7 +2902,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_value_gt_max_in_digital_negative(self):
         """
-        @note: Try add obj with value in digital fields > max
+        Try add obj with value in digital fields > max
         """
         message_type = 'max_length_digital'
         for field in [f for f in self.digital_fields_add]:
@@ -2913,8 +2916,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_add(params, field)
                     params[field] = value
                     initial_obj_count = self.get_obj_manager.count()
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -2926,7 +2928,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_value_min_in_digital_positive(self):
         """
-        @note: Add obj with value in digital fields == min
+        Add obj with value in digital fields == min
         """
         new_object = None
         fields_for_check = []
@@ -2947,7 +2949,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params.update(min_value_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
@@ -2979,7 +2981,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = value
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
@@ -2992,7 +2994,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_add',))
     def test_add_object_value_lt_min_in_digital_negative(self):
         """
-        @note: Try add obj with value in digital fields < min
+        Try add obj with value in digital fields < min
         """
         message_type = 'min_length_digital'
         for field in [f for f in self.digital_fields_add]:
@@ -3006,8 +3008,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_add(params, field)
                     params[field] = value
                     initial_obj_count = self.get_obj_manager.count()
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -3019,7 +3020,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('disabled_fields_add',))
     def test_add_object_disabled_fields_values_negative(self):
         """
-        @note: Try add obj with filled disabled fields
+        Try add obj with filled disabled fields
         """
         new_object = None
         for field in self.disabled_fields_add:
@@ -3035,7 +3036,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = params.get(field, None) or self.get_value_for_field(None, field)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 self.assertNotEqual(self.get_value_for_compare(new_object, field), params[field])
@@ -3050,7 +3051,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_add',))
     def test_add_object_one_of_fields_all_filled_negative(self):
         """
-        @note: Try add object with all filled fields, that should be filled singly
+        Try add object with all filled fields, that should be filled singly
         """
         message_type = 'one_of'
         for group in self.one_of_fields_add:
@@ -3064,8 +3065,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.fill_all_fields(filled_group, params)
                     initial_obj_count = self.get_obj_manager.count()
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, group)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -3078,7 +3078,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('max_blocks')
     def test_add_object_max_inline_blocks_count_positive(self):
         """
-        @note: Test max number of lines in inline block
+        Test max number of lines in inline block
         """
         params = self.deepcopy(self.default_params_add)
         self.update_params(params)
@@ -3090,7 +3090,7 @@ class FormAddTestMixIn(FormTestMixIn):
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         try:
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = getattr(self, 'exclude_from_check_add', [])
@@ -3119,7 +3119,7 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
@@ -3135,7 +3135,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('max_blocks')
     def test_add_object_inline_blocks_count_gt_max_negative(self):
         """
-        @note: Test max + 1 number of lines in inline blocks
+        Test max + 1 number of lines in inline blocks
         """
         message_type = 'max_block_count'
         for name, max_count in viewitems(self.max_blocks):
@@ -3149,7 +3149,7 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 error_message = self.get_error_message(message_type, name)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -3165,7 +3165,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('max_count')
     def test_add_object_many_files_negative(self):
         """
-        @note: Try create obj with files count > max files count
+        Try create obj with files count > max files count
         """
         new_objects = None
         message_type = 'max_count_file'
@@ -3188,7 +3188,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = self.get_random_file(field, filename=filename, count=current_count)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
@@ -3201,7 +3201,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('max_count')
     def test_add_object_many_files_positive(self):
         """
-        @note: Try create obj with photos count == max files count
+        Try create obj with photos count == max files count
         """
         new_object = None
         fields_for_check = []
@@ -3222,7 +3222,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params.update(max_count_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
@@ -3252,7 +3252,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     f.seek(0)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
@@ -3266,7 +3266,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('one_max_size')
     def test_add_object_big_file_negative(self):
         """
-        @note: Try create obj with file size > max one file size
+        Try create obj with file size > max one file size
         """
         message_type = 'max_size_file'
         for field, field_dict in viewitems(self.file_fields_params_add):
@@ -3287,7 +3287,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 initial_obj_count = self.get_obj_manager.count()
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except Exception:
@@ -3302,7 +3302,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('sum_max_size')
     def test_add_object_big_summary_file_size_negative(self):
         """
-        @note: Try create obj with summary files size > max summary files size
+        Try create obj with summary files size > max summary files size
         """
         message_type = 'max_sum_size_file'
         for field, field_dict in viewitems(self.file_fields_params_add):
@@ -3322,7 +3322,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
                 params[field] = f
                 initial_obj_count = self.get_obj_manager.count()
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except Exception:
@@ -3337,7 +3337,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_add')
     def test_add_object_big_file_positive(self):
         """
-        @note: Create obj with file size == max one file size
+        Create obj with file size == max one file size
         """
         new_object = None
         fields_for_check = list(self.file_fields_params_add.keys())
@@ -3359,7 +3359,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params.update(max_size_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
@@ -3402,7 +3402,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[field].seek(0)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
@@ -3418,7 +3418,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('sum_max_size')
     def test_add_object_big_summary_file_size_positive(self):
         """
-        @note: Create obj with summary files size == max summary files size
+        Create obj with summary files size == max summary files size
         """
         new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
@@ -3440,7 +3440,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
@@ -3457,7 +3457,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_add')
     def test_add_object_empty_file_negative(self):
         """
-        @note: Try create obj with file size = 0M
+        Try create obj with file size = 0M
         """
         new_objects = None
         message_type = 'empty_file'
@@ -3476,7 +3476,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = f
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
@@ -3488,7 +3488,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_add')
     def test_add_object_some_file_extensions_positive(self):
         """
-        @note: Create obj with some available extensions
+        Create obj with some available extensions
         """
         new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
@@ -3511,8 +3511,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_success(response, initial_obj_count, locals())
                     new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
@@ -3526,7 +3525,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_files_params('extensions')
     def test_add_object_wrong_file_extensions_negative(self):
         """
-        @note: Create obj with wrong extensions
+        Create obj with wrong extensions
         """
         message_type = 'wrong_extension'
         for field, field_dict in viewitems(self.file_fields_params_add):
@@ -3548,8 +3547,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = f
                 initial_obj_count = self.get_obj_manager.count()
                 try:
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 except Exception:
@@ -3561,7 +3559,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['min_width', 'min_height', 'max_width', 'max_height'])
     def test_add_object_min_image_dimensions_positive(self):
         """
-        @note: Create obj with minimum image file dimensions
+        Create obj with minimum image file dimensions
         """
         new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
@@ -3582,7 +3580,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = f
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
@@ -3596,7 +3594,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['min_width', 'min_height'])
     def test_add_object_image_dimensions_lt_min_negative(self):
         """
-        @note: Create obj with image file dimensions < minimum
+        Create obj with image file dimensions < minimum
         """
         new_objects = None
         message_type = 'min_dimensions'
@@ -3626,8 +3624,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[field] = f
                     initial_obj_count = self.get_obj_manager.count()
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
@@ -3640,7 +3637,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['max_width', 'max_height', 'min_width', 'min_height'])
     def test_add_object_max_image_dimensions_positive(self):
         """
-        @note: Create obj with maximum image file dimensions
+        Create obj with maximum image file dimensions
         """
         new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
@@ -3661,7 +3658,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = f
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = getattr(self, 'exclude_from_check_add', [])
@@ -3675,7 +3672,7 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['max_width', 'max_height'])
     def test_add_object_image_dimensions_gt_max_negative(self):
         """
-        @note: Create obj with image file dimensions > maximum
+        Create obj with image file dimensions > maximum
         """
         new_objects = None
         message_type = 'max_dimensions'
@@ -3705,8 +3702,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[field] = f
                     initial_obj_count = self.get_obj_manager.count()
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                    response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
@@ -3742,7 +3738,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 params[field] = test_params[field]
                 initial_obj_count = self.get_obj_manager.count()
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except Exception:
@@ -3784,7 +3780,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.set_empty_value_for_field(params, depended_field)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
@@ -3814,7 +3810,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params[field] = test_params[field]
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
@@ -3840,8 +3836,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params[field] = f
             initial_obj_count = self.get_obj_manager.count()
             try:
-                response = self.client.post(self.get_url(self.url_add), params, follow=True,
-                                            **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except Exception:
@@ -3869,7 +3864,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params.update(test_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-            response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+            response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
             exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
@@ -3901,7 +3896,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     params[field].seek(0)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-                response = self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                 exclude = set(getattr(self, 'exclude_from_check_add', [])).difference([field, ])
@@ -3922,8 +3917,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_captcha_params('', params)
                 params[field] = 'te\x00st'
-                response = self.client.post(self.get_url(self.url_add), params,
-                                            follow=True, **self.additional_params)
+                response = self.send_add_request(params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
@@ -3942,11 +3936,16 @@ class FormEditTestMixIn(FormTestMixIn):
             return int(re.findall(r"/(\d+)/", self.url_edit)[0])
         return choice(self.get_obj_manager.all()).pk
 
-    def get_obj_for_edit(self):
+    def _get_obj_for_edit(self):
         return self.get_obj_manager.get(pk=self.get_obj_id_for_edit())
 
+    def get_obj_for_edit(self):
+        obj = self._get_obj_for_edit()
+        self.update_params_for_obj(obj)
+        return obj
+
     def get_other_obj_with_filled(self, param_names, other_obj):
-        obj = self.get_obj_for_edit()
+        obj = self._get_obj_for_edit()
         if all([self._get_field_value_by_name(obj, field) for field in param_names]) and other_obj.pk != obj.pk:
             return obj
         obj_related_objects = self.get_related_names(self.obj)
@@ -3970,10 +3969,17 @@ class FormEditTestMixIn(FormTestMixIn):
         else:
             return self.create_copy(other_obj, param_names)
 
+    def send_edit_request(self, obj_pk, params):
+        return self.client.post(self.get_url(self.url_edit, (obj_pk,)),
+                                params, follow=True, **self.additional_params)
+
+    def update_params_for_obj(self, obj):
+        pass
+
     @only_with_obj
     def test_edit_page_fields_list_positive(self):
         """
-        @note: check that all and only need fields is visible at edit page
+        check that all and only need fields is visible at edit page
         """
         obj_pk = self.get_obj_id_for_edit()
         response = self.client.get(self.get_url(self.url_edit, (obj_pk,)), follow=True, **self.additional_params)
@@ -4009,7 +4015,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_all_fields_filled_positive(self):
         """
-        @note: Edit object: fill all fields
+        Edit object: fill all fields
         """
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
@@ -4024,8 +4030,7 @@ class FormEditTestMixIn(FormTestMixIn):
         self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
 
         try:
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4037,11 +4042,10 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_edit',))
     def test_edit_object_with_group_all_fields_filled_positive(self):
         """
-        @note: Edit object: fill all fields
+        Edit object: fill all fields
         """
         prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_edit)
         only_independent_fields = set(self.all_fields_edit).difference(viewkeys(prepared_depends_fields))
-        self.get_obj_for_edit()
 
         fields_from_groups = set(viewkeys(prepared_depends_fields))
         for group in self.one_of_fields_edit:
@@ -4062,8 +4066,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4076,7 +4079,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_only_required_fields_positive(self):
         """
-        @note: Edit object: fill only required fields
+        Edit object: fill only required fields
         """
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
@@ -4088,8 +4091,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in required_fields:
             self.fill_all_fields(required_fields, params)
         try:
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4111,8 +4113,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.fill_all_fields((field,), params)
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4126,7 +4127,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_without_not_required_fields_positive(self):
         """
-        @note: Edit object: send only required fields
+        Edit object: send only required fields
         """
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
@@ -4139,8 +4140,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in required_fields:
             self.fill_all_fields(required_fields, params)
         try:
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4162,8 +4162,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.fill_all_fields((field,), params)
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4177,7 +4176,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_empty_required_fields_negative(self):
         """
-        @note: Try edit object: empty required fields
+        Try edit object: empty required fields
         """
         message_type = 'empty_required'
         for field in [f for f in self.required_fields_edit if 'FORMS' not in f]:
@@ -4189,8 +4188,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.set_empty_value_for_field(params, field)
                 obj_for_edit.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4221,7 +4219,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_without_required_fields_negative(self):
         """
-        @note: Try edit object: required fields are not exists in params
+        Try edit object: required fields are not exists in params
         """
         message_type = 'without_required'
         for field in [f for f in self.required_fields_edit if 'FORMS' not in f and not re.findall(r'.+?\-\d+\-.+?', f)]:
@@ -4233,8 +4231,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.pop_field_from_params(params, field)
                 obj_for_edit.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4265,7 +4262,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_not_exists_object_negative(self):
         """
-        @note: Try open edit page of object with invalid id
+        Try open edit page of object with invalid id
         """
         for value in ('9999999', '2147483648', 'qwerty', 'йцу'):
             sp = transaction.savepoint()
@@ -4299,7 +4296,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_max_length_values_positive(self):
         """
-        @note: Edit object: fill all fields with maximum length values
+        Edit object: fill all fields with maximum length values
         """
         obj_for_edit = self.get_obj_for_edit()
         other_fields = []
@@ -4334,8 +4331,7 @@ class FormEditTestMixIn(FormTestMixIn):
             params.update(max_length_params)
             for depended_field in fields_for_clean:
                 self.set_empty_value_for_field(params, depended_field)
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4352,8 +4348,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 _errors = []
                 other_values = {ff: self._get_field_value_by_name(obj_for_edit, ff) for ff in file_fields}
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
@@ -4397,8 +4392,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     else:
                         params[field].seek(0)
                 value = self.get_value_for_error_message(field, params[field])
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4412,8 +4406,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     _errors = []
                     other_values = {field: self._get_field_value_by_name(obj_for_edit, field)}
                     try:
-                        response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                    params, follow=True, **self.additional_params)
+                        response = self.send_edit_request(obj_for_edit, params)
                         self.check_on_edit_success(response, locals())
                         new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                         exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4434,7 +4427,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('max_fields_length')
     def test_edit_object_values_length_gt_max_negative(self):
         """
-        @note: Try edit object: values length > maximum
+        Try edit object: values length > maximum
         """
         message_type = 'max_length'
         other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
@@ -4450,8 +4443,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 params[field] = self.get_value_for_field(current_length, field)
                 obj_for_edit.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 error_message = self.get_error_message(message_type, field, length)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4464,7 +4456,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('min_fields_length')
     def test_edit_object_values_length_lt_min_negative(self):
         """
-        @note: Try edit object: values length < minimum
+        Try edit object: values length < minimum
         """
         message_type = 'min_length'
         other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
@@ -4480,8 +4472,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 params[field] = self.get_value_for_field(current_length, field)
                 obj_for_edit.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 error_message = self.get_error_message(message_type, field, length)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4493,7 +4484,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_object_with_wrong_choices_negative(self):
         """
-        @note: Try edit object: choice values to choices, that not exists
+        Try edit object: choice values to choices, that not exists
         """
         message_type = 'wrong_value'
         for field in set(tuple(self.choice_fields_edit) + tuple(self.choice_fields_edit_with_value_in_error)):
@@ -4506,8 +4497,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = value
                 obj_for_edit.refresh_from_db()
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     _locals = {'field': field,
                                'value': value if field in self.choice_fields_edit_with_value_in_error else ''}
                     error_message = self.get_error_message(message_type, field, locals=_locals)
@@ -4521,7 +4511,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('multiselect_fields_edit',))
     def test_edit_object_with_wrong_multiselect_choices_negative(self):
         """
-        @note: Try edit object: choice values to multiselect, that not exists
+        Try edit object: choice values to multiselect, that not exists
         """
         message_type = 'wrong_value'
         for field in self.multiselect_fields_edit:
@@ -4534,8 +4524,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = [value, ]
                 obj_for_edit.refresh_from_db()
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     _locals = {'field': field, 'value': value}
                     error_message = self.get_error_message(message_type, field, locals=_locals)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -4547,7 +4536,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('unique_fields_edit',))
     def test_edit_object_unique_already_exists_negative(self):
         """
-        @note: Try change object unique field values, to values, that already used in other objects
+        Try change object unique field values, to values, that already used in other objects
         """
         message_type = 'unique'
         """values exactly equals"""
@@ -4569,8 +4558,7 @@ class FormEditTestMixIn(FormTestMixIn):
             obj_for_edit.refresh_from_db()
 
             try:
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -4602,8 +4590,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[el_field] = params[el_field].swapcase()
             obj_for_edit.refresh_from_db()
             try:
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -4617,7 +4604,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('unique_fields_edit', 'unique_with_case',))
     def test_edit_object_unique_alredy_exists_in_other_case_positive(self):
         """
-        @note: Change object unique field values, to values, that already used in other objects but in other case
+        Change object unique field values, to values, that already used in other objects but in other case
         """
         for el in self.unique_fields_edit:
             if not set(self.unique_with_case).intersection(el):
@@ -4642,8 +4629,7 @@ class FormEditTestMixIn(FormTestMixIn):
                         params[el_field] = getattr(params[el_field], new_command)()
                 existing_obj.refresh_from_db()
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4663,7 +4649,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_wrong_values_in_digital_negative(self):
         """
-        @note: Try edit object: wrong values in digital fields
+        Try edit object: wrong values in digital fields
         """
         for field in self.digital_fields_edit:
             message_type = 'wrong_value_int' if field in self.int_fields_edit else 'wrong_value_digital'
@@ -4677,8 +4663,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
                     obj_for_edit.refresh_from_db()
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
@@ -4691,7 +4676,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('email_fields_edit',))
     def test_edit_object_wrong_values_in_email_negative(self):
         """
-        @note: Try edit object: wrong values in email fields
+        Try edit object: wrong values in email fields
         """
         message_type = 'wrong_value_email'
         for field in self.email_fields_edit:
@@ -4705,8 +4690,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
                     obj_for_edit.refresh_from_db()
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4718,7 +4702,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_value_max_in_digital_positive(self):
         """
-        @note: Edit object: value in digital fields == max
+        Edit object: value in digital fields == max
         """
         obj_for_edit = self.get_obj_for_edit()
         fields_for_check = []
@@ -4736,8 +4720,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(max_value_params)
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
@@ -4766,8 +4749,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 params[field] = value
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4782,7 +4764,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_value_gt_max_in_digital_negative(self):
         """
-        @note: Try edit object: value in digital fields > max
+        Try edit object: value in digital fields > max
         """
         message_type = 'max_length_digital'
         for field in [f for f in self.digital_fields_edit]:
@@ -4797,8 +4779,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
                     obj_for_edit.refresh_from_db()
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4810,7 +4791,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_value_min_in_digital_positive(self):
         """
-        @note: Edit object: value in digital fields == min
+        Edit object: value in digital fields == min
         """
         obj_for_edit = self.get_obj_for_edit()
         fields_for_check = []
@@ -4828,8 +4809,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(min_value_params)
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
@@ -4858,8 +4838,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 params[field] = value
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4874,7 +4853,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('digital_fields_edit',))
     def test_edit_object_value_lt_min_in_digital_negative(self):
         """
-        @note: Try edit object: value in digital fields < min
+        Try edit object: value in digital fields < min
         """
         message_type = 'min_length_digital'
         for field in [f for f in self.digital_fields_edit]:
@@ -4889,8 +4868,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
                     obj_for_edit.refresh_from_db()
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4902,7 +4880,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('disabled_fields_edit',))
     def test_edit_object_disabled_fields_values_negative(self):
         """
-        @note: Try change values in disabled fields
+        Try change values in disabled fields
         """
         for field in self.disabled_fields_edit:
             sp = transaction.savepoint()
@@ -4913,8 +4891,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = params.get(field, None) or self.get_value_for_field(None, field)
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 if field not in getattr(self, 'exclude_from_check_edit', []):
@@ -4929,7 +4906,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_edit',))
     def test_edit_object_one_of_fields_all_filled_negative(self):
         """
-        @note: Try edit object: fill all fields, that should be filled singly
+        Try edit object: fill all fields, that should be filled singly
         """
         message_type = 'one_of'
         for group in self.one_of_fields_edit:
@@ -4944,8 +4921,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.fill_all_fields(filled_group, params)
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     obj_for_edit.refresh_from_db()
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     error_message = self.get_error_message(message_type, group)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4958,7 +4934,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('max_blocks')
     def test_edit_object_max_inline_blocks_count_positive(self):
         """
-        @note: Test max number of line in inline blocks
+        Test max number of line in inline blocks
         """
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
@@ -4969,8 +4945,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                        set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
         sp = transaction.savepoint()
         try:
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4997,8 +4972,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                        set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
             sp = transaction.savepoint()
             try:
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -5013,7 +4987,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('max_blocks')
     def test_edit_object_inline_blocks_count_gt_max_negative(self):
         """
-        @note: Test max + 1 number of lines in inline blocks
+        Test max + 1 number of lines in inline blocks
         """
         message_type = 'max_block_count'
         for name, max_count in viewitems(self.max_blocks):
@@ -5027,8 +5001,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             obj_for_edit.refresh_from_db()
             try:
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 error_message = self.get_error_message(message_type, name)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -5041,7 +5014,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('max_count')
     def test_edit_object_many_files_negative(self):
         """
-        @note: Try edit obj with files count > max files count
+        Try edit obj with files count > max files count
         """
         message_type = 'max_count_file'
         fields_for_check = [field for field, field_dict in viewitems(self.file_fields_params_edit) if
@@ -5062,8 +5035,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, filename=filename, count=current_count)
                 params[field] = f
                 obj_for_edit.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5075,7 +5047,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('max_count')
     def test_edit_object_many_files_positive(self):
         """
-        @note: Try edit obj with photos count == max files count
+        Try edit obj with photos count == max files count
         """
         obj_for_edit = self.get_obj_for_edit()
         fields_for_check = []
@@ -5095,8 +5067,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(max_count_params)
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
@@ -5124,8 +5095,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = max_count_params[field]
                 for f in params[field]:
                     f.seek(0)
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5141,7 +5111,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('one_max_size')
     def test_edit_object_big_file_negative(self):
         """
-        @note: Try edit obj with file size > max one file size
+        Try edit obj with file size > max one file size
         """
         message_type = 'max_size_file'
         fields_for_check = [field for field, field_dict in viewitems(self.file_fields_params_edit) if
@@ -5164,8 +5134,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 obj_for_edit.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5180,7 +5149,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('sum_max_size')
     def test_edit_object_big_summary_file_size_negative(self):
         """
-        @note: Try edit obj with summary files size > max summary file size
+        Try edit obj with summary files size > max summary file size
         """
         message_type = 'max_sum_size_file'
         fields_for_check = [field for field, field_dict in viewitems(self.file_fields_params_edit) if
@@ -5203,8 +5172,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, count=field_dict['max_count'], size=one_size)
                 params[field] = f
                 obj_for_edit.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5219,7 +5187,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_edit')
     def test_edit_object_big_file_positive(self):
         """
-        @note: Edit obj with file size == max one file size
+        Edit obj with file size == max one file size
         """
         obj_for_edit = self.get_obj_for_edit()
         fields_for_check = list(self.file_fields_params_edit.keys())
@@ -5241,8 +5209,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(max_size_params)
-            response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_edit_request(obj_for_edit, params)
 
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -5285,8 +5252,7 @@ class FormEditTestMixIn(FormTestMixIn):
                         f.seek(0)
                 else:
                     params[field].seek(0)
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5303,7 +5269,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('sum_max_size')
     def test_edit_object_big_summary_file_size_positive(self):
         """
-        @note: Edit obj with summary files size == max summary files size
+        Edit obj with summary files size == max summary files size
         """
         fields_for_check = [field for field, field_dict in viewitems(self.file_fields_params_edit) if
                             field_dict.get('sum_max_size', None)]
@@ -5323,8 +5289,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = []
                 f = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
                 params[field] = f
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5342,7 +5307,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_edit')
     def test_edit_object_empty_file_negative(self):
         """
-        @note: Try edit obj with file size = 0M
+        Try edit obj with file size = 0M
         """
         message_type = 'empty_file'
         for field in list(self.file_fields_params_edit.keys()):
@@ -5357,8 +5322,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 obj_for_edit.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
-                                            **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5369,7 +5333,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with('file_fields_params_edit')
     def test_edit_object_some_file_extensions_positive(self):
         """
-        @note: Edit obj with some available extensions
+        Edit obj with some available extensions
         """
         for field in list(self.file_fields_params_edit.keys()):
             field_dict = self.file_fields_params_edit[field]
@@ -5388,8 +5352,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 params[field] = f
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5405,7 +5368,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_files_params('extensions')
     def test_edit_object_wrong_file_extensions_negative(self):
         """
-        @note: Edit obj with wrong extensions
+        Edit obj with wrong extensions
         """
         message_type = 'wrong_extension'
         for field in list(self.file_fields_params_edit.keys()):
@@ -5429,8 +5392,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 try:
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -5442,7 +5404,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['min_width', 'min_height'])
     def test_edit_object_min_image_dimensions_positive(self):
         """
-        @note: Edit obj with minimum image file dimensions
+        Edit obj with minimum image file dimensions
         """
         for field in list(self.file_fields_params_edit.keys()):
             field_dict = self.file_fields_params_edit[field]
@@ -5457,8 +5419,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, width=width, height=height)
                 params[field] = f
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5474,7 +5435,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['min_width', 'min_height'])
     def test_edit_object_image_dimensions_lt_min_negative(self):
         """
-        @note: Edit obj with image file dimensions < minimum
+        Edit obj with image file dimensions < minimum
         """
         message_type = 'min_dimensions'
         for field in list(self.file_fields_params_edit.keys()):
@@ -5499,8 +5460,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = f
                     obj_for_edit.refresh_from_db()
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -5512,7 +5472,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['max_width', 'max_height', 'min_width', 'min_height'])
     def test_edit_object_max_image_dimensions_positive(self):
         """
-        @note: Edit obj with maximum image file dimensions
+        Edit obj with maximum image file dimensions
         """
         for field in list(self.file_fields_params_edit.keys()):
             field_dict = self.file_fields_params_edit[field]
@@ -5527,8 +5487,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, width=width, height=height)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = f
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5544,7 +5503,7 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with_any_files_params(['max_width', 'max_height'])
     def test_edit_object_image_dimensions_gt_max_negative(self):
         """
-        @note: Edit obj with image file dimensions > maximum
+        Edit obj with image file dimensions > maximum
         """
         message_type = 'max_dimensions'
         for field in list(self.file_fields_params_edit.keys()):
@@ -5569,8 +5528,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     params[field] = f
                     obj_for_edit.refresh_from_db()
-                    response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.pk,)), params, follow=True,
-                                                **self.additional_params)
+                    response = self.send_edit_request(obj_for_edit, params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -5582,16 +5540,19 @@ class FormDeleteTestMixIn(FormTestMixIn):
 
     url_delete = ''
 
+    def send_delete_request(self, obj_pk):
+        return self.client.post(self.get_url_for_negative(self.url_delete, (obj_pk,)), {'post': 'yes'},
+                                follow=True, **self.additional_params)
+
     @only_with_obj
     def test_delete_not_exists_object_negative(self):
         """
-        @note: Try delete object with invalid id
+        Try delete object with invalid id
         """
         for value in ('9999999', '2147483648', 'qwe', 'йцу'):
             sp = transaction.savepoint()
             try:
-                response = self.client.post(self.get_url_for_negative(self.url_delete, (value,)),
-                                            follow=True, **self.additional_params)
+                response = self.send_delete_request(value)
                 self.assertEqual(response.status_code, self.status_code_not_exist,
                                  'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
                 if self.status_code_not_exist == 200:
@@ -5604,14 +5565,14 @@ class FormDeleteTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_delete_obj_positive(self):
         """
-        @note: Delete object
+        Delete object
         """
         if 'get_obj_id_for_edit' in dir(self):
             obj_pk = self.get_obj_id_for_edit()
         else:
             obj_pk = choice(self.get_obj_manager.all()).pk
         initial_obj_count = self.get_obj_manager.count()
-        self.client.post(self.get_url(self.url_delete, (obj_pk,)), {'post': 'yes'}, **self.additional_params)
+        self.send_delete_request(obj_pk)
         self.assertEqual(self.get_obj_manager.count(), initial_obj_count - 1,
                          'Objects count after delete = %s (expect %s)' %
                          (self.get_obj_manager.count(), initial_obj_count - 1))
@@ -5620,7 +5581,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
     @only_with(('url_list',))
     def test_delete_obj_from_list_positive(self):
         """
-        @note: Delete objects from objects list
+        Delete objects from objects list
         """
         obj_ids = self.get_obj_manager.values_list('pk', flat=True)
         initial_obj_count = self.get_obj_manager.count()
@@ -5650,6 +5611,14 @@ class FormRemoveTestMixIn(FormTestMixIn):
         super(FormRemoveTestMixIn, self).__init__(*args, **kwargs)
         self.url_edit_in_trash = self.url_edit_in_trash or self.url_recovery.replace('trash_restore', 'trash_change')
 
+    def send_delete_request(self, obj_pk):
+        return self.client.post(self.get_url_for_negative(self.url_delete, (obj_pk,)),
+                                follow=True, **self.additional_params)
+
+    def send_recovery_request(self, obj_pk):
+        return self.client.post(self.get_url_for_negative(self.url_recovery, (obj_pk,)),
+                                follow=True, **self.additional_params)
+
     def get_is_removed(self, obj):
         is_removed_name = getattr(self, 'is_removed_field', 'is_removed')
         return getattr(obj, is_removed_name)
@@ -5661,12 +5630,12 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_delete_obj_positive(self):
         """
-        @note: Delete object
+        Delete object
         """
         obj_id = self.get_obj_id_for_edit()
         initial_obj_count = self.get_obj_manager.count()
         try:
-            self.client.post(self.get_url(self.url_delete, (obj_id,)), **self.additional_params)
+            self.send_delete_request(obj_id)
             self.assertEqual(self.get_obj_manager.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.get_obj_manager.get(id=obj_id)))
         except Exception:
@@ -5675,16 +5644,15 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_recovery_obj_positive(self):
         """
-        @note: Recovery deleted object
+        Recovery deleted object
         """
         obj_for_test = self.get_obj_for_edit()
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         obj_id = obj_for_test.id
         try:
-            recovery_url = self.get_url(self.url_recovery, (obj_id,))
             initial_obj_count = self.get_obj_manager.count()
-            self.client.post(recovery_url, **self.additional_params)
+            self.send_recovery_request(obj_id)
             self.assertEqual(self.get_obj_manager.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.get_obj_manager.get(id=obj_id)))
         except Exception:
@@ -5693,12 +5661,11 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_delete_not_exists_object_negative(self):
         """
-        @note: Try delete object with invalid id
+        Try delete object with invalid id
         """
         for value in ('9999999', '2147483648', 'qwe', 'йцу'):
             try:
-                url = self.get_url_for_negative(self.url_delete, (value,))
-                response = self.client.post(url, follow=True, **self.additional_params)
+                response = self.send_delete_request(value)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
                 self.assertEqual(response.status_code, 200)
@@ -5710,12 +5677,11 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_recovery_not_exists_object_negative(self):
         """
-        @note: Try recovery object with invalid id
+        Try recovery object with invalid id
         """
         for value in ('9999999', '2147483648',):
             try:
-                url = self.get_url_for_negative(self.url_recovery, (value,))
-                response = self.client.post(url, follow=True, **self.additional_params)
+                response = self.send_recovery_request(value)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
                 self.assertEqual(response.status_code, 200)
@@ -5727,7 +5693,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_in_trash_negative(self):
         """
-        @note: Try change object in trash
+        Try change object in trash
         """
         obj_for_test = self.get_obj_for_edit()
         self.set_is_removed(obj_for_test, True)
@@ -5747,7 +5713,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_edit_in_trash_by_edit_url_negative(self):
         """
-        @note: Try change object in trash
+        Try change object in trash
         """
         obj_for_test = self.get_obj_for_edit()
         self.set_is_removed(obj_for_test, True)
@@ -5772,9 +5738,8 @@ class FormRemoveTestMixIn(FormTestMixIn):
         self.set_is_removed(obj_for_test, True)
         obj_for_test.save()
         try:
-            recovery_url = self.get_url_for_negative(self.url_recovery, (obj_for_test.pk,))
             initial_obj_count = self.get_obj_manager.count()
-            response = self.client.post(recovery_url, follow=True, **self.additional_params)
+            response = self.send_recovery_request(obj_for_test.pk)
             self.assertEqual(self.get_obj_manager.count(), initial_obj_count)
             self.assertTrue(self.get_is_removed(self.get_obj_manager.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), ['Произошла ошибка. Попробуйте позже.'])
@@ -5789,8 +5754,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_for_test.save()
         initial_obj_count = self.get_obj_manager.count()
         try:
-            response = self.client.post(self.get_url_for_negative(self.url_delete, (obj_for_test.pk,)), follow=True,
-                                        **self.additional_params)
+            response = self.send_delete_request(obj_for_test.pk)
             self.assertEqual(self.get_obj_manager.count(), initial_obj_count)
             self.assertFalse(self.get_is_removed(self.get_obj_manager.get(id=obj_for_test.pk)))
             self.assertEqual(self.get_all_form_messages(response), ['Произошла ошибка. Попробуйте позже.'])
@@ -5801,7 +5765,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with(('url_list',))
     def test_delete_obj_from_list_positive(self):
         """
-        @note: Delete objects from objects list
+        Delete objects from objects list
         """
         obj_ids = [self.get_obj_id_for_edit()]
         initial_obj_count = self.get_obj_manager.count()
@@ -5822,7 +5786,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
     @only_with_obj
     def test_recovery_obj_from_list_positive(self):
         """
-        @note: Recovery deleted objects from objects list
+        Recovery deleted objects from objects list
         """
         self.get_obj_manager.update(is_removed=True)
         obj_ids = [self.get_obj_id_for_edit()]
@@ -5903,7 +5867,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('allowed_links',))
     def test_allowed_links(self):
         """
-        @note: check allowed links
+        check allowed links
         """
         for el in self.allowed_links:
             self.login()
@@ -5919,7 +5883,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('links_redirect',))
     def test_unallowed_links_with_redirect(self):
         """
-        @note: check unallowed links, that should redirect to other page
+        check unallowed links, that should redirect to other page
         """
         for el in self.links_redirect:
             self.login()
@@ -5934,7 +5898,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('links_400',))
     def test_unallowed_links_with_400_response(self):
         """
-        @note: check unallowed links, that should response 404
+        check unallowed links, that should response 404
         """
         for el in self.links_400:
             self.login()
@@ -5949,7 +5913,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('links_401')
     def test_unallowed_links_with_401_response(self):
         """
-        @note: check unallowed links, that should response 401
+        check unallowed links, that should response 401
         """
         self.login()
         for el in self.links_401:
@@ -5966,7 +5930,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('links_403',))
     def test_unallowed_links_with_403_response(self):
         """
-        @note: check unallowed links, that should response 403
+        check unallowed links, that should response 403
         """
         for el in self.links_403:
             self.login()
@@ -5981,7 +5945,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('urlpatterns')
     def test_unallowed_links_with_404_response(self):
         """
-        @note: check unallowed links, that should response 404
+        check unallowed links, that should response 404
         """
         links_other = tuple(self.allowed_links) + tuple(self.links_403) + tuple(self.links_redirect) + \
             tuple(self.links_400) + tuple(self.links_401) + tuple(self.links_405)
@@ -6005,7 +5969,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with(('links_405',))
     def test_unallowed_links_with_405_response(self):
         """
-        @note: check unallowed links, that should response 404
+        check unallowed links, that should response 404
         """
         for el in self.links_405:
             self.login()
@@ -6084,7 +6048,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with_obj
     def test_change_password_page_fields_list(self):
         """
-        @note: Check fields list on change password form
+        Check fields list on change password form
         """
         user = self.get_obj_for_edit()
         response = self.client.get(
@@ -6108,7 +6072,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with_obj
     def test_change_password_positive(self):
         """
-        @note: Change password
+        Change password
         """
         for value in self.password_positive_values or [self.password_params[self.field_password], ]:
             user = self.get_obj_for_edit()
@@ -6128,7 +6092,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with_obj
     def test_change_password_empty_required_fields_negative(self):
         """
-        @note: Try change password: empty required fields
+        Try change password: empty required fields
         """
         message_type = 'empty_required'
         for field in filter(None, [self.field_old_password, self.field_password, self.field_password_repeat]):
@@ -6150,7 +6114,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with_obj
     def test_change_password_without_required_fields_negative(self):
         """
-        @note: Try change password: without required fields
+        Try change password: without required fields
         """
         message_type = 'without_required'
         for field in filter(None, [self.field_old_password, self.field_password, self.field_password_repeat]):
@@ -6172,7 +6136,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with_obj
     def test_change_password_different_new_passwords_negative(self):
         """
-        @note: Try change password: different password and repeat password values
+        Try change password: different password and repeat password values
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6195,7 +6159,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('password_min_length')
     def test_change_password_length_lt_min_negative(self):
         """
-        @note: Try change password with length < password_min_length
+        Try change password with length < password_min_length
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6220,7 +6184,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('password_min_length')
     def test_change_password_min_length_positive(self):
         """
-        @note: Change password with length = password_min_length
+        Change password with length = password_min_length
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6241,7 +6205,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('password_max_length')
     def test_change_password_max_length_positive(self):
         """
-        @note: Change password with length = password_max_length
+        Change password with length = password_max_length
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6262,7 +6226,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('password_max_length')
     def test_change_password_length_gt_max_negative(self):
         """
-        @note: Try change self password with length > password_max_length
+        Try change self password with length > password_max_length
         """
         user = self.get_obj_for_edit()
         length = self.password_max_length
@@ -6286,7 +6250,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('password_wrong_values')
     def test_change_password_wrong_value_negative(self):
         """
-        @note: Try change password to wrong value
+        Try change password to wrong value
         """
         for value in self.password_wrong_values:
             user = self.get_obj_for_edit()
@@ -6309,7 +6273,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('field_old_password')
     def test_change_password_wrong_old_negative(self):
         """
-        @note: Try change password: wrong old password
+        Try change password: wrong old password
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6331,7 +6295,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     @only_with('field_old_password')
     def test_change_password_invalid_old_value_positive(self):
         """
-        @note: Change password: old password value not valid now
+        Change password: old password value not valid now
         """
         wrong_values = list(self.password_wrong_values or [])
         if self.password_min_length:
@@ -6475,7 +6439,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_request_reset_password_positive(self):
         """
-        @note: Request password change code
+        Request password change code
         """
         user = self.get_obj_for_edit()
         user.email = 'te~st@test.test'
@@ -6496,7 +6460,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_request_reset_password_empty_required_negative(self):
         """
-        @note: Request password change code with empty required fields
+        Request password change code with empty required fields
         """
         for field in self.request_fields:
             params = self.deepcopy(self.request_password_params)
@@ -6511,7 +6475,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_request_reset_password_without_required_negative(self):
         """
-        @note: Request password change code without required fields
+        Request password change code without required fields
         """
         for field in self.request_fields:
             params = self.deepcopy(self.request_password_params)
@@ -6527,7 +6491,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('username_is_email')
     def test_request_reset_password_negative(self):
         """
-        @note: Try reset password with wrong email value
+        Try reset password with wrong email value
         """
         for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
             params = self.deepcopy(self.request_password_params)
@@ -6543,11 +6507,10 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_request_reset_password_username_not_exists_wo_captcha_negative(self):
         """
-        @note: Try reset password by username that not exists. No any error messages in secure purposes
+        Try reset password by username that not exists. No any error messages in secure purposes
         """
         if self.with_captcha:
             self.skipTest('Other test for form with captcha')
-        self.get_obj_for_edit()
         username = get_random_email_value(10)
         params = self.deepcopy(self.request_password_params)
         params[self.field_username] = username
@@ -6561,7 +6524,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('with_captcha')
     def test_request_reset_password_username_not_exists_with_captcha_negative(self):
         """
-        @note: Try reset password by username that not exists.
+        Try reset password by username that not exists.
         """
         username = get_random_email_value(10)
         params = self.deepcopy(self.request_password_params)
@@ -6577,7 +6540,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_request_reset_password_inactive_user_wo_captcha_negative(self):
         """
-        @note: Try reset password as inactive user. No any error messages in secure purposes
+        Try reset password as inactive user. No any error messages in secure purposes
         """
         if self.with_captcha:
             self.skipTest('Other test for form with captcha')
@@ -6596,7 +6559,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('with_captcha')
     def test_request_reset_password_inactive_user_with_captcha_negative(self):
         """
-        @note: Try reset password as inactive user.
+        Try reset password as inactive user.
         """
         user = self.get_obj_for_edit()
         user.is_active = False
@@ -6615,7 +6578,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('with_captcha')
     def test_request_reset_password_wrong_captcha_negative(self):
         """
-        @note: Try reset password with wrong captcha value
+        Try reset password with wrong captcha value
         """
         for field in ('captcha_0', 'captcha_1'):
             for value in (u'йцу', u'\r', u'\n', u' ', ':'):
@@ -6636,7 +6599,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_reset_password_positive(self):
         """
-        @note: Reset password by link
+        Reset password by link
         """
         for value in self.password_positive_values:
             user = self.get_obj_for_edit()
@@ -6658,7 +6621,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_reset_password_twice_negative(self):
         """
-        @note: Try reset password twice by one link
+        Try reset password twice by one link
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6685,7 +6648,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_reset_password_empty_required_negative(self):
         """
-        @note: Try change password with empty required fields
+        Try change password with empty required fields
         """
         for field in self.change_fields:
             user = self.get_obj_for_edit()
@@ -6707,7 +6670,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_reset_password_without_required_negative(self):
         """
-        @note: Try change password without required fields
+        Try change password without required fields
         """
         for field in self.change_fields:
             user = self.get_obj_for_edit()
@@ -6729,7 +6692,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_reset_password_different_new_passwords_negative(self):
         """
-        @note: Try change password: different password and repeat password values
+        Try change password: different password and repeat password values
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6751,7 +6714,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('password_min_length')
     def test_reset_password_length_lt_min_negative(self):
         """
-        @note: Try change password with length < password_min_length
+        Try change password with length < password_min_length
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6775,7 +6738,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('password_min_length')
     def test_reset_password_min_length_positive(self):
         """
-        @note: Change password with length = password_min_length
+        Change password with length = password_min_length
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6798,7 +6761,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('password_max_length')
     def test_reset_password_length_gt_max_negative(self):
         """
-        @note: Try change password with length > password_max_length
+        Try change password with length > password_max_length
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6822,7 +6785,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('password_max_length')
     def test_reset_password_max_length_positive(self):
         """
-        @note: Change password with length = password_max_length
+        Change password with length = password_max_length
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6845,7 +6808,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('password_wrong_values')
     def test_reset_password_wrong_value_negative(self):
         """
-        @note: Try change password to wrong value
+        Try change password to wrong value
         """
         for value in self.password_wrong_values:
             user = self.get_obj_for_edit()
@@ -6866,7 +6829,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_reset_password_by_get_positive(self):
         """
-        @note: Check password changes only after POST, not GET request
+        Check password changes only after POST, not GET request
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6882,7 +6845,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def test_reset_password_inactive_user_negative(self):
         """
-        @note: Try reset password as inactive user
+        Try reset password as inactive user
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
@@ -6903,7 +6866,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('code_lifedays')
     def test_reset_password_expired_code_negative(self):
         """
-        @note: Try reset password by old link
+        Try reset password by old link
         """
         user = self.get_obj_for_edit()
         old_date = datetime.now() - timedelta(days=self.code_lifedays + 1)
@@ -6919,7 +6882,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
     @only_with('code_lifedays')
     def test_reset_password_last_day_code_life_positive(self):
         """
-        @note: Reset password before code expired
+        Reset password before code expired
         """
         user = self.get_obj_for_edit()
         now = datetime.now()
@@ -7098,7 +7061,7 @@ class LoginTestMixIn(object):
 
     def test_login_positive(self):
         """
-        @note: login with valid login and password
+        login with valid login and password
         """
         for value in self.passwords_for_check:
             self.client = self.client_class()
@@ -7120,7 +7083,7 @@ class LoginTestMixIn(object):
 
     def test_login_wrong_password_negative(self):
         """
-        @note: login with invalid password
+        login with invalid password
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
@@ -7138,7 +7101,7 @@ class LoginTestMixIn(object):
 
     def test_login_wrong_login_negative(self):
         """
-        @note: login as not existing user
+        login as not existing user
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
@@ -7156,7 +7119,7 @@ class LoginTestMixIn(object):
     @only_with('login_retries')
     def test_login_wrong_login_not_max_retries_negative(self):
         """
-        @note: login as not existing user. No captcha field: not max retries
+        login as not existing user. No captcha field: not max retries
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
@@ -7175,7 +7138,7 @@ class LoginTestMixIn(object):
     @only_with('blacklist_model')
     def test_login_blacklist_user_positive(self):
         """
-        @note: login as user from blacklist with correct data
+        login as user from blacklist with correct data
         """
         self.set_host_blacklist(host='127.0.0.1')
         params = self.deepcopy(self.default_params)
@@ -7196,7 +7159,7 @@ class LoginTestMixIn(object):
     @only_with('blacklist_model')
     def test_login_blacklist_user_empty_captcha_negative(self):
         """
-        @note: login as user from blacklist with empty captcha
+        login as user from blacklist with empty captcha
         """
         self.set_host_blacklist(host='127.0.0.1')
         params = self.deepcopy(self.default_params)
@@ -7217,7 +7180,7 @@ class LoginTestMixIn(object):
     @only_with('blacklist_model')
     def test_login_blacklist_user_wrong_captcha_negative(self):
         """
-        @note: login as user from blacklist with wrong captcha
+        login as user from blacklist with wrong captcha
         """
         for field in ('captcha_0', 'captcha_1'):
             for value in (u'йцу', u'\r', u'\n', u' ', ':'):
@@ -7240,7 +7203,7 @@ class LoginTestMixIn(object):
 
     def test_login_inactive_user_negative(self):
         """
-        @note: login as inactive user
+        login as inactive user
         """
         user = self.get_user()
         self.set_user_inactive(user)
@@ -7258,7 +7221,7 @@ class LoginTestMixIn(object):
 
     def test_login_wrong_password_inactive_user_negative(self):
         """
-        @note: login as inactive user with invalid password
+        login as inactive user with invalid password
         """
         user = self.get_user()
         self.set_user_inactive(user)
@@ -7278,7 +7241,7 @@ class LoginTestMixIn(object):
 
     def test_login_empty_fields_negative(self):
         """
-        @note: login with empty fields
+        login with empty fields
         """
         _params = self.deepcopy(self.default_params)
         for field in (self.field_password, self.field_username):
@@ -7299,7 +7262,7 @@ class LoginTestMixIn(object):
 
     def test_login_without_fields_negative(self):
         """
-        @note: login without required fields
+        login without required fields
         """
         _params = self.deepcopy(self.default_params)
         for field in (self.field_password, self.field_username):
@@ -7321,7 +7284,7 @@ class LoginTestMixIn(object):
     @only_with('urls_for_redirect')
     def test_login_with_redirect_positive(self):
         """
-        @note: login with next GET param
+        login with next GET param
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
@@ -7338,7 +7301,7 @@ class LoginTestMixIn(object):
     @only_with('urls_for_redirect')
     def test_login_with_redirect_with_host_positive(self):
         """
-        @note: login with next GET param
+        login with next GET param
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
@@ -7355,7 +7318,7 @@ class LoginTestMixIn(object):
 
     def test_login_with_redirect_with_host_negative(self):
         """
-        @note: login with next GET param (redirect to other host)
+        login with next GET param (redirect to other host)
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
@@ -7375,7 +7338,7 @@ class LoginTestMixIn(object):
 
     def test_open_login_page_already_logged_positive(self):
         """
-        @note: redirect from login page if already authenticated
+        redirect from login page if already authenticated
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
