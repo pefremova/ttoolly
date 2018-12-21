@@ -4030,7 +4030,7 @@ class FormEditTestMixIn(FormTestMixIn):
         self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
 
         try:
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4066,7 +4066,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4091,7 +4091,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in required_fields:
             self.fill_all_fields(required_fields, params)
         try:
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4113,7 +4113,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.fill_all_fields((field,), params)
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4140,7 +4140,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for field in required_fields:
             self.fill_all_fields(required_fields, params)
         try:
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4162,7 +4162,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.fill_all_fields((field,), params)
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4188,7 +4188,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.set_empty_value_for_field(params, field)
                 obj_for_edit.refresh_from_db()
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4231,7 +4231,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.pop_field_from_params(params, field)
                 obj_for_edit.refresh_from_db()
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4331,7 +4331,7 @@ class FormEditTestMixIn(FormTestMixIn):
             params.update(max_length_params)
             for depended_field in fields_for_clean:
                 self.set_empty_value_for_field(params, depended_field)
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4348,7 +4348,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 _errors = []
                 other_values = {ff: self._get_field_value_by_name(obj_for_edit, ff) for ff in file_fields}
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
@@ -4392,7 +4392,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     else:
                         params[field].seek(0)
                 value = self.get_value_for_error_message(field, params[field])
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4406,7 +4406,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     _errors = []
                     other_values = {field: self._get_field_value_by_name(obj_for_edit, field)}
                     try:
-                        response = self.send_edit_request(obj_for_edit, params)
+                        response = self.send_edit_request(obj_for_edit.pk, params)
                         self.check_on_edit_success(response, locals())
                         new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                         exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4443,7 +4443,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 params[field] = self.get_value_for_field(current_length, field)
                 obj_for_edit.refresh_from_db()
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, length)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4472,7 +4472,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 params[field] = self.get_value_for_field(current_length, field)
                 obj_for_edit.refresh_from_db()
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, length)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4497,7 +4497,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = value
                 obj_for_edit.refresh_from_db()
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     _locals = {'field': field,
                                'value': value if field in self.choice_fields_edit_with_value_in_error else ''}
                     error_message = self.get_error_message(message_type, field, locals=_locals)
@@ -4524,7 +4524,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = [value, ]
                 obj_for_edit.refresh_from_db()
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     _locals = {'field': field, 'value': value}
                     error_message = self.get_error_message(message_type, field, locals=_locals)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -4558,7 +4558,7 @@ class FormEditTestMixIn(FormTestMixIn):
             obj_for_edit.refresh_from_db()
 
             try:
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -4590,7 +4590,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[el_field] = params[el_field].swapcase()
             obj_for_edit.refresh_from_db()
             try:
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -4629,7 +4629,7 @@ class FormEditTestMixIn(FormTestMixIn):
                         params[el_field] = getattr(params[el_field], new_command)()
                 existing_obj.refresh_from_db()
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4663,7 +4663,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
                     obj_for_edit.refresh_from_db()
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
@@ -4690,7 +4690,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
                     obj_for_edit.refresh_from_db()
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4720,7 +4720,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(max_value_params)
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
@@ -4749,7 +4749,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 params[field] = value
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4779,7 +4779,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
                     obj_for_edit.refresh_from_db()
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4809,7 +4809,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(min_value_params)
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
@@ -4838,7 +4838,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 params[field] = value
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -4868,7 +4868,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
                     obj_for_edit.refresh_from_db()
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4891,7 +4891,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = params.get(field, None) or self.get_value_for_field(None, field)
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 if field not in getattr(self, 'exclude_from_check_edit', []):
@@ -4921,7 +4921,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.fill_all_fields(filled_group, params)
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     obj_for_edit.refresh_from_db()
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, group)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4945,7 +4945,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                        set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
         sp = transaction.savepoint()
         try:
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -4972,7 +4972,7 @@ class FormEditTestMixIn(FormTestMixIn):
                                        set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
             sp = transaction.savepoint()
             try:
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = getattr(self, 'exclude_from_check_edit', [])
@@ -5001,7 +5001,7 @@ class FormEditTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             obj_for_edit.refresh_from_db()
             try:
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, name)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -5035,7 +5035,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, filename=filename, count=current_count)
                 params[field] = f
                 obj_for_edit.refresh_from_db()
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5067,7 +5067,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(max_count_params)
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
             exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
@@ -5095,7 +5095,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = max_count_params[field]
                 for f in params[field]:
                     f.seek(0)
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5134,7 +5134,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 obj_for_edit.refresh_from_db()
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5172,7 +5172,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, count=field_dict['max_count'], size=one_size)
                 params[field] = f
                 obj_for_edit.refresh_from_db()
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5209,7 +5209,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(max_size_params)
-            response = self.send_edit_request(obj_for_edit, params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
 
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -5252,7 +5252,7 @@ class FormEditTestMixIn(FormTestMixIn):
                         f.seek(0)
                 else:
                     params[field].seek(0)
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5289,7 +5289,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = []
                 f = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
                 params[field] = f
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5322,7 +5322,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
                 obj_for_edit.refresh_from_db()
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5352,7 +5352,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 params[field] = f
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5392,7 +5392,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 try:
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -5419,7 +5419,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, width=width, height=height)
                 params[field] = f
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5460,7 +5460,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_edit(params, field)
                     params[field] = f
                     obj_for_edit.refresh_from_db()
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -5487,7 +5487,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 f = self.get_random_file(field, width=width, height=height)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = f
-                response = self.send_edit_request(obj_for_edit, params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
@@ -5528,7 +5528,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     params[field] = f
                     obj_for_edit.refresh_from_db()
-                    response = self.send_edit_request(obj_for_edit, params)
+                    response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
