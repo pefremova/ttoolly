@@ -23,6 +23,7 @@ import warnings
 
 from builtins import str
 from django import VERSION as DJANGO_VERSION
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user
 from django.contrib.auth.tokens import default_token_generator
@@ -508,6 +509,11 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                   for name in get_settings_for_move()})
         self._ttoolly_modified_settings = override_settings(**d)
         self._ttoolly_modified_settings.enable()
+        for k in [k for k in dir(self) if not k.startswith(('_', 'test_'))
+                  and not k in ('files', 'get_obj_manager')]:
+            v = getattr(self, k)
+            if isinstance(v, (list, dict)):
+                setattr(self, k, self.deepcopy(v) if isinstance(v, dict) else deepcopy(v))
 
     def assertEqual(self, *args, **kwargs):
         with warnings.catch_warnings(record=True) as warn:
@@ -7488,6 +7494,10 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                                 AND kcu.constraint_name = tc.constraint_name
                           WHERE tc.table_name = %s AND tc.constraint_type='PRIMARY KEY'""", [table_name])
         pk_names = [el[0] for el in cursor.fetchall()]
+
+        model = apps.get_app_config('ttoolly').models.get(table_name)
+        if model:
+            return model
 
         class Meta(CustomModel.Meta):
             db_table = table_name
