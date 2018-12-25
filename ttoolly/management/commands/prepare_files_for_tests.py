@@ -2,7 +2,6 @@
 from __future__ import unicode_literals, print_function, absolute_import
 from django.core.management.base import BaseCommand
 from django.db import models
-from optparse import make_option
 from ttoolly.utils import prepare_file_for_tests
 from django.apps import apps
 get_models = apps.get_models
