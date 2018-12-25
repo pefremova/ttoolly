@@ -1158,13 +1158,11 @@ class TestFormTestMixInMethods(unittest.TestCase):
         el_2 = SomeModel(text_field='other text', int_field=1)
         with self.assertRaises(AssertionError) as ar:
             self.ftc.assert_objects_equal(el_1, el_2)
-        self.assertIn('"text_field":\n', str(ar.exception))
-        self.assertIn('"foreign_key_field":\n', str(ar.exception))
-        self.assertIn('"many_related_field":\n', str(ar.exception))
-        self.assertIn("AssertionError: %s != %s" % (repr('text'), repr('other text')),
-                      str(ar.exception))
-        self.assertIn("AssertionError: %s != None" % repr(om1), str(ar.exception))
-        self.assertIn("AssertionError: [%d, %d] != None" % (om2.pk, om3.pk), str(ar.exception))
+        text = ("\n[text_field]: u'text' != u'other text'"
+                "\n[id]: %d != None" % el_1.id +
+                "\n[foreign_key_field]: %r != None" % om1 +
+                "\n[many_related_field]: [%d, %d] != None" % (om2.pk, om3.pk))
+        self.assertEqual(str(ar.exception), text)
 
     def test_assert_objects_equal_with_difference_2(self):
         om1 = OtherModel.objects.create()
@@ -1174,8 +1172,9 @@ class TestFormTestMixInMethods(unittest.TestCase):
         el_1.save()
         with self.assertRaises(AssertionError) as ar:
             self.ftc.assert_objects_equal(om1, om2)
-        self.assertIn('"somemodel_set":\n', str(ar.exception))
-        self.assertIn("Lists differ: [%d] != []" % el_1.pk, str(ar.exception))
+        text = ("\n[somemodel_set]: [%d] != []" % el_1.pk +
+                "\n[id]: %d != %d" % (om1.id, om2.id))
+        self.assertEqual(str(ar.exception), text)
 
     def test_assert_objects_equal_with_exclude(self):
         el_1 = SomeModel(text_field='текст 1')

@@ -729,7 +729,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                              'Objects count after wrong add = %s (expect %s)' %
                              (self.get_obj_manager.count(), initial_obj_count))
 
-    def assert_objects_equal(self, obj1, obj2, exclude=None, other_values=None, changed=None):
+    def assert_objects_equal(self, obj1, obj2, exclude=None, other_values=None, changed=None, msg=None):
         other_values = other_values or {}
         changed = list(changed or [])
         exclude = list(set(exclude or []).union(changed))
@@ -741,21 +741,29 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         object2_fields = self.get_object_fields(obj2)
 
         object_fields.extend(object2_fields)
+        assert_text = []
         for field in set(object_fields).difference(exclude):
-            try:
-                self.assertEqual(self.get_value_for_compare(obj1, field),
-                                 other_values.get(field, self.get_value_for_compare(obj2, field)))
-            except AssertionError:
-                local_errors.append('"%s":\n' % field + get_error())
+            value1 = self.get_value_for_compare(obj1, field)
+            value2 = other_values.get(field, self.get_value_for_compare(obj2, field))
+            if value1 != value2:
+                assert_text.append('[%s]: %r != %r' % (field, value1, value2))
+        if assert_text:
+            local_errors.append('\n'.join(assert_text))
 
+        assert_text = []
         for field in changed:
-            try:
-                self.assertNotEqual(self.get_value_for_compare(obj1, field),
-                                    self.get_value_for_compare(obj2, field))
-            except AssertionError:
-                local_errors.append('"%s":\n' % field + get_error())
+            value1 = self.get_value_for_compare(obj1, field)
+            value2 = other_values.get(field, self.get_value_for_compare(obj2, field))
+            if value1 == value2:
+                assert_text.append('[%s]: %r' % (field, value1))
+        if assert_text:
+            local_errors.append('This values should be changed but not:\n' + '\n'.join(assert_text))
+
         if local_errors:
-            raise AssertionError(format_errors(local_errors))
+            error_message = format_errors(local_errors)
+            if msg:
+                error_message = msg + ':\n' + error_message
+            raise AssertionError(error_message)
 
     def assert_object_fields(self, obj, params, exclude=None, other_values=None):
         """
