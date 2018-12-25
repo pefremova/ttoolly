@@ -877,6 +877,10 @@ def get_random_image(path='', size=10, width=None, height=None, rewrite=False, r
                                         kwargs.get('max_width', kwargs.get('min_width', 0) + 100))
         height = height or random.randint(kwargs.get('min_height', 1),
                                           kwargs.get('max_height', kwargs.get('min_height', 0) + 100))
+        if size != 10:
+            _size = max(1, size - 800)
+            width = min(_size, width)
+            height = min(int(_size / width), height)
         content = {'.gif': get_random_gif_content,
                    '.svg': get_random_svg_content,
                    '.png': get_random_png_content}.get(os.path.splitext(filename)[1].lower(),
