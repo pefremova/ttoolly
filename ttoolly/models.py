@@ -513,7 +513,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                   and not k in ('files', 'get_obj_manager')]:
             v = getattr(self, k)
             if isinstance(v, (list, dict)):
-                setattr(self, k, self.deepcopy(v) if isinstance(v, dict) else deepcopy(v))
+                setattr(self, k, self.deepcopy(v) if isinstance(v, dict) else copy(v))
 
     def assertEqual(self, *args, **kwargs):
         with warnings.catch_warnings(record=True) as warn:
