@@ -4221,8 +4221,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.set_empty_value_for_field(params, field)
             obj_for_edit.refresh_from_db()
             try:
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.id,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4264,8 +4263,7 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             obj_for_edit.refresh_from_db()
             try:
-                response = self.client.post(self.get_url(self.url_edit, (obj_for_edit.id,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4296,8 +4294,7 @@ class FormEditTestMixIn(FormTestMixIn):
         for value in ('9999999', '2147483648', 'qwerty', 'йцу'):
             sp = transaction.savepoint()
             try:
-                response = self.client.post(self.get_url_for_negative(self.url_edit, (value,)), params,
-                                            follow=True, **self.additional_params)
+                response = self.send_edit_request(value, params)
                 self.assertEqual(response.status_code, self.status_code_not_exist,
                                  'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
                 if self.status_code_not_exist == 200:
