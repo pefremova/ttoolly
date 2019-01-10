@@ -510,9 +510,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         self._ttoolly_modified_settings = override_settings(**d)
         self._ttoolly_modified_settings.enable()
         for k in [k for k in dir(self) if not k.startswith(('_', 'test_'))
-                  and not k in ('files', 'get_obj_manager')]:
+                  and k not in ('files', 'get_obj_manager')]:
             v = getattr(self, k)
-            if isinstance(v, (list, dict)):
+            if isinstance(v, (list, dict)) and not isinstance(getattr(type(self), k, None), property):
                 setattr(self, k, self.deepcopy(v) if isinstance(v, dict) else copy(v))
 
     def assertEqual(self, *args, **kwargs):
