@@ -17,6 +17,23 @@ if WITH_HTML_REPORT:
         raise Exception('For html reports you should install pyunitreport:\n    pip install PyUnitReport')
 
 
+if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrunner.XMLTestRunner':
+    from xmlrunner.result import _XMLTestResult, safe_unicode
+
+    original_report_testcase = _XMLTestResult._report_testcase
+
+    @staticmethod
+    def _report_testcase(test_result, xml_testsuite, xml_document):
+        original_report_testcase(test_result, xml_testsuite, xml_document)
+        testcase = xml_testsuite.childNodes[-1]
+        description = xml_document.createElement('description')
+        testcase.appendChild(description)
+        description_text = safe_unicode(test_result.get_description())
+        _XMLTestResult._createCDATAsections(xml_document, description, description_text)
+
+    _XMLTestResult._report_testcase = _report_testcase
+
+
 def get_runner():
     test_runner_class = getattr(settings, 'TEST_RUNNER_PARENT', None)
     if not test_runner_class:
