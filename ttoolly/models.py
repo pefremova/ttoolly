@@ -1050,7 +1050,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                           else 'Убедитесь, что это значение больше либо равно {min_value}.'.format(**previous_locals),
                           'wrong_value': 'Выберите корректный вариант. Вашего ' +
                                          'варианта нет среди допустимых значений.' if
-                                         previous_locals.get('value', '') == ''
+                                         'value' not in previous_locals.keys()
                                          else 'Выберите корректный вариант. {value} '.format(**previous_locals) +
                                          'нет среди допустимых значений.',
                           'wrong_value_int': 'Введите целое число.',
