@@ -2424,7 +2424,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                error_message = self.get_error_message(message_type, field)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
             except Exception:
                 self.savepoint_rollback(sp)
@@ -2441,7 +2441,8 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
+                error_message = self.get_error_message(
+                    message_type, group, error_field=self.non_field_error_key, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
@@ -2465,7 +2466,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                error_message = self.get_error_message(message_type, field)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
             except Exception:
                 self.savepoint_rollback(sp)
@@ -2482,7 +2483,9 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
+                error_message = self.get_error_message(message_type, group,
+                                                       error_field=self.non_field_error_key,
+                                                       locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
@@ -2595,7 +2598,7 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(message_type, field,)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
@@ -2624,7 +2627,7 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(message_type, field,)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
@@ -2704,8 +2707,10 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
-                                                       error_field=field)
+                error_message = self.get_error_message(message_type,
+                                                       field if not field.endswith(self.non_field_error_key) else el,
+                                                       error_field=field,
+                                                       locals=locals())
 
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
@@ -2736,8 +2741,10 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
-                                                       error_field=field)
+                error_message = self.get_error_message(message_type,
+                                                       field if not field.endswith(self.non_field_error_key) else el,
+                                                       error_field=field,
+                                                       locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
@@ -2816,7 +2823,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(message_type, field)
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -2841,7 +2848,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(message_type, field)
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -2932,7 +2939,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(message_type, field)
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3024,7 +3031,7 @@ class FormAddTestMixIn(FormTestMixIn):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(message_type, field)
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3081,7 +3088,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(message_type, group)
+                    error_message = self.get_error_message(message_type, group,
+                                                           locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3165,7 +3173,7 @@ class FormAddTestMixIn(FormTestMixIn):
             try:
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                error_message = self.get_error_message(message_type, name)
+                error_message = self.get_error_message(message_type, name, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3204,7 +3212,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
                 new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3303,7 +3312,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
@@ -3338,7 +3348,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
@@ -3492,7 +3503,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
                 new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3563,7 +3575,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 try:
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    self.assertEqual(self.get_all_form_errors(response),
+                                     self.get_error_message(message_type, field, locals=locals()))
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
@@ -3640,7 +3653,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    self.assertEqual(self.get_all_form_errors(response),
+                                     self.get_error_message(message_type, field, locals=locals()))
                     new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3718,7 +3732,8 @@ class FormAddTestMixIn(FormTestMixIn):
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    self.assertEqual(self.get_all_form_errors(response),
+                                     self.get_error_message(message_type, field, locals=locals()))
                     new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3754,7 +3769,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
@@ -3852,7 +3868,8 @@ class FormAddTestMixIn(FormTestMixIn):
             try:
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
@@ -3932,7 +3949,8 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.update_captcha_params('', params)
                 params[field] = 'te\x00st'
                 response = self.send_add_request(params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
@@ -4203,7 +4221,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.set_empty_value_for_field(params, field)
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(message_type, field)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -4222,7 +4240,8 @@ class FormEditTestMixIn(FormTestMixIn):
             obj_for_edit.refresh_from_db()
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
+                error_message = self.get_error_message(
+                    message_type, group, error_field=self.non_field_error_key, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -4245,7 +4264,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.pop_field_from_params(params, field)
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(message_type, field)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -4264,7 +4283,8 @@ class FormEditTestMixIn(FormTestMixIn):
             obj_for_edit.refresh_from_db()
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key)
+                error_message = self.get_error_message(
+                    message_type, group, error_field=self.non_field_error_key, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -4455,7 +4475,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = self.get_value_for_field(current_length, field)
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(message_type, field, length)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -4484,7 +4504,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = self.get_value_for_field(current_length, field)
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(message_type, field, length)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -4675,7 +4695,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[field] = value
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(message_type, field)
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -4702,7 +4722,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[field] = value
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(message_type, field)
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -4791,7 +4811,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[field] = value
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(message_type, field)
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -4880,7 +4900,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[field] = value
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(message_type, field)
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -4933,7 +4953,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(message_type, group)
+                    error_message = self.get_error_message(message_type, group, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -5013,7 +5033,7 @@ class FormEditTestMixIn(FormTestMixIn):
             obj_for_edit.refresh_from_db()
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(message_type, name)
+                error_message = self.get_error_message(message_type, name, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5047,7 +5067,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -5146,7 +5167,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -5184,7 +5206,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -5334,7 +5357,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -5404,7 +5428,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 obj_for_edit.refresh_from_db()
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    self.assertEqual(self.get_all_form_errors(response),
+                                     self.get_error_message(message_type, field, locals=locals()))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -5472,7 +5497,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[field] = f
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    self.assertEqual(self.get_all_form_errors(response),
+                                     self.get_error_message(message_type, field, locals=locals()))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -5540,7 +5566,8 @@ class FormEditTestMixIn(FormTestMixIn):
                     params[field] = f
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    self.assertEqual(self.get_all_form_errors(response), self.get_error_message(message_type, field))
+                    self.assertEqual(self.get_all_form_errors(response),
+                                     self.get_error_message(message_type, field, locals=locals()))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -6117,7 +6144,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.check_negative(user, params, response)
-                error_message = self.get_error_message(message_type, field)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
             except Exception:
                 self.errors_append(text='Empty field "%s"' % field)
@@ -6139,7 +6166,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
                                             params, follow=True, **self.additional_params)
                 self.check_negative(user, params, response)
-                error_message = self.get_error_message(message_type, field)
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
             except Exception:
                 self.errors_append(text='Without field "%s"' % field)
