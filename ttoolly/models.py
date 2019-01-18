@@ -707,10 +707,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         mails_count = len(mails)
         if mails_count != count:
             error = 'Sent %d mails expect of %d.' % (mails_count, count)
-        if mails_count > 0:
-            m_to = [force_text(m.to) for m in mails]
-            m_to.sort()
-            error += ' To %s' % ', '.join(m_to)
+            if mails_count > 0:
+                m_to = [force_text(m.to) for m in mails]
+                m_to.sort()
+                error += ' To %s' % ', '.join(m_to)
         if error:
             self.assertEqual(mails_count, count, error)
 
