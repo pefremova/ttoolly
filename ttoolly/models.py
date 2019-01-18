@@ -2652,8 +2652,9 @@ class FormAddTestMixIn(FormTestMixIn):
                 try:
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    _locals = {'field': field,
-                               'value': value if field in self.choice_fields_add_with_value_in_error else ''}
+                    _locals = {'field': field, }
+                    if field in self.choice_fields_add_with_value_in_error:
+                        _locals['value'] = value
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message(message_type, field, locals=_locals))
                 except Exception:
@@ -4529,8 +4530,9 @@ class FormEditTestMixIn(FormTestMixIn):
                 obj_for_edit.refresh_from_db()
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    _locals = {'field': field,
-                               'value': value if field in self.choice_fields_edit_with_value_in_error else ''}
+                    _locals = {'field': field}
+                    if field in self.choice_fields_edit_with_value_in_error:
+                        _locals['value'] = value
                     error_message = self.get_error_message(message_type, field, locals=_locals)
                     self.assertEqual(self.get_all_form_errors(response),
                                      error_message)
