@@ -5031,12 +5031,12 @@ class FormEditTestMixIn(FormTestMixIn):
         fields_for_check = [field for field, field_dict in viewitems(self.file_fields_params_edit) if
                             field_dict.get('max_count', 1) > 1]
         for field in fields_for_check:
-            field_dict = self.file_fields_params_edit[field]
-            max_count = field_dict['max_count']
-            current_count = max_count + 1
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
+                field_dict = self.file_fields_params_edit[field]
+                max_count = field_dict['max_count']
+                current_count = max_count + 1
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
@@ -5128,15 +5128,15 @@ class FormEditTestMixIn(FormTestMixIn):
         fields_for_check = [field for field, field_dict in viewitems(self.file_fields_params_edit) if
                             field_dict.get('one_max_size', None)]
         for field in fields_for_check:
-            field_dict = self.file_fields_params_edit[field]
             sp = transaction.savepoint()
-            one_max_size = field_dict['one_max_size']
-            size = convert_size_to_bytes(one_max_size)
-            max_size = self.humanize_file_size(size)
-            current_size = size + 100
-            human_current_size = self.humanize_file_size(current_size)
             try:
                 obj_for_edit = self.get_obj_for_edit()
+                field_dict = self.file_fields_params_edit[field]
+                one_max_size = field_dict['one_max_size']
+                size = convert_size_to_bytes(one_max_size)
+                max_size = self.humanize_file_size(size)
+                current_size = size + 100
+                human_current_size = self.humanize_file_size(current_size)
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
@@ -5166,15 +5166,15 @@ class FormEditTestMixIn(FormTestMixIn):
         fields_for_check = [field for field, field_dict in viewitems(self.file_fields_params_edit) if
                             field_dict.get('sum_max_size', None)]
         for field in fields_for_check:
-            field_dict = self.file_fields_params_edit[field]
             sp = transaction.savepoint()
-            sum_max_size = field_dict['sum_max_size']
-            size = convert_size_to_bytes(sum_max_size)
-            current_size = size + 100
-            max_size = self.humanize_file_size(size)
-            one_size = current_size / field_dict['max_count']
             try:
                 obj_for_edit = self.get_obj_for_edit()
+                field_dict = self.file_fields_params_edit[field]
+                sum_max_size = field_dict['sum_max_size']
+                size = convert_size_to_bytes(sum_max_size)
+                current_size = size + 100
+                max_size = self.humanize_file_size(size)
+                one_size = current_size / field_dict['max_count']
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
@@ -5247,13 +5247,13 @@ class FormEditTestMixIn(FormTestMixIn):
             self.formatted_assert_errors()
 
         for field in fields_for_check:
-            field_dict = self.file_fields_params[field]
             sp = transaction.savepoint()
-            one_max_size = field_dict.get('one_max_size', '10M')
-            size = convert_size_to_bytes(one_max_size)
-            max_size = self.humanize_file_size(size)
             try:
                 obj_for_edit = self.get_obj_for_edit()
+                field_dict = self.file_fields_params[field]
+                one_max_size = field_dict.get('one_max_size', '10M')
+                size = convert_size_to_bytes(one_max_size)
+                max_size = self.humanize_file_size(size)
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
@@ -5285,14 +5285,14 @@ class FormEditTestMixIn(FormTestMixIn):
         fields_for_check = [field for field, field_dict in viewitems(self.file_fields_params_edit) if
                             field_dict.get('sum_max_size', None)]
         for field in fields_for_check:
-            field_dict = self.file_fields_params_edit[field]
             sp = transaction.savepoint()
-            sum_max_size = field_dict['sum_max_size']
-            size = convert_size_to_bytes(sum_max_size)
-            max_size = self.humanize_file_size(size)
-            one_size = size / field_dict['max_count']
             try:
                 obj_for_edit = self.get_obj_for_edit()
+                field_dict = self.file_fields_params_edit[field]
+                sum_max_size = field_dict['sum_max_size']
+                size = convert_size_to_bytes(sum_max_size)
+                max_size = self.humanize_file_size(size)
+                one_size = size / field_dict['max_count']
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
