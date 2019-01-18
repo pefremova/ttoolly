@@ -2441,8 +2441,9 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(
-                    message_type, group, error_field=self.non_field_error_key, locals=locals())
+                error_message = self.get_error_message(message_type, group,
+                                                       error_field=self.non_field_error_key,
+                                                       locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
@@ -2483,9 +2484,8 @@ class FormAddTestMixIn(FormTestMixIn):
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(message_type, group,
-                                                       error_field=self.non_field_error_key,
-                                                       locals=locals())
+                error_message = self.get_error_message(
+                    message_type, group, error_field=self.non_field_error_key, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
