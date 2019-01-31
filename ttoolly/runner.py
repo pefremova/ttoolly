@@ -48,6 +48,28 @@ def get_runner():
 ParentRunner = get_runner()
 
 
+def filter_suite_by_decorators(suite, verbosity=1):
+    new_suite = unittest.TestSuite()
+    for el in suite:
+        need_skip = False
+        fn = getattr(el, el._testMethodName)
+        for decorator in reversed(getattr(fn, 'decorators', ())):
+            check = getattr(decorator, 'check', None)
+            if check:
+                need_skip = not(check(el))
+                if need_skip:
+                    break
+        if not need_skip:
+            new_suite.addTest(el)
+        elif verbosity > 1:
+            st = unittest.runner._WritelnDecorator(sys.stderr)
+            st.write('Skip {test_name}: {skip_text}\n'.format(test_name='.'.join([el.__class__.__module__,
+                                                                                  el.__class__.__name__,
+                                                                                  el._testMethodName]),
+                                                              skip_text=decorator.skip_text))
+    return new_suite
+
+
 class RegexpTestSuiteRunner(ParentRunner):
     parallel = 1
     test_runner = HTMLTestRunner if WITH_HTML_REPORT else ParentRunner.test_runner
@@ -62,8 +84,19 @@ class RegexpTestSuiteRunner(ParentRunner):
     def build_suite(self, test_labels, extra_tests=None, **kwargs):
         real_parallel = self.parallel
         self.parallel = 1
-        full_suite = super(RegexpTestSuiteRunner, self).build_suite(None, extra_tests=None, **kwargs)
 
+        labels_for_suite = []
+        for label in test_labels:
+            if re.findall(r'(^[\w\d_]+(?:\.[\w\d_]+)*$)', label) == [label]:
+                labels_for_suite.append(label)
+            else:
+                while label:
+                    label = '.'.join(label.split('.')[:-1])
+                    if re.findall(r'(^[\w\d_]+(?:\.[\w\d_]+)*$)', label) == [label]:
+                        labels_for_suite.append(label)
+                        break
+
+        full_suite = super(RegexpTestSuiteRunner, self).build_suite(labels_for_suite, extra_tests=None, **kwargs)
         my_suite = unittest.TestSuite()
         labels_for_suite = []
         if test_labels:
@@ -89,6 +122,10 @@ class RegexpTestSuiteRunner(ParentRunner):
                     my_suite.addTest(el)
         if labels_for_suite:
             my_suite.addTests(ParentRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
+
+        if getattr(settings, 'TEST_SKIP_SILENT', False):
+            my_suite = filter_suite_by_decorators(my_suite, self.verbosity)
+
         suite = reorder_suite(my_suite, (unittest.TestCase,))
 
         self.parallel = real_parallel
