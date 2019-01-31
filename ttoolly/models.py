@@ -53,14 +53,17 @@ from .utils import (format_errors, get_error, get_randname, get_url_for_negative
 
 if sys.version[0] == '2':
     from functools32 import wraps, update_wrapper
+    from urllib import urlencode
 else:
     from functools import wraps, update_wrapper
+    from urllib.parse import urlencode
 
 try:
     from django.core.urlresolvers import reverse, resolve
 except Exception:
     # Django 2.0
     from django.urls import reverse, resolve
+
 
 __all__ = ('ChangePasswordMixIn',
            'CustomModel',
@@ -2156,6 +2159,10 @@ class FormTestMixIn(GlobalTestMixIn):
                 res[f] = list(set(values))
         return self.deepcopy(res)
 
+    def send_list_action_request(self, params):
+        return self.client.post(self.get_url(self.url_list), params,
+                                follow=True, **self.additional_params)
+
     @only_with_obj
     @only_with(('url_list', 'filter_params'))
     def test_view_list_with_filter_positive(self):
@@ -2292,8 +2299,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
-                    response = self.client.post(
-                        self.get_url(self.url_add), params, follow=True, **self.additional_params)
+                    response = self.send_add_request(params)
                     self.check_on_add_success(response, initial_obj_count, locals())
                     new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
                     exclude = getattr(self, 'exclude_from_check_add', [])
@@ -4003,7 +4009,7 @@ class FormEditTestMixIn(FormTestMixIn):
             return self.create_copy(other_obj, param_names)
 
     def send_edit_request(self, obj_pk, params):
-        return self.client.post(self.get_url(self.url_edit, (obj_pk,)),
+        return self.client.post(self.get_url_for_negative(self.url_edit, (obj_pk,)),
                                 params, follow=True, **self.additional_params)
 
     def update_params_for_obj(self, obj):
@@ -5628,7 +5634,7 @@ class FormDeleteTestMixIn(FormTestMixIn):
         params = {'_selected_action': obj_ids,
                   'action': 'delete_selected',
                   'post': 'yes'}
-        response = self.client.post(self.get_url(self.url_list), params, follow=True, **self.additional_params)
+        response = self.send_list_action_request(params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
                              ['Успешно удалены %d %s.' % (len(obj_ids), self.obj._meta.verbose_name if len(obj_ids) == 1
@@ -5657,6 +5663,10 @@ class FormRemoveTestMixIn(FormTestMixIn):
 
     def send_recovery_request(self, obj_pk):
         return self.client.post(self.get_url_for_negative(self.url_recovery, (obj_pk,)),
+                                follow=True, **self.additional_params)
+
+    def send_trash_list_action_request(self, params):
+        return self.client.post(self.get_url(self.url_trash_list), params,
                                 follow=True, **self.additional_params)
 
     def get_is_removed(self, obj):
@@ -5761,8 +5771,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         value = obj_for_test.id
         params = self.deepcopy(self.default_params_edit)
         try:
-            response = self.client.post(self.get_url_for_negative(self.url_edit, (value,)), params, follow=True,
-                                        **self.additional_params)
+            response = self.send_edit_request(value, params)
             self.assertEqual(response.status_code, self.status_code_not_exist,
                              'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
             if self.status_code_not_exist == 200:
@@ -5812,7 +5821,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         params = {'_selected_action': obj_ids,
                   'action': 'action_remove',
                   'select_across': '0'}
-        response = self.client.post(self.get_url(self.url_list), params, follow=True, **self.additional_params)
+        response = self.send_list_action_request(params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
                              ['Успешно удалено %d объектов.' % len(obj_ids)])
@@ -5834,7 +5843,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         params = {'_selected_action': obj_ids,
                   'action': 'action_restore',
                   'select_across': '0'}
-        response = self.client.post(self.get_url(self.url_trash_list), params, follow=True, **self.additional_params)
+        response = self.send_trash_list_action_request(params)
         try:
             self.assertEqual(self.get_all_form_messages(response),
                              ['Успешно восстановлено %d объектов.' % len(obj_ids)])
@@ -6085,6 +6094,10 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
     def get_login_name(self, user):
         return user.email
 
+    def send_change_password_request(self, user_pk, params):
+        return self.client.post(self.get_url_for_negative(self.url_change_password, (user_pk,)),
+                                params, **self.additional_params)
+
     @only_with_obj
     def test_change_password_page_fields_list(self):
         """
@@ -6122,8 +6135,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
             params[self.field_password] = value
             params[self.field_password_repeat] = value
             try:
-                response = self.client.post(
-                    self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+                response = self.send_change_password_request(user.pk, params)
                 self.assert_no_form_errors(response)
                 self.check_positive(user, params)
             except Exception:
@@ -6143,8 +6155,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
                 self.set_empty_value_for_field(params, field)
                 user.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_change_password_request(user.pk, params, follow=True)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -6165,8 +6176,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                 self.update_captcha_params(self.get_url(self.url_change_password, (user.pk,)), params)
                 self.pop_field_from_params(params, field)
                 user.refresh_from_db()
-                response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_change_password_request(user.pk, params, follow=True)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -6186,8 +6196,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                        self.field_password_repeat: self.get_value_for_field(None, 'password')})
         user.refresh_from_db()
         try:
-            response = self.client.post(
-                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_password_repeat', self.field_password_repeat))
@@ -6212,8 +6221,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                        self.field_password_repeat: value})
         user.refresh_from_db()
         try:
-            response = self.client.post(
-                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
             error_message = self.get_error_message('min_length', self.field_password,)
             self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -6234,8 +6242,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         params[self.field_password_repeat] = params[self.field_password]
 
         try:
-            response = self.client.post(
-                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            response = self.send_change_password_request(user.pk, params)
             self.assert_no_form_errors(response)
             self.check_positive(user, params)
         except Exception:
@@ -6255,8 +6262,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         params[self.field_password_repeat] = params[self.field_password]
 
         try:
-            response = self.client.post(
-                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            response = self.send_change_password_request(user.pk, params)
             self.assert_no_form_errors(response)
             self.check_positive(user, params)
         except Exception:
@@ -6278,8 +6284,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         params[self.field_password_repeat] = params[self.field_password]
         user.refresh_from_db()
         try:
-            response = self.client.post(
-                self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+            response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
             error_message = self.get_error_message('max_length', self.field_password,)
             self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -6301,8 +6306,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                            self.field_password_repeat: value})
             user.refresh_from_db()
             try:
-                response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
-                                            params, **self.additional_params)
+                response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message('wrong_value', self.field_password,)
                 self.assertEqual(self.get_all_form_errors(response), error_message)
@@ -6323,8 +6327,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
         params[self.field_old_password] = value
         user.refresh_from_db()
         try:
-            response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
-                                        params, **self.additional_params)
+            response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('wrong_old_password', self.field_old_password))
@@ -6356,8 +6359,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                            self.field_password: value,
                            self.field_password_repeat: value})
             try:
-                response = self.client.post(
-                    self.get_url(self.url_change_password, (user.pk,)), params, **self.additional_params)
+                response = self.send_change_password_request(user.pk, params)
                 self.assert_no_form_errors(response)
                 self.check_positive(user, params)
             except Exception:
@@ -6394,8 +6396,7 @@ class ChangePasswordMixIn(GlobalTestMixIn, LoginMixIn):
                                self.field_password_repeat: password_value})
                 user.refresh_from_db()
                 try:
-                    response = self.client.post(self.get_url(self.url_change_password, (user.pk,)),
-                                                params, **self.additional_params)
+                    response = self.send_change_password_request(user.pk, params)
                     self.check_negative(user, params, response)
                     error_message = self.get_error_message(
                         'wrong_password_similar', self.field_password, locals=locals())
@@ -6477,6 +6478,14 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         self.username = self.get_login_name(user)
         return user
 
+    def send_reset_password_request(self, params):
+        return self.client.post(self.get_url(self.url_reset_password_request), params,
+                                follow=True, **self.additional_params)
+
+    def send_change_after_reset_password_request(self, codes, params):
+        return self.client.post(self.get_url_for_negative(self.url_reset_password, codes),
+                                params, follow=True ** self.additional_params)
+
     def test_request_reset_password_positive(self):
         """
         Request password change code
@@ -6489,8 +6498,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = self.get_login_name(user)
         try:
-            response = self.client.post(self.get_url(self.url_reset_password_request),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_reset_password_request(params)
             self.assert_request_password_change_mail(locals())
             user.refresh_from_db()
             self.assertTrue(user.check_password(self.current_password), 'Password was changed after request code')
@@ -6507,8 +6515,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
             self.set_empty_value_for_field(params, field)
             try:
-                response = self.client.post(
-                    self.get_url(self.url_reset_password_request), params, **self.additional_params)
+                response = self.send_reset_password_request(params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('required', field))
             except Exception:
                 self.errors_append(text='For empty field %s' % field)
@@ -6522,8 +6529,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
             self.pop_field_from_params(params, field)
             try:
-                response = self.client.post(
-                    self.get_url(self.url_reset_password_request), params, **self.additional_params)
+                response = self.send_reset_password_request(params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('required', field))
             except Exception:
                 self.errors_append(text='Without field %s' % field)
@@ -6538,8 +6544,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
             params[self.field_username] = value
             try:
-                response = self.client.post(
-                    self.get_url(self.url_reset_password_request), params, **self.additional_params)
+                response = self.send_reset_password_request(params)
                 self.assertEqual(self.get_all_form_errors(response),
                                  self.get_error_message('wrong_value_email', self.field_username))
             except Exception:
@@ -6555,7 +6560,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         params = self.deepcopy(self.request_password_params)
         params[self.field_username] = username
         try:
-            response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
+            response = self.send_reset_password_request(params)
             self.assert_no_form_errors(response)
             self.assert_mail_count(mail.outbox, 0)
         except Exception:
@@ -6571,7 +6576,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = username
         try:
-            response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
+            response = self.send_reset_password_request(params)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('user_not_exists', self.field_username))
             self.assert_mail_count(mail.outbox, 0)
@@ -6590,7 +6595,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         params = self.deepcopy(self.request_password_params)
         params[self.field_username] = self.get_login_name(user)
         try:
-            response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
+            response = self.send_reset_password_request(params)
             self.assert_no_form_errors(response)
             self.assert_mail_count(mail.outbox, 0)
         except Exception:
@@ -6608,7 +6613,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = self.get_login_name(user)
         try:
-            response = self.client.post(self.get_url(self.url_reset_password_request), params, **self.additional_params)
+            response = self.send_reset_password_request(params)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('inactive_user', self.field_username))
             self.assert_mail_count(mail.outbox, 0)
@@ -6629,8 +6634,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                 params[field] = value
                 params[self.field_username] = self.get_login_name(user)
                 try:
-                    response = self.client.post(self.get_url(self.url_reset_password_request),
-                                                params, follow=True, **self.additional_params)
+                    response = self.send_reset_password_request(params)
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message('wrong_captcha', 'captcha'))
                     self.assert_mail_count(mail.outbox, 0)
@@ -6648,8 +6652,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                            self.field_password_repeat: value})
             codes = self.get_codes(user)
             try:
-                response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_change_after_reset_password_request(codes, params)
                 self.assert_no_form_errors(response)
                 self.assert_mail_count(mail.outbox, 0)
                 user.refresh_from_db()
@@ -6671,15 +6674,13 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         codes = self.get_codes(user)
 
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, params)
             self.assert_no_form_errors(response)
             value2 = self.get_value_for_field(None, 'password')
             params.update({self.field_password: value2,
                            self.field_password_repeat: value2})
 
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, params)
             self.assertFalse(self.get_obj_manager.get(pk=user.pk).check_password(value2),
                              'Password was changed twice by one link')
             self.check_after_second_change(locals())
@@ -6699,8 +6700,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             codes = self.get_codes(user)
             user.refresh_from_db()
             try:
-                response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                            params, **self.additional_params)
+                response = self.send_change_after_reset_password_request(codes, params)
                 self.assertEqual(self.get_all_form_errors(response),
                                  self.get_error_message('required', field))
                 new_user = self.get_obj_manager.get(pk=user.pk)
@@ -6721,8 +6721,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             codes = self.get_codes(user)
             user.refresh_from_db()
             try:
-                response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                            params, **self.additional_params)
+                response = self.send_change_after_reset_password_request(codes, params)
                 self.assertEqual(self.get_all_form_errors(response),
                                  self.get_error_message('required', field))
                 new_user = self.get_obj_manager.get(pk=user.pk)
@@ -6741,8 +6740,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         codes = self.get_codes(user)
         user.refresh_from_db()
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, params)
             new_user = self.get_obj_manager.get(pk=user.pk)
             self.assert_objects_equal(new_user, user)
             self.assertEqual(self.get_all_form_errors(response),
@@ -6766,8 +6764,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         codes = self.get_codes(user)
         user.refresh_from_db()
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, params)
             new_user = self.get_obj_manager.get(pk=user.pk)
             self.assert_objects_equal(new_user, user)
             self.assertEqual(self.get_all_form_errors(response),
@@ -6787,8 +6784,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                        self.field_password_repeat: value})
         codes = self.get_codes(user)
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, follow=True, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, params)
             self.assert_no_form_errors(response)
             new_user = self.get_obj_manager.get(pk=user.pk)
             self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
@@ -6813,8 +6809,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         codes = self.get_codes(user)
         user.refresh_from_db()
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, params)
             new_user = self.get_obj_manager.get(pk=user.pk)
             self.assert_objects_equal(new_user, user)
             self.assertEqual(self.get_all_form_errors(response),
@@ -6834,8 +6829,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                        self.field_password_repeat: value})
         codes = self.get_codes(user)
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, params)
             self.assert_no_form_errors(response)
             new_user = self.get_obj_manager.get(pk=user.pk)
             self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
@@ -6858,8 +6852,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             codes = self.get_codes(user)
             user.refresh_from_db()
             try:
-                response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                            params, **self.additional_params)
+                response = self.send_change_after_reset_password_request(codes, params)
                 new_user = self.get_obj_manager.get(pk=user.pk)
                 self.assert_objects_equal(new_user, user)
                 self.assertEqual(self.get_all_form_errors(response),
@@ -6894,8 +6887,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         codes = self.get_codes(user)
         user.refresh_from_db()
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        params, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, params)
             new_user = self.get_obj_manager.get(pk=user.pk)
             self.assert_objects_equal(new_user, user)
             self.assertEqual(self.get_all_form_errors(response),
@@ -6913,8 +6905,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         with freeze_time(old_date):
             codes = self.get_codes(user)
         try:
-            response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                        self.password_params, **self.additional_params)
+            response = self.send_change_after_reset_password_request(codes, self.password_params)
             self.assertEqual(response.status_code, 404)
         except Exception:
             self.errors_append()
@@ -6932,8 +6923,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
             codes = self.get_codes(user)
         try:
             with freeze_time(now):
-                response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                            params, follow=True, **self.additional_params)
+                response = self.send_change_after_reset_password_request(codes, params)
             self.assert_no_form_errors(response)
             new_user = self.get_obj_manager.get(pk=user.pk)
             self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
@@ -6975,8 +6965,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                 codes = self.get_codes(user)
                 user.refresh_from_db()
                 try:
-                    response = self.client.post(self.get_url(self.url_reset_password, codes),
-                                                params, **self.additional_params)
+                    response = self.send_change_after_reset_password_request(codes, params)
                     new_user = self.get_obj_manager.get(pk=user.pk)
                     self.assert_objects_equal(new_user, user)
                     error_message = self.get_error_message(
@@ -7079,6 +7068,13 @@ class LoginTestMixIn(object):
         username = username or self.username
         return self.get_obj_manager.get(email=username)
 
+    def send_login_request(self, params, get_params=None):
+        get_params = urlencode(get_params or {})
+        if get_params:
+            get_params = '?' + get_params
+        return self.client.post(self.get_url(self.url_login) + get_params, params,
+                                follow=True, **self.additional_params)
+
     def set_host_blacklist(self, host, count=None):
         if count is None:
             count = self.login_retries or 1
@@ -7113,7 +7109,7 @@ class LoginTestMixIn(object):
             self.add_csrf(params)
             self.clean_blacklist()
             try:
-                response = self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
+                response = self.send_login_request(params)
                 self.assert_no_form_errors(response)
                 self.check_is_authenticated()
                 self.check_response_on_positive(response)
@@ -7130,7 +7126,7 @@ class LoginTestMixIn(object):
         params[self.field_password] = self.password + 'q'
         self.set_host_pre_blacklist(host='127.0.0.1')
         try:
-            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            response = self.send_login_request(params)
             message = self.get_error_message('wrong_login', self.field_username)
             self.assertEqual(self.get_all_form_errors(response), message)
             self.check_is_not_authenticated()
@@ -7148,7 +7144,7 @@ class LoginTestMixIn(object):
         params[self.field_username] = self.username + 'q'
         self.set_host_pre_blacklist(host='127.0.0.1')
         try:
-            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            response = self.send_login_request(params)
             message = self.get_error_message('wrong_login', self.field_username)
             self.assertEqual(self.get_all_form_errors(response), message)
             self.check_response_on_negative(response)
@@ -7167,7 +7163,7 @@ class LoginTestMixIn(object):
         self.clean_blacklist()
         self.set_host_blacklist(host='127.0.0.1', count=self.login_retries - 2)
         try:
-            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            response = self.send_login_request(params)
             message = self.get_error_message('wrong_login', self.field_username)
             self.assertEqual(self.get_all_form_errors(response), message)
             self.check_response_on_negative(response)
@@ -7188,7 +7184,7 @@ class LoginTestMixIn(object):
             fields = self.get_fields_list_from_response(response)['all_fields']
             self.assertTrue('captcha' in fields)
             self.update_captcha_params(self.get_url(self.url_login), params)
-            response = self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
+            response = self.send_login_request(params)
             self.check_is_authenticated()
             self.check_response_on_positive(response)
             self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
@@ -7207,7 +7203,7 @@ class LoginTestMixIn(object):
         try:
             self.update_captcha_params(self.get_url(self.url_login), params)
             params['captcha_1'] = ''
-            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            response = self.send_login_request(params)
 
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('empty_required', 'captcha'))
@@ -7232,7 +7228,7 @@ class LoginTestMixIn(object):
                 self.update_captcha_params(self.get_url(self.url_login), params)
                 params[field] = value
                 try:
-                    response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+                    response = self.send_login_request(params)
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message('wrong_captcha', 'captcha'))
                     self.check_is_not_authenticated()
@@ -7250,7 +7246,7 @@ class LoginTestMixIn(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
-            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            response = self.send_login_request(params)
             self.assertEqual(self.get_all_form_errors(response),
                              self.get_error_message('inactive_user', self.field_username))
             self.check_is_not_authenticated()
@@ -7270,7 +7266,7 @@ class LoginTestMixIn(object):
         params[self.field_password] = self.password + 'q'
         self.set_host_pre_blacklist(host='127.0.0.1')
         try:
-            response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+            response = self.send_login_request(params)
             message = self.get_error_message('wrong_login', self.field_username)
             self.assertEqual(self.get_all_form_errors(response), message)
             self.check_is_not_authenticated()
@@ -7292,7 +7288,7 @@ class LoginTestMixIn(object):
             self.clean_blacklist()
             self.set_host_pre_blacklist(host='127.0.0.1')
             try:
-                response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+                response = self.send_login_request(params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('empty_required', field))
                 self.check_is_not_authenticated()
                 self.check_response_on_negative(response)
@@ -7313,7 +7309,7 @@ class LoginTestMixIn(object):
             self.clean_blacklist()
             self.set_host_pre_blacklist(host='127.0.0.1')
             try:
-                response = self.client.post(self.get_url(self.url_login), params, **self.additional_params)
+                response = self.send_login_request(params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('without_required', field))
                 self.check_is_not_authenticated()
                 self.check_response_on_negative(response)
@@ -7330,8 +7326,7 @@ class LoginTestMixIn(object):
         self.add_csrf(params)
         next_url = self.get_url(choice(self.urls_for_redirect))
         try:
-            response = self.client.post(self.get_url(self.url_login) + '?next=%s' % next_url,
-                                        params, follow=True, **self.additional_params)
+            response = self.send_login_request(params, {'next': next_url})
             self.check_is_authenticated()
             self.assertRedirects(response, self.get_domain() + next_url)
             self.check_blacklist_on_positive()
@@ -7348,8 +7343,7 @@ class LoginTestMixIn(object):
         next_url = self.get_url(choice(self.urls_for_redirect))
         try:
             redirect_url = self.get_domain() + next_url
-            response = self.client.post(self.get_url(self.url_login) + '?next=%s' %
-                                        redirect_url, params, follow=True, **self.additional_params)
+            response = response = self.send_login_request(params, {'next': redirect_url})
             self.check_is_authenticated()
             self.assertRedirects(response, redirect_url)
             self.check_blacklist_on_positive()
@@ -7368,8 +7362,7 @@ class LoginTestMixIn(object):
         expected_redirects = [(self.get_domain() + self.get_url(url), 302) for url in urls_redirect_to]
         try:
             redirect_url = 'http://google.com'
-            response = self.client.post(self.get_url(self.url_login) + '?next=%s' %
-                                        redirect_url, params, follow=True, **self.additional_params)
+            response = response = self.send_login_request(params, {'next': redirect_url})
             self.check_is_authenticated()
             self.check_blacklist_on_positive()
             self.assertEqual(response.redirect_chain, expected_redirects)
