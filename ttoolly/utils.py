@@ -299,27 +299,13 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
     if result is None:
         result = []
     for entry in urllist:
-        url = prefix + getattr(entry, 'pattern', entry).regex.pattern.strip('^$')
+        url = prefix + getattr(entry, 'pattern', entry).regex.pattern.strip('^$').replace('\\/', '/')
         if hasattr(entry, 'url_patterns'):
             get_all_urls(entry.url_patterns, depth + 1, prefix=url, result=result)
         else:
             if not url.startswith('/'):
                 url = '/' + url
-            # Значения и с вложенными скобками "(/(\w+)/)", и без
-            regexp = '((\([^\(\)]*?)?' \
-                     '\([^\(\)]+\)' \
-                     '(?(2)[^\(\)]*\)|))'
-            # открывающая скобка и текст без скобок
-            # значение в скобках. Например (?P<pk>\d+)
-            # если есть первая открывающая скобка, нужно взять строку до закрывающей
-            fres = re.findall(regexp, url)
-            for fr in fres:
-                fr = fr[0]
-                value_for_replace = '123'
-                if (re.findall('>(.+?)\)', fr) and
-                        not set(re.findall('>(.+?)\)', fr)).intersection(['.*', '\d+', '.+', '[^/.]+'])):
-                    value_for_replace = rstr.xeger(fr)
-                url = url.replace(fr, value_for_replace)
+            url = rstr.xeger(url.replace('\\d+', '123'))
             result.append(url)
     result.sort()
     return result
