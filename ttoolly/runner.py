@@ -53,12 +53,17 @@ def filter_suite_by_decorators(suite, verbosity=1):
     for el in suite:
         need_skip = False
         fn = getattr(el, el._testMethodName)
-        for decorator in reversed(getattr(fn, 'decorators', ())):
-            check = getattr(decorator, 'check', None)
-            if check:
-                need_skip = not(check(el))
-                if need_skip:
-                    break
+        if getattr(fn, '__unittest_skip__', False):
+            need_skip = True
+            skip_text = fn.__unittest_skip_why__
+        else:
+            for decorator in reversed(getattr(fn, 'decorators', ())):
+                check = getattr(decorator, 'check', None)
+                if check:
+                    need_skip = not(check(el))
+                    if need_skip:
+                        skip_text = decorator.skip_text
+                        break
         if not need_skip:
             new_suite.addTest(el)
         elif verbosity > 1:
@@ -66,7 +71,7 @@ def filter_suite_by_decorators(suite, verbosity=1):
             st.write('Skip {test_name}: {skip_text}\n'.format(test_name='.'.join([el.__class__.__module__,
                                                                                   el.__class__.__name__,
                                                                                   el._testMethodName]),
-                                                              skip_text=decorator.skip_text))
+                                                              skip_text=skip_text))
     return new_suite
 
 
