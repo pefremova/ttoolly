@@ -53,7 +53,7 @@ def filter_suite_by_decorators(suite, verbosity=1):
     for el in suite:
         need_skip = False
         fn = getattr(el, el._testMethodName)
-        if fn.__unittest_skip__:
+        if getattr(fn, '__unittest_skip__', False):
             need_skip = True
             skip_text = fn.__unittest_skip_why__
         else:
