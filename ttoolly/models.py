@@ -830,42 +830,50 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     value = None
             else:
                 value = getattr(obj, name_in_object)
-            if (value is not None and name_on_form in viewkeys(form_to_field_map) or name_in_field in viewkeys(field_to_form_map) and
+            if (name_on_form in viewkeys(form_to_field_map) or name_in_field in viewkeys(field_to_form_map) and
                 (hasattr(params.get(name_on_form, []), '__len__') and  # params value is list or not exists (inline form)
                  (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
                   set([mr.__name__ for mr in value.__class__.__mro__]).intersection(['Manager', 'Model', 'ModelBase'])))):
+
                 if hasattr(params.get(name_on_form, None), '__len__'):
                     count_for_check = len(params[name_on_form])
                 else:
                     count_for_check = params.get('%s-TOTAL_FORMS' % name_on_form, None)
-                if count_for_check is not None and value.__class__.__name__ == 'RelatedManager':
-                    try:
-                        self.assertEqual(value.all().count(), count_for_check)
-                    except Exception as e:
-                        local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, str)
-                                                              else field) + force_text(e))
 
-                for i, el in enumerate(value.all().order_by('pk')
-                                       if value.__class__.__name__ in ('RelatedManager', 'QuerySet')
-                                       else [value, ]):
-                    _params = dict([(k.replace('%s-%d-' % (name_on_form, i), ''),
-                                     params[k]) for k in viewkeys(params) if
-                                    k.startswith('%s-%d-' % (name_on_form, i)) and
-                                    k not in exclude and re.sub('\-\d+\-', '-_-', k) not in exclude])
-                    if (not _params and params.get(name_on_form, None) and isinstance(params[name_on_form], (list, tuple)) and
-                            all([isinstance(value_el, FILE_TYPES + (ContentFile,)) for value_el in params[name_on_form]])):
-                        """Try check multiple file field.
-                        But you should redefine assert_object_fields in test with params like `field-0-file_obj`"""
-                        el_file_fields = [f.name for f in el._meta.fields if
-                                          set([m.__name__ for m in f.__class__.__mro__]).intersection(['FileField', 'ImageField'])]
-                        if len(el_file_fields) == 1:
-                            _params = {el_file_fields[0]: params[name_on_form]
-                                       [i] if len(params[name_on_form]) > i else ''}
-                    try:
-                        self.assert_object_fields(el, _params)
-                    except Exception as e:
-                        local_errors.append('[%s]:%s' % (field.encode('utf-8') if isinstance(field, str)
-                                                         else field, '\n  '.join(force_text(e).splitlines())))
+                if value is not None:
+                    if count_for_check is not None and value.__class__.__name__ == 'RelatedManager':
+                        try:
+                            self.assertEqual(value.all().count(), count_for_check)
+                        except Exception as e:
+                            local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, str)
+                                                                  else field) + force_text(e))
+
+                    for i, el in enumerate(value.all().order_by('pk')
+                                           if value.__class__.__name__ in ('RelatedManager', 'QuerySet')
+                                           else [value, ]):
+                        _params = dict([(k.replace('%s-%d-' % (name_on_form, i), ''),
+                                         params[k]) for k in viewkeys(params) if
+                                        k.startswith('%s-%d-' % (name_on_form, i)) and
+                                        k not in exclude and re.sub('\-\d+\-', '-_-', k) not in exclude])
+                        if (not _params and params.get(name_on_form, None) and isinstance(params[name_on_form], (list, tuple)) and
+                                all([isinstance(value_el, FILE_TYPES + (ContentFile,)) for value_el in params[name_on_form]])):
+                            """Try check multiple file field.
+                            But you should redefine assert_object_fields in test with params like `field-0-file_obj`"""
+                            el_file_fields = [f.name for f in el._meta.fields if
+                                              set([m.__name__ for m in f.__class__.__mro__]).intersection(['FileField', 'ImageField'])]
+                            if len(el_file_fields) == 1:
+                                _params = {el_file_fields[0]: params[name_on_form]
+                                           [i] if len(params[name_on_form]) > i else ''}
+                        try:
+                            self.assert_object_fields(el, _params)
+                        except Exception as e:
+                            local_errors.append('[%s]:%s' % (field.encode('utf-8') if isinstance(field, str)
+                                                             else field, '\n  '.join(force_text(e).splitlines())))
+                elif count_for_check:
+                    local_errors.append('[%s]: expected count %s, but value is None' %
+                                        ((field.encode('utf-8') if isinstance(field, str) else field),
+                                         count_for_check))
+
                 continue
 
             params_value = params[name_on_form]
