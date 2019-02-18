@@ -25,6 +25,7 @@ from django.core.files.uploadhandler import MemoryFileUploadHandler
 from decimal import Decimal
 from random import uniform
 from lxml.html import document_fromstring
+from uuid import uuid4
 try:
     from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
 except ImportError:
@@ -785,6 +786,8 @@ def get_value_for_obj_field(f, filename=None):
         return ContentFile(content, name=name)
     elif mro_names.intersection(['JSONField']):
         return {get_randname(10, 'wd'): get_randname(10) for i in xrange(random.randint(0, 5))}
+    elif mro_names.intersection(['UUIDField']):
+        return uuid4()
 
 
 def get_random_contentfile(size=10, filename=None):
