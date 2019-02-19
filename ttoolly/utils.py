@@ -82,6 +82,7 @@ __all__ = ('convert_size_to_bytes',
            'prepare_file_for_tests',
            'to_bytes',
            'unicode_to_readable',
+           'update_filter_params',
            'use_in_all_tests',)
 
 
@@ -1099,6 +1100,19 @@ def unicode_to_readable(text):
     def unescape_one_match(match_obj):
         return match_obj.group(0).encode('utf-8').decode('unicode_escape')
     return re.sub(r"\\u[0-9a-fA-F]{4}", unescape_one_match, force_text(text))
+
+
+def update_filter_params(filter_params, additional_params):
+    fields_for_remove = []
+    regexp = '(__in|__gt|__lt|__gte|__lte|__isnull)$'
+    for field in additional_params.keys():
+        for field2 in filter_params.keys():
+            if re.sub(regexp, '', field) == re.sub(regexp, '', field2):
+                fields_for_remove.append(field2)
+    for field in fields_for_remove:
+        filter_params.pop(field)
+
+    filter_params.update(additional_params)
 
 
 def use_in_all_tests(decorator):
