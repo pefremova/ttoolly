@@ -6551,7 +6551,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
 
     def send_change_after_reset_password_request(self, codes, params):
         return self.client.post(self.get_url_for_negative(self.url_reset_password, codes),
-                                params, follow=True ** self.additional_params)
+                                params, follow=True, **self.additional_params)
 
     def test_request_reset_password_positive(self):
         """
