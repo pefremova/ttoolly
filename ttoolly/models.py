@@ -5811,7 +5811,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
         obj_id = obj_for_test.id
         params = self.deepcopy(self.default_params_edit)
         try:
-            url = self.get_url_for_negative(self.url_recovery.replace('trash_restore', 'trash_change'), (obj_id,))
+            url = self.get_url_for_negative(self.url_edit_in_trash, (obj_id,))
             response = self.client.post(url, params, follow=True, **self.additional_params)
             self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)))
             self.assertEqual(response.status_code, 200)
