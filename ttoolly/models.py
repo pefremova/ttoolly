@@ -4124,6 +4124,7 @@ class FormEditTestMixIn(FormTestMixIn):
         only_independent_fields = set(self.all_fields_edit).difference(viewkeys(prepared_depends_fields))
         for field in viewkeys(prepared_depends_fields):
             self.set_empty_value_for_field(params, field)
+
         self.fill_all_fields(list(only_independent_fields) + self.required_fields_edit +
                              self._get_required_from_related(self.required_related_fields_edit), params)
         self.update_params(params)
@@ -5820,6 +5821,7 @@ class FormRemoveTestMixIn(FormTestMixIn):
             self.errors_append()
 
     @only_with_obj
+    @only_with(('url_edit',))
     def test_edit_in_trash_by_edit_url_negative(self):
         """
         Try change object in trash
