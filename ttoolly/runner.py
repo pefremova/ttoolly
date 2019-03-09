@@ -81,6 +81,21 @@ class RegexpTestSuiteRunner(ParentRunner):
 
     mro_names = [m.__name__ for m in ParentRunner.__mro__]
 
+    def __init__(self, *args, **kwargs):
+        super(RegexpTestSuiteRunner, self).__init__(*args, **kwargs)
+        self.tags_rule = kwargs['tags_rule']
+        if self.tags_rule:
+            self.tags = []
+            self.exclude_tags = []
+
+    @classmethod
+    def add_arguments(cls, parser):
+        super(RegexpTestSuiteRunner, cls).add_arguments(parser)
+        parser.add_argument(
+            '--tags', action='store', dest='tags_rule',
+            help='Tags boolean rule. Example: "low AND middle AND NOT high"',
+        )
+
     def get_resultclass(self):
         if WITH_HTML_REPORT:
             return CustomHtmlTestResult
@@ -128,6 +143,11 @@ class RegexpTestSuiteRunner(ParentRunner):
         if labels_for_suite:
             my_suite.addTests(ParentRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
 
+        if self.tags_rule:
+            from .for_runner import algebra
+            parsed = algebra.parse(self.tags_rule).simplify()
+            my_suite = filter_tests_by_tags_rule(my_suite, parsed)
+
         if getattr(settings, 'TEST_SKIP_SILENT', False):
             my_suite = filter_suite_by_decorators(my_suite, self.verbosity)
 
@@ -168,3 +188,22 @@ class RegexpTestSuiteRunner(ParentRunner):
                  result.errors + result.failures]) + '\n\n')
             st.write('*' * 70 + '\n\n')
         return result
+
+
+def filter_tests_by_tags_rule(suite, parsed_rule):
+    suite_class = type(suite)
+    filtered_suite = suite_class()
+
+    for test in suite:
+        if isinstance(test, suite_class):
+            filtered_suite.addTests(filter_tests_by_tags_rule(test, parsed_rule))
+        else:
+            test_tags = set(getattr(test, 'tags', set()))
+            test_fn_name = getattr(test, '_testMethodName', str(test))
+            test_fn = getattr(test, test_fn_name, test)
+            test_fn_tags = set(getattr(test_fn, 'tags', set()))
+            all_tags = test_tags.union(test_fn_tags)
+            if parsed_rule.__bool__(all_tags):
+                filtered_suite.addTest(test)
+
+    return filtered_suite
