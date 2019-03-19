@@ -35,4 +35,21 @@ class Symbol(boolean.Symbol):
         return False
 
 
-algebra = boolean.BooleanAlgebra(AND_class=AND, OR_class=OR, NOT_class=NOT, Symbol_class=Symbol)
+class FALSE(boolean.boolean._FALSE):
+
+    def __bool__(self, tags_for_check=None):
+        if not tags_for_check:
+            return True
+        return False
+
+
+class TRUE(boolean.boolean._TRUE):
+
+    def __bool__(self, tags_for_check=None):
+        if tags_for_check:
+            return True
+        return False
+
+
+algebra = boolean.BooleanAlgebra(AND_class=AND, OR_class=OR, NOT_class=NOT, Symbol_class=Symbol,
+                                 FALSE_class=FALSE, TRUE_class=TRUE)
