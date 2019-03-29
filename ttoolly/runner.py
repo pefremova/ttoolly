@@ -28,7 +28,7 @@ if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrun
         testcase = xml_testsuite.childNodes[-1]
         description = xml_document.createElement('description')
         testcase.appendChild(description)
-        description_text = safe_unicode(test_result.get_description())
+        description_text = safe_unicode(test_result.test_description)
         _XMLTestResult._createCDATAsections(xml_document, description, description_text)
 
     _XMLTestResult._report_testcase = _report_testcase
