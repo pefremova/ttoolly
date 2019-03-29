@@ -768,6 +768,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 error_message = msg + ':\n' + error_message
             raise AssertionError(error_message)
 
+    def _assert_object_field(self, value, params_value, field=None):
+        self.assertEqual(value, params_value, field)
+
     def assert_object_fields(self, obj, params, exclude=None, other_values=None):
         """
         @param exclude: exclude field from check
@@ -880,7 +883,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             value, params_value = self.get_params_according_to_type(value, params_value)
 
             try:
-                self.assertEqual(value, params_value)
+                self._assert_object_field(value, params_value, field)
             except AssertionError:
                 if isinstance(value, basestring):
                     value = value if len(str(value)) <= 1000 else str(value)[:1000] + '...'
