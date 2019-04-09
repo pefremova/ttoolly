@@ -747,16 +747,25 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         assert_text = []
         for field in set(object_fields).difference(exclude):
             value1 = self.get_value_for_compare(obj1, field)
-            value2 = other_values.get(field, self.get_value_for_compare(obj2, field))
-            if value1 != value2:
-                assert_text.append('[%s]: %r != %r' % (field, value1, value2))
+
+            if field in other_values.keys():
+                value2 = other_values[field]
+                try:
+                    self._assert_object_field(value1, value2, field)
+                except AssertionError:
+                    assert_text.append('[%s]: %r != %r' % (field, value1, value2))
+            else:
+                value2 = self.get_value_for_compare(obj2, field)
+                if value1 != value2:
+                    assert_text.append('[%s]: %r != %r' % (field, value1, value2))
+
         if assert_text:
             local_errors.append('\n'.join(assert_text))
 
         assert_text = []
         for field in changed:
             value1 = self.get_value_for_compare(obj1, field)
-            value2 = other_values.get(field, self.get_value_for_compare(obj2, field))
+            value2 = self.get_value_for_compare(obj2, field)
             if value1 == value2:
                 assert_text.append('[%s]: %r' % (field, value1))
         if assert_text:
