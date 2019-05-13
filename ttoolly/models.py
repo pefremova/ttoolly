@@ -2306,16 +2306,11 @@ class FormAddTestMixIn(FormTestMixIn):
             field = choice(group)
             fields_from_groups = fields_from_groups.difference(prepared_depends_fields[field])
         self.fill_all_fields(fields_from_groups, default_params)
-        new_object = None
         for group in self.one_of_fields_add:
             for field in group:
                 self.prepare_for_add()
                 params = self.deepcopy(default_params)
-                """if unique fields"""
                 mail.outbox = []
-                if new_object:
-                    self.get_obj_manager.filter(pk=new_object.pk).delete()
-
                 for f in prepared_depends_fields[field]:
                     self.set_empty_value_for_field(params, f)
                 self.fill_all_fields((field,), params)
@@ -2342,7 +2337,6 @@ class FormAddTestMixIn(FormTestMixIn):
         required_fields = self.required_fields_add + \
             self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
-        new_object = None
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         for field in required_fields:
@@ -2369,8 +2363,6 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.set_empty_value_for_field(params, field)
                 """if unique fields"""
                 mail.outbox = []
-                if new_object:
-                    self.get_obj_manager.filter(pk=new_object.pk).delete()
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -2395,7 +2387,6 @@ class FormAddTestMixIn(FormTestMixIn):
         required_fields = self.required_fields_add + \
             self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
-        new_object = None
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
         for field in required_fields:
@@ -2417,8 +2408,6 @@ class FormAddTestMixIn(FormTestMixIn):
             for field in group:
                 """if unique fields"""
                 mail.outbox = []
-                if new_object:
-                    self.get_obj_manager.filter(pk=new_object.pk).delete()
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -2532,7 +2521,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create object: fill all fields with maximum length values
         """
-        new_object = None
         other_fields = []
         for field_type_name in ('digital_fields_add', 'date_fields', 'datetime_fields', 'choice_fields_add',
                                 'choice_fields_add_with_value_in_error', 'disabled_fields_add', 'hidden_fields_add',
@@ -2586,8 +2574,6 @@ class FormAddTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             """if unique fields"""
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -2803,7 +2789,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Add object with unique field values, to values, that already used in other objects but in other case
         """
-        new_object = None
         for el in self.unique_fields_edit:
             if not set(self.unique_with_case).intersection(el):
                 continue
@@ -2812,8 +2797,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 sp = transaction.savepoint()
                 """if unique fields"""
                 mail.outbox = []
-                if new_object:
-                    self.get_obj_manager.filter(pk=new_object.pk).delete()
                 self.prepare_for_add()
                 existing_obj = self.get_existing_obj_with_filled(el)
                 params = self.deepcopy(self.default_params_add)
@@ -2906,7 +2889,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Add obj with value in digital fields == max
         """
-        new_object = None
         fields_for_check = []
 
         max_value_params = {}
@@ -2948,8 +2930,6 @@ class FormAddTestMixIn(FormTestMixIn):
             value = max_value_params[field]
             """if unique fields"""
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3000,7 +2980,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Add obj with value in digital fields == min
         """
-        new_object = None
         fields_for_check = []
 
         min_value_params = {}
@@ -3043,8 +3022,6 @@ class FormAddTestMixIn(FormTestMixIn):
             sp = transaction.savepoint()
             """if unique fields"""
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3095,12 +3072,9 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Try add obj with filled disabled fields
         """
-        new_object = None
         for field in self.disabled_fields_add:
             sp = transaction.savepoint()
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3177,7 +3151,6 @@ class FormAddTestMixIn(FormTestMixIn):
             self.errors_append(text="Max count in all (%s) blocks" % ', '.join('%s in %s' % (k, v) for k, v in
                                                                                viewitems(self.max_blocks)))
         finally:
-            self.get_obj_manager.exclude(pk__in=old_pks).delete()
             mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
@@ -3206,7 +3179,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
             finally:
-                self.get_obj_manager.exclude(pk__in=old_pks).delete()
                 mail.outbox = []
 
     @only_with_obj
@@ -3236,7 +3208,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.savepoint_rollback(sp)
                 self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
             finally:
-                self.get_obj_manager.exclude(pk__in=old_pks).delete()
                 mail.outbox = []
 
     @only_with_obj
@@ -3246,7 +3217,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Try create obj with files count > max files count
         """
-        new_objects = None
         message_type = 'max_count_file'
         for field, field_dict in viewitems(self.file_fields_params_add):
             if field_dict.get('max_count', 1) <= 1:
@@ -3255,8 +3225,6 @@ class FormAddTestMixIn(FormTestMixIn):
             current_count = max_count + 1
             sp = transaction.savepoint()
             mail.outbox = []
-            if new_objects:
-                new_objects.delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3272,7 +3240,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assertEqual(self.get_all_form_errors(response),
                                  self.get_error_message(message_type, field, locals=locals()))
-                new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (current_count, field))
@@ -3284,7 +3251,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Try create obj with photos count == max files count
         """
-        new_object = None
         fields_for_check = []
         max_count_params = {}
         for field, field_dict in viewitems(self.file_fields_params_add):
@@ -3323,8 +3289,6 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in fields_for_check:
             sp = transaction.savepoint()
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3426,7 +3390,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create obj with file size == max one file size
         """
-        new_object = None
         fields_for_check = list(self.file_fields_params_add.keys())
         max_size_params = {}
         for field in fields_for_check:
@@ -3473,8 +3436,6 @@ class FormAddTestMixIn(FormTestMixIn):
         for field, field_dict in viewitems(self.file_fields_params_add):
             sp = transaction.savepoint()
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             one_max_size = field_dict.get('one_max_size', '10M')
             size = convert_size_to_bytes(one_max_size)
             max_size = self.humanize_file_size(size)
@@ -3509,12 +3470,9 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create obj with summary files size == max summary files size
         """
-        new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
             sp = transaction.savepoint()
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             sum_max_size = field_dict.get('sum_max_size', None)
             if not sum_max_size:
                 continue
@@ -3549,13 +3507,10 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Try create obj with file size = 0M
         """
-        new_objects = None
         message_type = 'empty_file'
         for field, field_dict in viewitems(self.file_fields_params_add):
             sp = transaction.savepoint()
             mail.outbox = []
-            if new_objects:
-                new_objects.delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3571,7 +3526,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assertEqual(self.get_all_form_errors(response),
                                  self.get_error_message(message_type, field, locals=locals()))
-                new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
@@ -3582,7 +3536,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create obj with some available extensions
         """
-        new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
             extensions = copy(field_dict.get('extensions', ()))
             if not extensions:
@@ -3591,8 +3544,6 @@ class FormAddTestMixIn(FormTestMixIn):
             for ext in extensions:
                 sp = transaction.savepoint()
                 mail.outbox = []
-                if new_object:
-                    self.get_obj_manager.filter(pk=new_object.pk).delete()
                 filename = '.'.join([el for el in ['test', ext] if el])
                 self.prepare_for_add()
                 f = self.get_random_file(field, filename=filename)
@@ -3656,14 +3607,11 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create obj with minimum image file dimensions
         """
-        new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
             width = field_dict.get('min_width', 1)
             height = field_dict.get('min_height', 1)
             sp = transaction.savepoint()
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3692,12 +3640,9 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create obj with image file dimensions < minimum
         """
-        new_objects = None
         message_type = 'min_dimensions'
         for field, field_dict in viewitems(self.file_fields_params_add):
             mail.outbox = []
-            if new_objects:
-                new_objects.delete()
             values = ()
             min_width = field_dict.get('min_width', None)
             if min_width:
@@ -3725,7 +3670,6 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.check_on_add_error(response, initial_obj_count, locals())
                     self.assertEqual(self.get_all_form_errors(response),
                                      self.get_error_message(message_type, field, locals=locals()))
-                    new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
@@ -3737,14 +3681,11 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create obj with maximum image file dimensions
         """
-        new_object = None
         for field, field_dict in viewitems(self.file_fields_params_add):
             width = field_dict.get('max_width', 10000)
             height = field_dict.get('max_height', 10000)
             sp = transaction.savepoint()
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3773,12 +3714,9 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create obj with image file dimensions > maximum
         """
-        new_objects = None
         message_type = 'max_dimensions'
         for field, field_dict in viewitems(self.file_fields_params_add):
             mail.outbox = []
-            if new_objects:
-                new_objects.delete()
             values = ()
             max_width = field_dict.get('max_width', None)
             if max_width:
@@ -3853,7 +3791,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Create object with \\x00 in str fields
         """
-        new_object = None
         other_fields = ['captcha', 'captcha_0', 'captcha_1']
         for field_type_name in ('digital_fields_add', 'date_fields', 'datetime_fields', 'choice_fields_add',
                                 'choice_fields_add_with_value_in_error', 'disabled_fields_add', 'hidden_fields_add',
@@ -3903,8 +3840,6 @@ class FormAddTestMixIn(FormTestMixIn):
         for field in fields_for_check:
             """if unique fields"""
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -3955,7 +3890,6 @@ class FormAddTestMixIn(FormTestMixIn):
         """
         Add object with \\x00 in filenames
         """
-        new_object = None
         fields_for_check = list(self.file_fields_params_add.keys())
         test_params = {}
         for field in fields_for_check:
@@ -3990,8 +3924,6 @@ class FormAddTestMixIn(FormTestMixIn):
 
         for field, field_dict in fields_for_check:
             mail.outbox = []
-            if new_object:
-                self.get_obj_manager.filter(pk=new_object.pk).delete()
             try:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
