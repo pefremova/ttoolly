@@ -5,7 +5,7 @@ import sys
 
 
 def readme():
-    with open('README.md', 'rb') as f:
+    with open('README.rst', 'rb') as f:
         return f.read().decode('utf-8')
 
 
@@ -15,7 +15,7 @@ if sys.version[0] == '2':
     install_requires.append('functools32')
 
 setup(name='ttoolly',
-      version='0.31.0',
+      version='0.31.1',
       description="Django test tools",
       long_description=readme(),
       author="Polina Efremova",
