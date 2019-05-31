@@ -1109,7 +1109,11 @@ def update_filter_params(filter_params, additional_params):
         for field2 in filter_params.keys():
             if re.sub(regexp, '', field) == re.sub(regexp, '', field2):
                 fields_for_remove.append(field2)
-    for field in fields_for_remove:
+        if field.endswith('__isnull') and additional_params[field]:
+            for field2 in filter_params.keys():
+                if field2.startswith(field.replace('__isnull', '')):
+                    fields_for_remove.append(field2)
+    for field in set(fields_for_remove):
         filter_params.pop(field)
 
     filter_params.update(additional_params)
