@@ -7599,6 +7599,7 @@ class CustomTestCaseNew(CustomTestCase):
                 # Django loadddata with multi_db fails on deserialize objects with natural keys for not default fixture
                 fixtures = [fixture for fixture in cls.fixtures if db == DEFAULT_DB_ALIAS or ('.' + db) in fixture]
                 if fixtures:
+                    ContentType.objects.clear_cache()
                     call_command('loaddata', *fixtures, **{'verbosity': 0, 'database': db})
 
         cls.custom_fixture_setup()
