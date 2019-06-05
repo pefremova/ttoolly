@@ -7568,14 +7568,21 @@ class CustomTestCaseNew(CustomTestCase):
     def setUpClass(cls):
         super(CustomTestCaseNew, cls).setUpClass()
 
-        """Version sensitive import"""
-        from django.apps import apps
-
         """load fixtures to main database once"""
-
         for db in cls._databases_names(include_mirrors=False):
             if cls.reset_sequences:
-                cls._reset_sequences(db)
+                """Code from TransactionTestCase._reset_sequences>>>"""
+                conn = connections[db]
+                from django.core.management.color import no_style
+                if conn.features.supports_sequence_reset:
+                    sql_list = conn.ops.sequence_reset_by_name_sql(
+                        no_style(), conn.introspection.sequence_list())
+                    if sql_list:
+                        with transaction.atomic(using=db):
+                            cursor = conn.cursor()
+                            for sql in sql_list:
+                                cursor.execute(sql)
+                """<<<Code from TransactionTestCase._reset_sequences"""
 
             # If we need to provide replica initial data from migrated apps,
             # then do so.
