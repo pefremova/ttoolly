@@ -15,7 +15,7 @@ if sys.version[0] == '2':
     install_requires.append('functools32')
 
 setup(name='ttoolly',
-      version='0.32.1',
+      version='0.32.2',
       description="Django test tools",
       long_description=readme(),
       author="Polina Efremova",
