@@ -3968,6 +3968,7 @@ class FormAddTestMixIn(FormTestMixIn):
 
 class FormEditTestMixIn(FormTestMixIn):
 
+    second_save_available = True
     url_edit = ''
 
     def clean_depend_fields_edit(self, params, field):
@@ -4379,7 +4380,7 @@ class FormEditTestMixIn(FormTestMixIn):
             exclude = getattr(self, 'exclude_from_check_edit', [])
             self.assert_object_fields(new_object, params, exclude=exclude)
 
-            if file_fields:
+            if self.second_save_available and file_fields:
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 self.update_params(params)
                 for depended_field in fields_for_clean:
@@ -4440,7 +4441,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
                 self.assert_object_fields(new_object, params, exclude=exclude)
 
-                if self.is_file_field(field):
+                if self.second_save_available and self.is_file_field(field):
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     self.update_params(params)
                     params[field] = ''
