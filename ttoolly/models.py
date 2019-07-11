@@ -2293,29 +2293,28 @@ class FormAddTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_add',))
     def test_add_object_with_group_all_fields_filled_positive(self):
         """
-        Create object: fill all fields
+        Create object: fill all fields. Check with any filled field from one_of_fields groups
         """
-        prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_add)
-        only_independent_fields = set(self.all_fields_add).difference(viewkeys(prepared_depends_fields))
-        default_params = self.deepcopy(self.default_params_add)
-        for field in viewkeys(prepared_depends_fields):
-            self.set_empty_value_for_field(default_params, field)
-        self.fill_all_fields(list(only_independent_fields), default_params)
-        fields_from_groups = set(viewkeys(prepared_depends_fields))
-        for group in self.one_of_fields_add:
-            field = choice(group)
-            fields_from_groups = fields_from_groups.difference(prepared_depends_fields[field])
-        self.fill_all_fields(fields_from_groups, default_params)
         for group in self.one_of_fields_add:
             for field in group:
                 self.prepare_for_add()
-                params = self.deepcopy(default_params)
-                mail.outbox = []
-                for f in prepared_depends_fields[field]:
-                    self.set_empty_value_for_field(params, f)
-                self.fill_all_fields((field,), params)
+                params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                only_independent_fields = set(self.all_fields_add).difference(viewkeys(self._depend_one_of_fields_add))
+
+                fields_from_groups = set(viewkeys(self._depend_one_of_fields_add)
+                                         ).difference(self._depend_one_of_fields_add[field])
+                for group in self.one_of_fields_add:
+                    _field = choice(group)
+                    fields_from_groups = fields_from_groups.difference(self._depend_one_of_fields_add[_field])
+                for field in set(viewkeys(self._depend_one_of_fields_add)).difference(fields_from_groups):
+                    self.set_empty_value_for_field(params, field)
+                self.fill_all_fields(tuple(only_independent_fields) + tuple(fields_from_groups), params)
+                self.clean_depend_fields_add(params, field)
+                self.fill_all_fields((field,), params)
+
+                mail.outbox = []
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
@@ -2532,13 +2531,10 @@ class FormAddTestMixIn(FormTestMixIn):
         if not fields_for_check:
             self.skipTest('No any string fields')
         max_length_params = {}
-        prepared_depends_fields = self.prepare_depend_from_one_of(
-            self.one_of_fields_add) if self.one_of_fields_add else {}
         fields_for_clean = []
         for field, length in fields_for_check:
+            self.clean_depend_fields_add(max_length_params, field)
             max_length_params[field] = self.get_value_for_field(length, field)
-            if field in viewkeys(prepared_depends_fields):
-                fields_for_clean.extend(prepared_depends_fields[field])
 
         sp = transaction.savepoint()
         try:
@@ -2565,7 +2561,7 @@ class FormAddTestMixIn(FormTestMixIn):
                                                  for field, length in fields_for_check]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(prepared_depends_fields)):
+        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_add)):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -2579,8 +2575,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
-                for depended_field in prepared_depends_fields.get(field, []):
-                    self.set_empty_value_for_field(params, depended_field)
+                self.clean_depend_fields_add(params, field)
                 params[field] = max_length_params[field]
                 if self.is_file_field(field):
                     if self.is_file_list(field):
@@ -2897,6 +2892,7 @@ class FormAddTestMixIn(FormTestMixIn):
             if not max_values:
                 continue
             fields_for_check.append(field)
+            self.clean_depend_fields_add(max_value_params, field)
             max_value_params[field] = min(max_values)
 
         sp = transaction.savepoint()
@@ -2935,6 +2931,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                self.clean_depend_fields_add(params, field)
                 params[field] = value
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -2988,6 +2985,7 @@ class FormAddTestMixIn(FormTestMixIn):
             if not min_values:
                 continue
             fields_for_check.append(field)
+            self.clean_depend_fields_add(min_value_params, field)
             min_value_params[field] = max(min_values)
 
         sp = transaction.savepoint()
@@ -3027,6 +3025,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                self.clean_depend_fields_add(params, field)
                 params[field] = value
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -3257,6 +3256,7 @@ class FormAddTestMixIn(FormTestMixIn):
             if field_dict.get('max_count', 1) <= 1:
                 continue
             fields_for_check.append(field)
+            self.clean_depend_fields_add(max_count_params, field)
             max_count_params[field] = []
             max_count = field_dict['max_count']
             max_count_params[field] = self.get_random_file(field, count=max_count)
@@ -3294,6 +3294,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                self.clean_depend_fields_add(params, field)
                 params[field] = max_count_params[field]
                 for f in params[field]:
                     f.seek(0)
@@ -3399,6 +3400,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 count = 1
             else:
                 count = field_dict.get('max_count', 1)
+            self.clean_depend_fields_add(max_size_params, field)
             max_size_params[field] = self.get_random_file(field, size=size, count=count)
 
         sp = transaction.savepoint()
@@ -3444,6 +3446,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                self.clean_depend_fields_add(params, field)
                 params[field] = max_size_params[field]
                 if self.is_file_list(field):
                     for f in params[field]:
@@ -3693,8 +3696,6 @@ class FormAddTestMixIn(FormTestMixIn):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 f = self.get_random_file(field, width=width, height=height)
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
                 params[field] = f
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -3735,8 +3736,6 @@ class FormAddTestMixIn(FormTestMixIn):
                     self.clean_depend_fields_add(params, field)
                     f = self.get_random_file(field, width=width, height=height)
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
-                    params = self.deepcopy(self.default_params_add)
-                    self.update_params(params)
                     params[field] = f
                     initial_obj_count = self.get_obj_manager.count()
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -3776,6 +3775,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                self.clean_depend_fields_add(params, field)
                 params[field] = test_params[field]
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
@@ -3803,13 +3803,10 @@ class FormAddTestMixIn(FormTestMixIn):
             self.skipTest('No any string fields')
 
         test_params = {}
-        prepared_depends_fields = self.prepare_depend_from_one_of(
-            self.one_of_fields_add) if self.one_of_fields_add else {}
         fields_for_clean = []
         for field in fields_for_check:
+            self.clean_depend_fields_add(test_params, field)
             test_params[field] = '\x00' + self.get_value_for_field(None, field)[1:]
-            if field in viewkeys(prepared_depends_fields):
-                fields_for_clean.extend(prepared_depends_fields[field])
 
         try:
             self.prepare_for_add()
@@ -3817,8 +3814,6 @@ class FormAddTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(test_params)
-            for depended_field in fields_for_clean:
-                self.set_empty_value_for_field(params, depended_field)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.send_add_request(params)
@@ -3832,7 +3827,7 @@ class FormAddTestMixIn(FormTestMixIn):
             self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(prepared_depends_fields)):
+        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_add)):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -3845,8 +3840,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
-                for depended_field in prepared_depends_fields.get(field, []):
-                    self.set_empty_value_for_field(params, depended_field)
+                self.clean_depend_fields_add(params, field)
                 params[field] = test_params[field]
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -3871,7 +3865,7 @@ class FormAddTestMixIn(FormTestMixIn):
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
-
+            self.clean_depend_fields_add(params, field)
             f = self.get_random_file(field, filename='qwe\x00' + get_randname(10, 'wrd') + '.' +
                                      choice(field_dict.get('extensions', ['', ])))
             params[field] = f
@@ -3896,6 +3890,7 @@ class FormAddTestMixIn(FormTestMixIn):
             field_dict = self.file_fields_params_add[field]
             f = self.get_random_file(field, filename='qwe\x00' + get_randname(10, 'wrd') + '.' +
                                      choice(field_dict.get('extensions', ['', ])))
+            self.clean_depend_fields_add(test_params, field)
             test_params[field] = f
 
         try:
@@ -3929,6 +3924,7 @@ class FormAddTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
+                self.clean_depend_fields_add(params, field)
                 params[field] = test_params[field]
                 if self.is_file_list(field):
                     for f in params[field]:
@@ -4064,16 +4060,15 @@ class FormEditTestMixIn(FormTestMixIn):
         """
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
+        self.update_params(params)
+        self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
         prepared_depends_fields = self.prepare_depend_from_one_of(
             self.one_of_fields_edit) if self.one_of_fields_edit else {}
         only_independent_fields = set(self.all_fields_edit).difference(viewkeys(prepared_depends_fields))
         for field in viewkeys(prepared_depends_fields):
             self.set_empty_value_for_field(params, field)
-
         self.fill_all_fields(list(only_independent_fields) + self.required_fields_edit +
                              self._get_required_from_related(self.required_related_fields_edit), params)
-        self.update_params(params)
-        self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
 
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
@@ -4088,29 +4083,27 @@ class FormEditTestMixIn(FormTestMixIn):
     @only_with(('one_of_fields_edit',))
     def test_edit_object_with_group_all_fields_filled_positive(self):
         """
-        Edit object: fill all fields
+        Edit object: fill all fields. Check for any filled field from one_of_fields
         """
-        prepared_depends_fields = self.prepare_depend_from_one_of(self.one_of_fields_edit)
-        only_independent_fields = set(self.all_fields_edit).difference(viewkeys(prepared_depends_fields))
-
-        fields_from_groups = set(viewkeys(prepared_depends_fields))
-        for group in self.one_of_fields_edit:
-            field = choice(group)
-            fields_from_groups = fields_from_groups.difference(prepared_depends_fields[field])
-
         for group in self.one_of_fields_edit:
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
-                for f in viewkeys(prepared_depends_fields):
-                    self.set_empty_value_for_field(params, f)
-                self.fill_all_fields(only_independent_fields, params)
-                self.fill_all_fields(fields_from_groups, params)
-                for f in prepared_depends_fields[field]:
-                    self.set_empty_value_for_field(params, f)
-                self.fill_all_fields((field,), params)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+                only_independent_fields = set(self.all_fields_edit).difference(
+                    viewkeys(self._depend_one_of_fields_edit))
+                fields_from_groups = set(viewkeys(self._depend_one_of_fields_edit)
+                                         ).difference(self._depend_one_of_fields_edit[field])
+                for group in self.one_of_fields_edit:
+                    _field = choice(group)
+                    fields_from_groups = fields_from_groups.difference(self._depend_one_of_fields_edit[_field])
+                for f in set(viewkeys(self._depend_one_of_fields_edit)).difference(fields_from_groups):
+                    self.set_empty_value_for_field(params, f)
+                self.fill_all_fields(tuple(only_independent_fields) + tuple(fields_from_groups), params)
+                self.clean_depend_fields_edit(params, field)
+                self.fill_all_fields((field,), params)
+                obj_for_edit.refresh_from_db()
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
@@ -4356,15 +4349,12 @@ class FormEditTestMixIn(FormTestMixIn):
         max_length_params = {}
         file_fields = []
 
-        prepared_depends_fields = self.prepare_depend_from_one_of(
-            self.one_of_fields_edit) if self.one_of_fields_edit else {}
         fields_for_clean = []
         for field, length in fields_for_check:
+            self.clean_depend_fields_edit(max_length_params, field)
             max_length_params[field] = self.get_value_for_field(length, field)
             if self.is_file_field(field):
                 file_fields.append(field)
-            if field in viewkeys(prepared_depends_fields):
-                fields_for_clean.extend(prepared_depends_fields[field])
 
         sp = transaction.savepoint()
         try:
@@ -4372,8 +4362,6 @@ class FormEditTestMixIn(FormTestMixIn):
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(max_length_params)
-            for depended_field in fields_for_clean:
-                self.set_empty_value_for_field(params, depended_field)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -4383,8 +4371,7 @@ class FormEditTestMixIn(FormTestMixIn):
             if self.second_save_available and file_fields:
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 self.update_params(params)
-                for depended_field in fields_for_clean:
-                    self.set_empty_value_for_field(params, depended_field)
+                params.update(max_length_params)
                 for ff in file_fields:
                     self.set_empty_value_for_field(params, ff)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
@@ -4413,7 +4400,7 @@ class FormEditTestMixIn(FormTestMixIn):
             mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(prepared_depends_fields)):
+        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_edit)):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -4425,9 +4412,8 @@ class FormEditTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+                self.clean_depend_fields_edit(params, field)
                 params[field] = max_length_params[field]
-                for depended_field in prepared_depends_fields.get(field, []):
-                    self.set_empty_value_for_field(params, depended_field)
                 if field in file_fields:
                     if self.is_file_list(field):
                         for f in params[field]:
@@ -4665,6 +4651,7 @@ class FormEditTestMixIn(FormTestMixIn):
                     if el_field not in self.all_fields_edit:
                         """only if user can change this field"""
                         continue
+                    self.clean_depend_fields_edit(params, el_field)
                     value = self.get_value_for_field(None, el_field)
                     params[el_field] = self.get_params_according_to_type(value, '')[0]
                     if el_field in self.unique_with_case:
@@ -4756,6 +4743,7 @@ class FormEditTestMixIn(FormTestMixIn):
             if not max_values:
                 continue
             fields_for_check.append(field)
+            self.clean_depend_fields_edit(max_value_params, field)
             max_value_params[field] = min(max_values)
 
         sp = transaction.savepoint()
@@ -4792,6 +4780,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+                self.clean_depend_fields_edit(params, field)
                 params[field] = value
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
@@ -4845,6 +4834,7 @@ class FormEditTestMixIn(FormTestMixIn):
             if not min_values:
                 continue
             fields_for_check.append(field)
+            self.clean_depend_fields_edit(min_value_params, field)
             min_value_params[field] = max(min_values)
 
         sp = transaction.savepoint()
@@ -4881,6 +4871,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+                self.clean_depend_fields_edit(params, field)
                 params[field] = value
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
@@ -5104,6 +5095,7 @@ class FormEditTestMixIn(FormTestMixIn):
             max_count_params[field] = []
             max_count = field_dict['max_count']
             f = self.get_random_file(field, count=max_count)
+            self.clean_depend_fields_edit(max_count_params, field)
             max_count_params[field] = f
 
         sp = transaction.savepoint()
@@ -5137,6 +5129,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+                self.clean_depend_fields_edit(params, field)
                 params[field] = max_count_params[field]
                 for f in params[field]:
                     f.seek(0)
@@ -5248,6 +5241,7 @@ class FormEditTestMixIn(FormTestMixIn):
             else:
                 count = field_dict.get('max_count', 1)
             f = self.get_random_file(field, size=size, count=count)
+            self.clean_depend_fields_edit(max_size_params, field)
             max_size_params[field] = f
 
         sp = transaction.savepoint()
@@ -5293,6 +5287,7 @@ class FormEditTestMixIn(FormTestMixIn):
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+                self.clean_depend_fields_edit(params, field)
                 params[field] = max_size_params[field]
                 if self.is_file_list(field):
                     for f in params[field]:
@@ -6967,7 +6962,6 @@ class ResetPasswordMixIn(GlobalTestMixIn):
                 password_value = new_value(value, change_type)
                 user.refresh_from_db()
                 params = self.deepcopy(self.password_params)
-
                 self.update_params(params)
                 params.update({self.field_password: password_value,
                                self.field_password_repeat: password_value})
