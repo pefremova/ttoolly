@@ -18,7 +18,8 @@ if WITH_HTML_REPORT:
 
 
 if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrunner.XMLTestRunner':
-    from xmlrunner.result import _XMLTestResult, safe_unicode
+    from xmlrunner.result import _XMLTestResult, safe_unicode, _TestInfo
+    from xmlrunner.runner import XMLTestRunner
 
     original_report_testcase = _XMLTestResult._report_testcase
 
@@ -28,10 +29,30 @@ if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrun
         testcase = xml_testsuite.childNodes[-1]
         description = xml_document.createElement('description')
         testcase.appendChild(description)
-        description_text = safe_unicode(test_result.get_description())
+        description_text = safe_unicode(test_result.test_description)
         _XMLTestResult._createCDATAsections(xml_document, description, description_text)
+        tags = xml_document.createElement('tags')
+        for tag_name in test_result.tags:
+            tag = xml_document.createElement('tag')
+            tag.appendChild(xml_document.createTextNode(tag_name))
+            tags.appendChild(tag)
+        testcase.appendChild(tags)
 
     _XMLTestResult._report_testcase = _report_testcase
+
+    class XMLInfoClass(_TestInfo):
+        def __init__(self, test_result, test_method, *args, **kwargs):
+            super().__init__(test_result, test_method, *args, **kwargs)
+            tags = set(getattr(test_method, 'tags', set()))
+            test_fn_name = getattr(test_method, '_testMethodName', str(test_method))
+            test_fn = getattr(test_method, test_fn_name, test_method)
+            test_fn_tags = set(getattr(test_fn, 'tags', set()))
+            self.tags = tags.union(test_fn_tags)
+
+    class CustomXMLTestRunner(XMLTestRunner):
+        def _make_result(self):
+            return self.resultclass(self.stream, self.descriptions, self.verbosity, self.elapsed_times,
+                                    infoclass=XMLInfoClass)
 
 
 def get_runner():
@@ -76,10 +97,33 @@ def filter_suite_by_decorators(suite, verbosity=1):
 
 
 class RegexpTestSuiteRunner(ParentRunner):
+
     parallel = 1
-    test_runner = HTMLTestRunner if WITH_HTML_REPORT else ParentRunner.test_runner
+
+    def get_test_runner(self):
+        if WITH_HTML_REPORT:
+            return HTMLTestRunner
+        if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrunner.XMLTestRunner':
+            return CustomXMLTestRunner
+        return ParentRunner.test_runner
 
     mro_names = [m.__name__ for m in ParentRunner.__mro__]
+
+    def __init__(self, *args, **kwargs):
+        super(RegexpTestSuiteRunner, self).__init__(*args, **kwargs)
+        self.tags_rule = kwargs['tags_rule']
+        if self.tags_rule:
+            self.tags = []
+            self.exclude_tags = []
+        self.test_runner = self.get_test_runner()
+
+    @classmethod
+    def add_arguments(cls, parser):
+        super(RegexpTestSuiteRunner, cls).add_arguments(parser)
+        parser.add_argument(
+            '--tags', action='store', dest='tags_rule',
+            help='Tags boolean rule. Example: "low AND middle AND NOT high"',
+        )
 
     def get_resultclass(self):
         if WITH_HTML_REPORT:
@@ -128,6 +172,11 @@ class RegexpTestSuiteRunner(ParentRunner):
         if labels_for_suite:
             my_suite.addTests(ParentRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
 
+        if self.tags_rule:
+            from .for_runner import algebra
+            parsed = algebra.parse(self.tags_rule).simplify()
+            my_suite = filter_tests_by_tags_rule(my_suite, parsed)
+
         if getattr(settings, 'TEST_SKIP_SILENT', False):
             my_suite = filter_suite_by_decorators(my_suite, self.verbosity)
 
@@ -165,6 +214,25 @@ class RegexpTestSuiteRunner(ParentRunner):
             st.write('\n' + '*' * 29 + ' Run failed ' + '*' * 29 + '\n\n')
             st.write('python manage.py test %s' % ' '.join(
                 ['.'.join([test.__class__.__module__, test.__class__.__name__, test._testMethodName]) for test, _ in
-                 result.errors + result.failures]) + '\n\n')
+                 result.errors + result.failures if hasattr(test, '_testMethodName')]) + '\n\n')
             st.write('*' * 70 + '\n\n')
         return result
+
+
+def filter_tests_by_tags_rule(suite, parsed_rule):
+    suite_class = type(suite)
+    filtered_suite = suite_class()
+
+    for test in suite:
+        if isinstance(test, suite_class):
+            filtered_suite.addTests(filter_tests_by_tags_rule(test, parsed_rule))
+        else:
+            test_tags = set(getattr(test, 'tags', set()))
+            test_fn_name = getattr(test, '_testMethodName', str(test))
+            test_fn = getattr(test, test_fn_name, test)
+            test_fn_tags = set(getattr(test_fn, 'tags', set()))
+            all_tags = test_tags.union(test_fn_tags)
+            if parsed_rule.__bool__(all_tags):
+                filtered_suite.addTest(test)
+
+    return filtered_suite

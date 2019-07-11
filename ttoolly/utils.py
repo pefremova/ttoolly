@@ -25,6 +25,7 @@ from django.core.files.uploadhandler import MemoryFileUploadHandler
 from decimal import Decimal
 from random import uniform
 from lxml.html import document_fromstring
+from uuid import uuid4
 try:
     from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
 except ImportError:
@@ -81,6 +82,7 @@ __all__ = ('convert_size_to_bytes',
            'prepare_file_for_tests',
            'to_bytes',
            'unicode_to_readable',
+           'update_filter_params',
            'use_in_all_tests',)
 
 
@@ -785,6 +787,8 @@ def get_value_for_obj_field(f, filename=None):
         return ContentFile(content, name=name)
     elif mro_names.intersection(['JSONField']):
         return {get_randname(10, 'wd'): get_randname(10) for i in xrange(random.randint(0, 5))}
+    elif mro_names.intersection(['UUIDField']):
+        return uuid4()
 
 
 def get_random_contentfile(size=10, filename=None):
@@ -1096,6 +1100,23 @@ def unicode_to_readable(text):
     def unescape_one_match(match_obj):
         return match_obj.group(0).encode('utf-8').decode('unicode_escape')
     return re.sub(r"\\u[0-9a-fA-F]{4}", unescape_one_match, force_text(text))
+
+
+def update_filter_params(filter_params, additional_params):
+    fields_for_remove = []
+    regexp = '(__in|__gt|__lt|__gte|__lte|__isnull)$'
+    for field in additional_params.keys():
+        for field2 in filter_params.keys():
+            if re.sub(regexp, '', field) == re.sub(regexp, '', field2):
+                fields_for_remove.append(field2)
+        if field.endswith('__isnull') and additional_params[field]:
+            for field2 in filter_params.keys():
+                if field2.startswith(field.replace('__isnull', '')):
+                    fields_for_remove.append(field2)
+    for field in set(fields_for_remove):
+        filter_params.pop(field)
+
+    filter_params.update(additional_params)
 
 
 def use_in_all_tests(decorator):
