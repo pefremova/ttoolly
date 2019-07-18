@@ -108,8 +108,12 @@ def new_redis_settings():
     if d is not None:
         return d
 
+    TEST_USE_REAL_SETTINGS = getattr(settings, 'TEST_USE_REAL_SETTINGS', False)
+
     def get_new_value(value):
         if isinstance(value, basestring) and value.startswith('redis://'):
+            if TEST_USE_REAL_SETTINGS and _worker_id == 0:
+                return value
             return '/'.join(value.split('/')[:-1] + [str(int(value.split('/')[-1]) + 10 * max(_worker_id, 1))])
         elif isinstance(value, dict):
             new_values_d = {k: get_new_value(v) for k, v in viewitems(value)}
@@ -503,13 +507,16 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             path = getattr(settings, name)
             if path.startswith(tempfile.gettempdir()):
                 rmtree(path)
-        self._ttoolly_modified_settings.disable()
+        modified_settings = getattr(self, '_ttoolly_modified_settings', None)
+        if modified_settings:
+            modified_settings.disable()
 
     def for_pre_setup(self):
         self.errors = []
         d = new_redis_settings()
-        d.update({name: tempfile.mkdtemp('_' + name)
-                  for name in get_settings_for_move()})
+        if not getattr(settings, 'TEST_USE_REAL_SETTINGS', False):
+            d.update({name: tempfile.mkdtemp('_' + name)
+                      for name in get_settings_for_move()})
         self._ttoolly_modified_settings = override_settings(**d)
         self._ttoolly_modified_settings.enable()
         for k in [k for k in dir(self) if not k.startswith(('_', 'test_'))
