@@ -4932,7 +4932,13 @@ class FormEditTestMixIn(FormTestMixIn):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = params.get(field, None) or self.get_value_for_field(None, field)
+                value = params.get(field, None)
+                old_value = self.get_params_according_to_type(self._get_field_value_by_name(obj_for_edit, field), '')[0]
+                n = 0
+                while n < 3 and (not value or value == old_value):
+                    n += 1
+                    value = self.get_value_for_field(None, field)
+                params[field] = value
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
