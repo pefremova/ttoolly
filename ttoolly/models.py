@@ -7407,6 +7407,7 @@ base_db_initialized = False
 class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
 
     multi_db = True
+    databases = '__all__'
     request_manager = RequestManager
 
     def _fixture_setup(self):
