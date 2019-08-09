@@ -115,6 +115,7 @@ class RegexpTestSuiteRunner(ParentRunner):
         if self.tags_rule:
             self.tags = []
             self.exclude_tags = []
+        self.parallelism = [int(el) for el in kwargs['parallelism'].split('/')] if kwargs['parallelism'] else None
         self.test_runner = self.get_test_runner()
 
     @classmethod
@@ -124,6 +125,23 @@ class RegexpTestSuiteRunner(ParentRunner):
             '--tags', action='store', dest='tags_rule',
             help='Tags boolean rule. Example: "low AND middle AND NOT high"',
         )
+        parser.add_argument(
+            '--parallelism', dest='parallelism', default=None,
+            help='Part of tests (if parallel by ci). For example 2/5 - second part of five. Will be ignored if parallel > 1',
+        )
+
+    def convert_by_parallel(self, suite):
+        if self.parallel > 1 or not self.parallelism or self.parallelism[1] == 1:
+            return suite
+
+        def get_chunk(count, chunk_n):
+            if chunk_n >= count:
+                return []
+            length = len(suite._tests)
+            chunk_len, additional = divmod(length, count)
+            return suite._tests[chunk_n * chunk_len:(chunk_n + 1) * chunk_len + (additional if chunk_n == count - 1 else 0)]
+
+        return unittest.TestSuite(get_chunk(self.parallelism[1], self.parallelism[0] - 1))
 
     def get_resultclass(self):
         if WITH_HTML_REPORT:
@@ -196,7 +214,7 @@ class RegexpTestSuiteRunner(ParentRunner):
             if self.parallel > 1:
                 suite = parallel_suite
 
-        return suite
+        return self.convert_by_parallel(suite)
 
     def run_suite(self, suite, **kwargs):
         if WITH_HTML_REPORT:
