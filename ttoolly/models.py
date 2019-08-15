@@ -6507,6 +6507,10 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         return self.client.post(self.get_url_for_negative(self.url_reset_password, codes),
                                 params, follow=True, **self.additional_params)
 
+    def set_user_inactive(self, user):
+        user.is_active = False
+        user.save()
+
     def test_request_reset_password_positive(self):
         """
         Request password change code
@@ -6611,8 +6615,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         if self.with_captcha:
             self.skipTest('Other test for form with captcha')
         user = self.get_obj_for_edit()
-        user.is_active = False
-        user.save()
+        self.set_user_inactive(user)
         params = self.deepcopy(self.request_password_params)
         params[self.field_username] = self.get_login_name(user)
         try:
@@ -6628,8 +6631,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         Try reset password as inactive user.
         """
         user = self.get_obj_for_edit()
-        user.is_active = False
-        user.save()
+        self.set_user_inactive(user)
         params = self.deepcopy(self.request_password_params)
         self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = self.get_login_name(user)
@@ -6903,8 +6905,7 @@ class ResetPasswordMixIn(GlobalTestMixIn):
         """
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
-        user.is_active = False
-        user.save()
+        self.set_user_inactive(user)
         codes = self.get_codes(user)
         user.refresh_from_db()
         try:
