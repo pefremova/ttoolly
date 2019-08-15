@@ -1529,8 +1529,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 # FIXME: self.obj does not exists or FieldError
                 pass
             n = 0
+            if key not in self.unique_with_case:
+                existing_values = [el.lower() for el in existing_values]
+
             if default_value != '' and default_value is not None:
-                while n < 3 and force_text(params[key]) in existing_values:
+                while n < 3 and (force_text(params[key]).lower() if key not in
+                                 self.unique_with_case else force_text(params[key])) in existing_values:
                     n += 1
                     params[key] = self.get_value_for_field(None, key)
 
