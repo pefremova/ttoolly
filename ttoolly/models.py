@@ -1977,9 +1977,10 @@ class FormTestMixIn(GlobalTestMixIn):
                          'Status code %s != %s' % (response.status_code, self.status_code_error))
 
     def create_copy(self, obj_for_edit, fields_for_change=None):
-        if fields_for_change is None:
-            fields_for_change = set([v for el in viewkeys(self.all_unique) for v in el
-                                     if not v.endswith(self.non_field_error_key)])
+        fields_for_change = fields_for_change or []
+        fields_for_change = set(list(fields_for_change) +
+                                [v for el in viewkeys(self.all_unique) for v in el
+                                 if not v.endswith(self.non_field_error_key)])
         """get inline models dictionary"""
         inline_models_dict = {}
         for field in [ff for ff in fields_for_change if re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)]:
@@ -1995,7 +1996,6 @@ class FormTestMixIn(GlobalTestMixIn):
         obj = copy(obj_for_edit)
         obj.pk = None
         obj.id = None
-
         for field in [ff for ff in fields_for_change if not re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)]:
             if field not in self.all_fields_edit:
                 """only if user can change this field"""
@@ -2003,19 +2003,18 @@ class FormTestMixIn(GlobalTestMixIn):
             field_class = self.get_field_by_name(obj, field)
             value = self._get_field_value_by_name(obj_for_edit, field)
             n = 0
-            if value:
-                while n < 3 and value == self._get_field_value_by_name(obj_for_edit, field):
-                    n += 1
-                    value = self.get_value_for_field(None, field)
-                    mro_names = [b.__name__ for b in field_class.__class__.__mro__]
-                    if 'DateField' in mro_names:
-                        try:
-                            value = datetime.strptime(value, '%d.%m.%Y').date()
-                        except Exception:
-                            pass
-                    if 'ForeignKey' in mro_names:
-                        value = field_class.related_model._base_manager.get(pk=value)
-                obj.__setattr__(field, value)
+            while n < 3 and value == self._get_field_value_by_name(obj_for_edit, field):
+                n += 1
+                value = self.get_value_for_field(None, field)
+                mro_names = [b.__name__ for b in field_class.__class__.__mro__]
+                if 'DateField' in mro_names:
+                    try:
+                        value = datetime.strptime(value, '%d.%m.%Y').date()
+                    except Exception:
+                        pass
+                if 'ForeignKey' in mro_names:
+                    value = field_class.related_model._base_manager.get(pk=value)
+            obj.__setattr__(field, value)
         obj.save()
         for set_name, values in viewitems(additional):
             for value in values:
@@ -2119,6 +2118,60 @@ class FormTestMixIn(GlobalTestMixIn):
         qs = self.get_obj_manager.filter(filters)
         if qs.exists():
             obj = choice(qs)
+
+        """Next block is like in create_copy"""
+        inline_models_dict = {}
+        for field in [ff for ff in param_names if re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)]:
+            if field not in self.all_fields_add:
+                """only if user can change this field"""
+                continue
+            set_name = field.split('-')[0]
+            inline_models_dict[set_name] = inline_models_dict.get(set_name, ()) + (field.split('-')[-1],)
+
+        additional = {}
+        for key in viewkeys(inline_models_dict):
+            additional[key] = getattr(obj, key).all()
+
+        for field in param_names:
+            value = self._get_field_value_by_name(obj, field)
+            if not value:
+                field_class = self.get_field_by_name(obj, field)
+                value = ''
+                n = 0
+                while n < 3 and not value:
+                    n += 1
+                    value = self.get_value_for_field(None, field)
+                    mro_names = [b.__name__ for b in field_class.__class__.__mro__]
+                    if 'DateField' in mro_names:
+                        try:
+                            value = datetime.strptime(value, '%d.%m.%Y').date()
+                        except Exception:
+                            pass
+                    if 'ForeignKey' in mro_names:
+                        value = field_class.related_model._base_manager.get(pk=value)
+                obj.__setattr__(field, value)
+        obj.save()
+        for set_name, values in viewitems(additional):
+            for value in values:
+                params = {}
+                for f_name in self.get_object_fields(value):
+                    f = self.get_field_by_name(value, f_name)
+                    mro_names = set([m.__name__ for m in f.__class__.__mro__])
+                    if 'AutoField' in mro_names:
+                        continue
+                    if mro_names.intersection(['ForeignKey', ]) and f.related_model == obj.__class__:
+                        params[f_name] = obj
+                    elif f_name in inline_models_dict[set_name]:
+                        if getattr(self, 'choice_fields_values', {}).get(set_name + '-0-' + f_name, ''):
+                            params[f_name] = f.related_model._base_manager.get(
+                                pk=choice(self.choice_fields_values[set_name + '-0-' + f_name]))
+                        else:
+                            params[f_name] = choice(f.related_model._base_manager.all()) if mro_names.intersection(['ForeignKey', ]) \
+                                else self.get_value_for_field(None, f_name)
+                    else:
+                        params[f_name] = getattr(value, f_name)
+                getattr(obj, set_name).add(value.__class__(**params))
+        obj.save()
         return obj
 
     def get_gt_max(self, field, value):
