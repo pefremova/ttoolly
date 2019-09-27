@@ -1039,6 +1039,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 if frame[3].startswith('test'):
                     break
             previous_locals = frame[0].f_locals
+
         if 'field' not in viewkeys(previous_locals):
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
@@ -1777,6 +1778,7 @@ class FormTestMixIn(GlobalTestMixIn):
             self.date_fields.extend([k for k in viewkeys(self.default_params_edit) if 'FORMS' not in k and 'date' in k])
             self.date_fields.extend([k for k in self.all_fields_edit if 'FORMS' not in k and 'date' in k])
             self.date_fields = set(self.date_fields)
+        self.date_fields = set(tuple(self.date_fields) + tuple(self.datetime_fields))
 
     def _prepare_digital_fields(self):
         if self.digital_fields_add is None:
