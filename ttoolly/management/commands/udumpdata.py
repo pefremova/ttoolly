@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from django.core.management.base import BaseCommand
-from ttoolly.utils import unicode_to_readable
 from django.core import serializers
 from django.apps import apps
 import sys
@@ -42,9 +41,9 @@ class Command(BaseCommand):
                     pk__in=qs.values_list('pk', flat=True))
                 objects_list.extend(base_objects_qs)
 
-        text = unicode_to_readable(serializers.serialize('json',
-                                                         objects_list, indent=4,
-                                                         use_natural_foreign_keys=True))
+        text = serializers.serialize('json',
+                                     objects_list, indent=4, ensure_ascii=False,
+                                     use_natural_foreign_keys=True)
 
         with open(path_to_file, 'ab') as f:
             f.write(text.encode('utf-8'))
