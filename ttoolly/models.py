@@ -713,7 +713,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def assert_mail_count(self, mails=None, count=None):
         error = ''
-        mails = mails or mail.outbox
+        if mails is None:
+            mails = mail.outbox
         mails_count = len(mails)
         if mails_count != count:
             error = 'Sent %d mails expect of %d.' % (mails_count, count)
