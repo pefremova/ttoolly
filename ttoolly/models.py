@@ -1779,7 +1779,7 @@ class FormTestMixIn(GlobalTestMixIn):
             self.date_fields.extend([k for k in viewkeys(self.default_params_edit) if 'FORMS' not in k and 'date' in k])
             self.date_fields.extend([k for k in self.all_fields_edit if 'FORMS' not in k and 'date' in k])
             self.date_fields = set(self.date_fields)
-        self.date_fields = set(tuple(self.date_fields) + tuple(self.datetime_fields))
+        self.date_fields = set(tuple(self.date_fields) + tuple(self.datetime_fields or ()))
 
     def _prepare_digital_fields(self):
         if self.digital_fields_add is None:
