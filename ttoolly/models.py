@@ -55,7 +55,7 @@ from .utils import (format_errors, get_error, get_randname, get_url_for_negative
                     get_fields_list_from_response, get_real_fields_list_from_response, get_all_form_errors,
                     generate_random_obj, get_all_urls,
                     get_random_file, get_all_field_names_from_model, FILE_TYPES)
-from .utils.decorators import only_with
+from .utils.decorators import only_with, only_with_obj, only_with_any_files_params, only_with_files_params
 
 
 if sys.version[0] == '2':
