@@ -61,6 +61,10 @@ Django test tools. Django >= 1.8
      - None
      - список уникальных полей
      - unique_fields = ('field1', ('field2', 'field3'), 'field4')
+   * - unique_with_case
+     - ()
+     - Список уникальных полей, для которых при проверке униклаьности учитывается регистр
+     - unique_with_case = ('field1', )
 
 
 **FormTestMixIn(GlobalTestMixIn)**
@@ -303,6 +307,11 @@ Django test tools. Django >= 1.8
      - Названия полей на форме редактирования, содержащих целые числа
      - int_fields_edit = ('field1', 'field2')
      - 
+   * - intervals
+     - None
+     - Существующие на форме временные интервалы
+     - ``intervals = (('field1', field2'), ('field3, 'field4', '>='))``
+     - Окончание интервала больше, меньше, равно началу интервала
    * - max_blocks
      - None
      - Словарь количества строка в инлайн блоках
@@ -363,6 +372,21 @@ Django test tools. Django >= 1.8
      - Обязательные для заполнения поля на форме редактирования
      - required_fields_edit = ('field1', 'field2')
      - 
+   * - required_if
+     - None
+     - Поля, обязательные для заполнения, если заполнено другое поле
+     - ``required_if = {'field1': 'field2', 'field2': ('field1', 'field3')}``
+     - Заполнено основное, но не заполнено зависимое. Не заполнены основное и зависимое. Заполнено и основное, и зависимое.
+   * - required_if_add
+     - required_if или {}
+     - Поля, обязательные для заполнения, если заполнено другое поле на форме создания
+     - ``required_if_add = {'field1': 'field2', 'field2': ('field1', 'field3')}``
+     - 
+   * - required_if_edit
+     - required_if или {}
+     - Поля, обязательные для заполнения, если заполнено другое поле на форме редактирования
+     - ``required_if_edit = {'field1': 'field2', 'field2': ('field1', 'field3')}``
+     - 
    * - status_code_error
      - 200
      - Статус ответа при наличии ошибок
@@ -398,11 +422,6 @@ Django test tools. Django >= 1.8
      - Cписок уникальных полей на форме редактирования
      - unique_fields_edit = ('field1', ('field2', 'field3'), 'field4')
      - 
-   * - unique_with_case
-     - ()
-     - Список уникальных полей, для которых при проверке униклаьности учитывается регистр
-     - unique_with_case = ('field1', )
-     - Объект со значением в lowercase существует - проверяется uppercase, объект со значением в uppercase существует - проверяется lowercase
    * - url_list
      - 
      - URL, на котором находится список объектов, например, в админке. Включает все тесты, связанные со списком
