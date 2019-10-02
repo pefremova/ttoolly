@@ -200,15 +200,21 @@ def get_all_form_errors(response):
     def get_errors(form):
         """simple form"""
         errors = form._errors
+        nested_formsets = getattr(form, 'nested_formsets', {})
+        for fs in nested_formsets:
+            errors.update(get_formset_errors(fs))
+
         if not errors:
             return {}
         if form.prefix:
             if isinstance(errors, list):
                 _errors = {}
                 for n, el in enumerate(errors):
-                    _errors.update({'%s-%s-%s' % (form.prefix, n, k): v for k, v in viewitems(el)})
+                    _errors.update({'%s-%s-%s' % (form.prefix, n, k) if not k.startswith(form.prefix) else k: v
+                                    for k, v in viewitems(el)})
             else:
-                _errors = {'%s-%s' % (form.prefix, k): v for k, v in viewitems(errors)}
+                _errors = {'%s-%s' % (form.prefix, k) if not k.startswith(form.prefix) else k: v
+                           for k, v in viewitems(errors)}
             errors = _errors
 
         """form with formsets"""
@@ -277,6 +283,7 @@ def get_all_form_errors(response):
                 for n, el in enumerate(errors):
                     for key, value in viewitems(el):
                         form_errors.update({'%s-%d-%s' % (fs.formset.prefix, n, key): value})
+            forms.extend(fs.formset.forms)
     except KeyError:
         pass
 
