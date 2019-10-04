@@ -1144,7 +1144,7 @@ class AddNegativeCases(object):
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty field "%s"' % field)
@@ -1164,7 +1164,7 @@ class AddNegativeCases(object):
                 error_message = self.get_error_message(message_type, group,
                                                        error_field=self.non_field_error_key,
                                                        locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -1189,7 +1189,7 @@ class AddNegativeCases(object):
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For params without field "%s"' % field)
@@ -1208,7 +1208,7 @@ class AddNegativeCases(object):
                 response = self.send_add_request(params)
                 error_message = self.get_error_message(
                     message_type, group, error_field=self.non_field_error_key, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -1236,7 +1236,7 @@ class AddNegativeCases(object):
             try:
                 response = self.send_add_request(params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -1266,7 +1266,7 @@ class AddNegativeCases(object):
             try:
                 response = self.send_add_request(params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -1294,8 +1294,7 @@ class AddNegativeCases(object):
                     _locals = {'field': field, }
                     if field in self.choice_fields_add_with_value_in_error:
                         _locals['value'] = value
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     self.get_error_message(message_type, field, locals=_locals))
+                    self.assert_errors(response, self.get_error_message(message_type, field, locals=_locals))
                 except Exception:
                     self.errors_append(text='For %s value "%s"' % (field, value))
 
@@ -1319,8 +1318,8 @@ class AddNegativeCases(object):
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     _locals = {'field': field, 'value': value}
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     self.get_error_message(message_type, field, locals=_locals))
+                    self.assert_errors(response,
+                                       self.get_error_message(message_type, field, locals=_locals))
                 except Exception:
                     self.errors_append(text='For %s value "%s"' % (field, value))
 
@@ -1354,7 +1353,7 @@ class AddNegativeCases(object):
                                                        error_field=field,
                                                        locals=locals())
 
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -1388,7 +1387,7 @@ class AddNegativeCases(object):
                                                        field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field,
                                                        locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -1417,7 +1416,7 @@ class AddNegativeCases(object):
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
@@ -1443,7 +1442,7 @@ class AddNegativeCases(object):
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
@@ -1470,7 +1469,7 @@ class AddNegativeCases(object):
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
@@ -1497,7 +1496,7 @@ class AddNegativeCases(object):
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For value "%s" in field "%s"' % (value, field))
@@ -1554,7 +1553,7 @@ class AddNegativeCases(object):
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, group,
                                                            locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For filled %s fields from group %s' %
@@ -1582,7 +1581,7 @@ class AddNegativeCases(object):
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
                 error_message = self.get_error_message(message_type, name, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
@@ -1617,8 +1616,7 @@ class AddNegativeCases(object):
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For %s files in field %s' % (current_count, field))
@@ -1652,8 +1650,7 @@ class AddNegativeCases(object):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For file size %s (%s) in field %s' % (self.humanize_file_size(current_size),
@@ -1689,8 +1686,7 @@ class AddNegativeCases(object):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For summary size %s (%s = %s * %s) in field %s' %
@@ -1722,8 +1718,7 @@ class AddNegativeCases(object):
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(text='For empty file in field %s' % field)
@@ -1758,8 +1753,7 @@ class AddNegativeCases(object):
                 try:
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     self.get_error_message(message_type, field, locals=locals()))
+                    self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
@@ -1799,8 +1793,7 @@ class AddNegativeCases(object):
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     self.get_error_message(message_type, field, locals=locals()))
+                    self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
@@ -1838,8 +1831,7 @@ class AddNegativeCases(object):
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     self.get_error_message(message_type, field, locals=locals()))
+                    self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                     new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -1877,8 +1869,7 @@ class AddNegativeCases(object):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
@@ -1902,8 +1893,7 @@ class AddNegativeCases(object):
             try:
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
@@ -1921,8 +1911,7 @@ class AddNegativeCases(object):
                 self.update_captcha_params('', params)
                 params[field] = 'te\x00st'
                 response = self.send_add_request(params)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
@@ -2012,7 +2001,7 @@ class AddNegativeCases(object):
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                 except Exception:
                     self.errors_append(text='For filled "%s", empty field "%s"' % (lead, field))
 
@@ -2032,7 +2021,7 @@ class AddNegativeCases(object):
                     response = self.send_add_request(params)
                     error_message = self.get_error_message(message_type, group, error_field=self.non_field_error_key,
                                                            locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                     self.check_on_add_error(response, initial_obj_count, locals())
                 except Exception:
                     self.errors_append(text='For filled "%s", empty group "%s"' % (lead, group))
@@ -3006,7 +2995,7 @@ class EditNegativeCases(object):
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3026,7 +3015,7 @@ class EditNegativeCases(object):
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(
                     message_type, group, error_field=self.non_field_error_key, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3049,7 +3038,7 @@ class EditNegativeCases(object):
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3069,7 +3058,7 @@ class EditNegativeCases(object):
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(
                     message_type, group, error_field=self.non_field_error_key, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3130,7 +3119,7 @@ class EditNegativeCases(object):
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3159,7 +3148,7 @@ class EditNegativeCases(object):
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3213,7 +3202,7 @@ class EditNegativeCases(object):
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     _locals = {'field': field, 'value': value}
                     error_message = self.get_error_message(message_type, field, locals=_locals)
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.errors_append(text='For %s value "%s"' % (field, value))
@@ -3247,7 +3236,7 @@ class EditNegativeCases(object):
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3279,7 +3268,7 @@ class EditNegativeCases(object):
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
                                                        error_field=field)
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3333,7 +3322,7 @@ class EditNegativeCases(object):
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3360,7 +3349,7 @@ class EditNegativeCases(object):
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3387,7 +3376,7 @@ class EditNegativeCases(object):
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3446,7 +3435,7 @@ class EditNegativeCases(object):
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, group, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3473,7 +3462,7 @@ class EditNegativeCases(object):
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, name, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3506,8 +3495,7 @@ class EditNegativeCases(object):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3542,8 +3530,7 @@ class EditNegativeCases(object):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3581,8 +3568,7 @@ class EditNegativeCases(object):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3612,8 +3598,7 @@ class EditNegativeCases(object):
                 params[field] = f
                 obj_for_edit.refresh_from_db()
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                self.assertEqual(self.get_all_form_errors(response),
-                                 self.get_error_message(message_type, field, locals=locals()))
+                self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
@@ -3649,8 +3634,7 @@ class EditNegativeCases(object):
                 obj_for_edit.refresh_from_db()
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     self.get_error_message(message_type, field, locals=locals()))
+                    self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3687,8 +3671,7 @@ class EditNegativeCases(object):
                     params[field] = f
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     self.get_error_message(message_type, field, locals=locals()))
+                    self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3725,8 +3708,7 @@ class EditNegativeCases(object):
                     params[field] = f
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    self.assertEqual(self.get_all_form_errors(response),
-                                     self.get_error_message(message_type, field, locals=locals()))
+                    self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
@@ -3817,7 +3799,7 @@ class EditNegativeCases(object):
                     obj_for_edit.refresh_from_db()
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.errors_append(text='For filled "%s", empty field "%s"' % (lead, field))
@@ -3835,7 +3817,7 @@ class EditNegativeCases(object):
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.errors_append(text='For filled "%s", empty group "%s"' % (lead, group))
@@ -4222,7 +4204,7 @@ class ChangePasswordNegativeCases(object):
                 response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
             except Exception:
                 self.errors_append(text='Empty field "%s"' % field)
 
@@ -4244,7 +4226,7 @@ class ChangePasswordNegativeCases(object):
                 response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field, locals=locals())
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
             except Exception:
                 self.errors_append(text='Without field "%s"' % field)
 
@@ -4291,7 +4273,7 @@ class ChangePasswordNegativeCases(object):
             response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
             error_message = self.get_error_message('min_length', self.field_password,)
-            self.assertEqual(self.get_all_form_errors(response), error_message)
+            self.assert_errors(response, error_message)
         except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
@@ -4314,7 +4296,7 @@ class ChangePasswordNegativeCases(object):
             response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
             error_message = self.get_error_message('max_length', self.field_password,)
-            self.assertEqual(self.get_all_form_errors(response), error_message)
+            self.assert_errors(response, error_message)
         except Exception:
             self.errors_append(text='New password "%s"' % params[self.field_password])
 
@@ -4336,7 +4318,7 @@ class ChangePasswordNegativeCases(object):
                 response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message('wrong_value', self.field_password,)
-                self.assertEqual(self.get_all_form_errors(response), error_message)
+                self.assert_errors(response, error_message)
             except Exception:
                 self.errors_append(text='New password value "%s"' % value)
 
@@ -4396,7 +4378,7 @@ class ChangePasswordNegativeCases(object):
                     self.check_negative(user, params, response)
                     error_message = self.get_error_message(
                         'wrong_password_similar', self.field_password, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                 except Exception:
                     self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' %
                                        (password_value, field, value))
@@ -4887,7 +4869,7 @@ class ResetPasswordNegativeCases(object):
                     self.assert_objects_equal(new_user, user)
                     error_message = self.get_error_message(
                         'wrong_password_similar', self.field_password, locals=locals())
-                    self.assertEqual(self.get_all_form_errors(response), error_message)
+                    self.assert_errors(response, error_message)
                 except Exception:
                     self.errors_append(text='New password value "%s" is similar to user.%s = "%s"' %
                                        (password_value, field, value))

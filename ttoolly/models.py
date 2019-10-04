@@ -479,6 +479,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             error_message = self._truncateMessage(msg, diff)
             self.fail(self._formatMessage(error_message, None))
 
+    def assert_errors(self, response, error_message):
+        self.assertEqual(self.get_all_form_errors(response), error_message)
+
     def assert_form_equal(self, form_fields, etalon_fields, text=''):
         text = (text + ':\n') if text else ''
         errors = []
