@@ -266,11 +266,7 @@ class AddPositiveCases(object):
         """
         Create object: fill all fields with maximum length values
         """
-        other_fields = []
-        for field_type_name in ('digital_fields_add', 'date_fields', 'datetime_fields', 'choice_fields_add',
-                                'choice_fields_add_with_value_in_error', 'disabled_fields_add', 'hidden_fields_add',
-                                'int_fields_add', 'multiselect_fields_add', 'not_str_fields'):
-            other_fields.extend(getattr(self, field_type_name, []) or [])
+        other_fields = self.get_all_not_str_fields()
 
         fields_for_check = [(k, self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000))
                             for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
@@ -869,11 +865,7 @@ class AddPositiveCases(object):
         """
         Create object with \\x00 in str fields
         """
-        other_fields = ['captcha', 'captcha_0', 'captcha_1']
-        for field_type_name in ('digital_fields_add', 'date_fields', 'datetime_fields', 'choice_fields_add',
-                                'choice_fields_add_with_value_in_error', 'disabled_fields_add', 'hidden_fields_add',
-                                'int_fields_add', 'multiselect_fields_add', 'not_str_fields',):
-            other_fields.extend(getattr(self, field_type_name, []) or [])
+        other_fields = ['captcha', 'captcha_0', 'captcha_1'] + self.get_all_not_str_fields()
         other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
 
         fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
@@ -1364,6 +1356,9 @@ class AddNegativeCases(object):
         """values is in other case"""
         for el in self.unique_fields_add:
             self.prepare_for_add()
+            other_fields = self.get_all_not_str_fields()
+            if not set(el).difference(other_fields):
+                continue
             field = self.all_unique[el]
             existing_obj = self.get_existing_obj_with_filled(el)
             params = self.deepcopy(self.default_params_add)
@@ -1378,7 +1373,7 @@ class AddNegativeCases(object):
                 self.clean_depend_fields_add(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
-                if isinstance(params[el_field], basestring):
+                if not el_field in other_fields:
                     params[el_field] = params[el_field].swapcase()
             initial_obj_count = self.get_obj_manager.count()
             try:
@@ -1844,11 +1839,7 @@ class AddNegativeCases(object):
         Create object with \\x00 in str fields
         """
         message_type = 'with_null'
-        other_fields = ['captcha', 'captcha_0', 'captcha_1']
-        for field_type_name in ('digital_fields_add', 'date_fields', 'datetime_fields', 'choice_fields_add',
-                                'choice_fields_add_with_value_in_error', 'disabled_fields_add', 'hidden_fields_add',
-                                'int_fields_add', 'multiselect_fields_add', 'not_str_fields',):
-            other_fields.extend(getattr(self, field_type_name, []) or [])
+        other_fields = ['captcha', 'captcha_0', 'captcha_1'] + self.get_all_not_str_fields()
         other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
 
         fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
@@ -2229,11 +2220,7 @@ class EditPositiveCases(object):
         Edit object: fill all fields with maximum length values
         """
         obj_for_edit = self.get_obj_for_edit()
-        other_fields = []
-        for field_type_name in ('digital_fields_edit', 'date_fields', 'datetime_fields', 'choice_fields_edit',
-                                'choice_fields_edit_with_value_in_error', 'disabled_fields_edit', 'hidden_fields_edit',
-                                'int_fields_edit', 'multiselect_fields_edit', 'not_str_fields'):
-            other_fields.extend(getattr(self, field_type_name, []) or [])
+        other_fields = self.get_all_not_str_fields()
 
         fields_for_check = [(k, self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000))
                             for k in self.all_fields_edit if re.sub('\-\d+\-', '-0-', k) not in other_fields]
@@ -3243,10 +3230,14 @@ class EditNegativeCases(object):
                 self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
                                                              (field, params[field]) for field
                                                              in el if field in viewkeys(params)))
+
         """values is in other case"""
         for el in self.unique_fields_edit:
             field = self.all_unique[el]
             obj_for_edit = self.get_obj_for_edit()
+            other_fields = self.get_all_not_str_fields()
+            if not set(el).difference(other_fields):
+                continue
             existing_obj = self.get_other_obj_with_filled(el, obj_for_edit)
             params = self.deepcopy(self.default_params_edit)
             if not any([isinstance(params[el_field], basestring) and el_field not in self.unique_with_case for el_field in el]):
@@ -3261,7 +3252,7 @@ class EditNegativeCases(object):
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
-                if isinstance(params[el_field], basestring):
+                if not el_field in other_fields:
                     params[el_field] = params[el_field].swapcase()
             obj_for_edit.refresh_from_db()
             try:
