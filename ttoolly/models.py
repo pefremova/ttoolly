@@ -48,7 +48,9 @@ from .testcases import (AddNegativeCases, AddPositiveCases, EditPositiveCases, E
                         ListNegativeCases, ListPositiveCases,
                         DeletePositiveCases, DeleteNegativeCases, RemovePositiveCases,
                         RemoveNegativeCases, ResetPasswordPositiveCases,
-                        ResetPasswordNegativeCases, LoginPositiveCases,
+                        ResetPasswordNegativeCases,
+                        ChangePasswordPositiveCases,
+                        ChangePasswordNegativeCases, LoginPositiveCases,
                         LoginNegativeCases)
 from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
@@ -2578,7 +2580,11 @@ class ChangePasswordCommonMixIn(object):
                                 params, **self.additional_params)
 
 
-class ChangePasswordMixIn(ChangePasswordCommonMixIn, GlobalTestMixIn, LoginMixIn):
+class ChangePasswordMixIn(ChangePasswordCommonMixIn,
+                          GlobalTestMixIn,
+                          ChangePasswordPositiveCases,
+                          ChangePasswordNegativeCases,
+                          LoginMixIn):
     pass
 
 
