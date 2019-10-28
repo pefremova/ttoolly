@@ -173,8 +173,8 @@ class AddPositiveCases(object):
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
-        for field in required_fields:
-            self.fill_all_fields(required_fields, params)
+
+        self.fill_all_fields(required_fields, params)
         self.update_captcha_params(self.get_url(self.url_add), params)
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -223,8 +223,7 @@ class AddPositiveCases(object):
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
-        for field in required_fields:
-            self.fill_all_fields(required_fields, params)
+        self.fill_all_fields(required_fields, params)
         self.update_captcha_params(self.get_url(self.url_add), params)
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -2131,8 +2130,7 @@ class EditPositiveCases(object):
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
-        for field in required_fields:
-            self.fill_all_fields(required_fields, params)
+        self.fill_all_fields(required_fields, params)
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -2179,8 +2177,7 @@ class EditPositiveCases(object):
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
 
-        for field in required_fields:
-            self.fill_all_fields(required_fields, params)
+        self.fill_all_fields(required_fields, params)
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
