@@ -1987,11 +1987,14 @@ class FormCommonMixIn(object):
                 else:
                     params[field] = self.get_value_for_field(None, field)
 
-    def get_all_not_str_fields(self):
+    def get_all_not_str_fields(self, additional=''):
         other_fields = []
-        for field_type_name in ('digital_fields_edit', 'date_fields', 'datetime_fields', 'choice_fields_edit',
-                                'choice_fields_edit_with_value_in_error', 'disabled_fields_edit', 'hidden_fields_edit',
-                                'int_fields_edit', 'multiselect_fields_edit', 'not_str_fields'):
+        additional = '_' + additional if additional else ''
+        for field_type_name in ('digital_fields%s' % additional, 'date_fields', 'datetime_fields',
+                                'choice_fields%s' % additional, 'choice_fields%s_with_value_in_error' % additional,
+                                'disabled_fields%s' % additional, 'hidden_fields%s' % additional,
+                                'int_fields%s' % additional, 'multiselect_fields%s' % additional,
+                                'not_str_fields'):
             other_fields.extend(getattr(self, field_type_name, []) or [])
         return other_fields
 

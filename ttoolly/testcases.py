@@ -265,7 +265,7 @@ class AddPositiveCases(object):
         """
         Create object: fill all fields with maximum length values
         """
-        other_fields = self.get_all_not_str_fields()
+        other_fields = self.get_all_not_str_fields('add')
 
         fields_for_check = [(k, self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000))
                             for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
@@ -864,7 +864,7 @@ class AddPositiveCases(object):
         """
         Create object with \\x00 in str fields
         """
-        other_fields = ['captcha', 'captcha_0', 'captcha_1'] + self.get_all_not_str_fields()
+        other_fields = ['captcha', 'captcha_0', 'captcha_1'] + self.get_all_not_str_fields('add')
         other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
 
         fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
@@ -1355,7 +1355,7 @@ class AddNegativeCases(object):
         """values is in other case"""
         for el in self.unique_fields_add:
             self.prepare_for_add()
-            other_fields = self.get_all_not_str_fields()
+            other_fields = self.get_all_not_str_fields('add')
             if not set(el).difference(other_fields):
                 continue
             field = self.all_unique[el]
@@ -1838,7 +1838,7 @@ class AddNegativeCases(object):
         Create object with \\x00 in str fields
         """
         message_type = 'with_null'
-        other_fields = ['captcha', 'captcha_0', 'captcha_1'] + self.get_all_not_str_fields()
+        other_fields = ['captcha', 'captcha_0', 'captcha_1'] + self.get_all_not_str_fields('add')
         other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
 
         fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
@@ -2217,7 +2217,7 @@ class EditPositiveCases(object):
         Edit object: fill all fields with maximum length values
         """
         obj_for_edit = self.get_obj_for_edit()
-        other_fields = self.get_all_not_str_fields()
+        other_fields = self.get_all_not_str_fields('edit')
 
         fields_for_check = [(k, self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000))
                             for k in self.all_fields_edit if re.sub('\-\d+\-', '-0-', k) not in other_fields]
@@ -3232,7 +3232,7 @@ class EditNegativeCases(object):
         for el in self.unique_fields_edit:
             field = self.all_unique[el]
             obj_for_edit = self.get_obj_for_edit()
-            other_fields = self.get_all_not_str_fields()
+            other_fields = self.get_all_not_str_fields('edit')
             if not set(el).difference(other_fields):
                 continue
             existing_obj = self.get_other_obj_with_filled(el, obj_for_edit)
