@@ -267,13 +267,13 @@ class AddPositiveCases(object):
         """
         other_fields = self.get_all_not_str_fields('add')
 
-        fields_for_check = [(k, self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000))
-                            for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
+        fields_for_check = {k: self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000)
+                            for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields}
         if not fields_for_check:
             self.skipTest('No any string fields')
         max_length_params = {}
         fields_for_clean = []
-        for field, length in fields_for_check:
+        for field, length in viewitems(fields_for_check):
             self.clean_depend_fields_add(max_length_params, field)
             max_length_params[field] = self.get_value_for_field(length, field)
 
@@ -299,15 +299,18 @@ class AddPositiveCases(object):
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
                                                  (field, length, max_length_params[field] if len(str(max_length_params[field])) <= 1000
                                                   else str(max_length_params[field])[:1000] + '...')
-                                                 for field, length in fields_for_check]))
+                                                 for field, length in viewitems(fields_for_check)]))
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_add)):
+        if not self.errors and not set(viewkeys(fields_for_check)).intersection(viewkeys(self._depend_one_of_fields_add)):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
 
-        for field, length in fields_for_check:
+        for k in set(viewkeys(max_length_params)).intersection((k for el in viewkeys(self.all_unique) for k in el)):
+            max_length_params[k] = self.get_value_for_field(fields_for_check[k], field)
+
+        for field, length in viewitems(fields_for_check):
             sp = transaction.savepoint()
             """if unique fields"""
             mail.outbox = []
@@ -2219,8 +2222,8 @@ class EditPositiveCases(object):
         obj_for_edit = self.get_obj_for_edit()
         other_fields = self.get_all_not_str_fields('edit')
 
-        fields_for_check = [(k, self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000))
-                            for k in self.all_fields_edit if re.sub('\-\d+\-', '-0-', k) not in other_fields]
+        fields_for_check = {k: self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000)
+                            for k in self.all_fields_edit if re.sub('\-\d+\-', '-0-', k) not in other_fields}
         if not fields_for_check:
             self.skipTest('No any string fields')
 
@@ -2228,7 +2231,7 @@ class EditPositiveCases(object):
         file_fields = []
 
         fields_for_clean = []
-        for field, length in fields_for_check:
+        for field, length in viewitems(fields_for_check):
             self.clean_depend_fields_edit(max_length_params, field)
             max_length_params[field] = self.get_value_for_field(length, field)
             if self.is_file_field(field):
@@ -2273,17 +2276,20 @@ class EditPositiveCases(object):
                                     '\n\n'.join(['  %s with length %d\n(value %s)' %
                                                  (field, length, max_length_params[field] if len(str(max_length_params[field])) <= 1000
                                                   else str(max_length_params[field])[:1000] + '...')
-                                                 for field, length in fields_for_check]))
+                                                 for field, length in viewitems(fields_for_check)]))
         finally:
             mail.outbox = []
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_edit)):
+        if not self.errors and not set(viewkeys(fields_for_check)).intersection(viewkeys(self._depend_one_of_fields_edit)):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
 
-        for field, length in fields_for_check:
+        for k in set(viewkeys(max_length_params)).intersection((k for el in viewkeys(self.all_unique) for k in el)):
+            max_length_params[k] = self.get_value_for_field(fields_for_check[k], field)
+
+        for field, length in viewitems(fields_for_check):
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
