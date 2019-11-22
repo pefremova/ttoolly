@@ -2572,7 +2572,7 @@ class ChangePasswordCommonMixIn(object):
     def get_obj_for_edit(self):
         user = choice(self.get_obj_manager.all())
         self.user_relogin(user.email, self.current_password)
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         return user
 
     def get_login_name(self, user):

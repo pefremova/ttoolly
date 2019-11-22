@@ -2109,7 +2109,7 @@ class EditPositiveCases(object):
                 self.fill_all_fields(tuple(only_independent_fields) + tuple(fields_from_groups), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_all_fields((field,), params)
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
@@ -2364,7 +2364,7 @@ class EditPositiveCases(object):
                         self.get_obj_manager.filter(pk=existing_obj.pk).update(
                             **{el_field: getattr(value, existing_command)()})
                         params[el_field] = getattr(params[el_field], new_command)()
-                existing_obj.refresh_from_db()
+                existing_obj = self.get_obj_manager.get(pk=existing_obj.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
@@ -2982,7 +2982,7 @@ class EditNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.set_empty_value_for_field(params, field)
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
@@ -3000,7 +3000,7 @@ class EditNegativeCases(object):
             for field in group:
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.set_empty_value_for_field(params, field)
-            obj_for_edit.refresh_from_db()
+            obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(
@@ -3025,7 +3025,7 @@ class EditNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.pop_field_from_params(params, field)
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
@@ -3043,7 +3043,7 @@ class EditNegativeCases(object):
             for field in group:
                 self.pop_field_from_params(params, field)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
-            obj_for_edit.refresh_from_db()
+            obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(
@@ -3106,7 +3106,7 @@ class EditNegativeCases(object):
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = self.get_value_for_field(current_length, field)
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
@@ -3135,7 +3135,7 @@ class EditNegativeCases(object):
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = self.get_value_for_field(current_length, field)
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
@@ -3159,7 +3159,7 @@ class EditNegativeCases(object):
                 self.update_params(params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = value
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     _locals = {'field': field}
@@ -3187,7 +3187,7 @@ class EditNegativeCases(object):
                 self.update_params(params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = [value, ]
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     _locals = {'field': field, 'value': value}
@@ -3220,7 +3220,7 @@ class EditNegativeCases(object):
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
-            obj_for_edit.refresh_from_db()
+            obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
 
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
@@ -3257,7 +3257,7 @@ class EditNegativeCases(object):
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
                 if not el_field in other_fields:
                     params[el_field] = params[el_field].swapcase()
-            obj_for_edit.refresh_from_db()
+            obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field if not field.endswith(self.non_field_error_key) else el,
@@ -3286,7 +3286,7 @@ class EditNegativeCases(object):
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
-                    obj_for_edit.refresh_from_db()
+                    obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response),
@@ -3313,7 +3313,7 @@ class EditNegativeCases(object):
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
-                    obj_for_edit.refresh_from_db()
+                    obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
@@ -3340,7 +3340,7 @@ class EditNegativeCases(object):
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
-                    obj_for_edit.refresh_from_db()
+                    obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
@@ -3367,7 +3367,7 @@ class EditNegativeCases(object):
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
                     params[field] = value
-                    obj_for_edit.refresh_from_db()
+                    obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
@@ -3426,7 +3426,7 @@ class EditNegativeCases(object):
                     self.update_params(params)
                     self.fill_all_fields(filled_group, params)
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
-                    obj_for_edit.refresh_from_db()
+                    obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, group, locals=locals())
                     self.assert_errors(response, error_message)
@@ -3452,7 +3452,7 @@ class EditNegativeCases(object):
             self.fill_all_block_fields(name, gt_max_count, params,
                                        set(tuple(self.all_fields_edit) + tuple(self.hidden_fields_edit or ())))
             sp = transaction.savepoint()
-            obj_for_edit.refresh_from_db()
+            obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, name, locals=locals())
@@ -3487,7 +3487,7 @@ class EditNegativeCases(object):
                                                  choice(field_dict.get('extensions', ('',)))] if s])
                 f = self.get_random_file(field, filename=filename, count=current_count)
                 params[field] = f
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -3522,7 +3522,7 @@ class EditNegativeCases(object):
                 f = self.get_random_file(field, size=current_size)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -3560,7 +3560,7 @@ class EditNegativeCases(object):
                 params[field] = []
                 f = self.get_random_file(field, count=field_dict['max_count'], size=one_size)
                 params[field] = f
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -3590,7 +3590,7 @@ class EditNegativeCases(object):
                 f = self.get_random_file(field, size=0)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                 params[field] = f
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                 self.check_on_edit_error(response, obj_for_edit, locals())
@@ -3625,7 +3625,7 @@ class EditNegativeCases(object):
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, filename=filename)
                 params[field] = f
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
@@ -3663,7 +3663,7 @@ class EditNegativeCases(object):
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     self.clean_depend_fields_edit(params, field)
                     params[field] = f
-                    obj_for_edit.refresh_from_db()
+                    obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -3700,7 +3700,7 @@ class EditNegativeCases(object):
                     f = self.get_random_file(field, width=width, height=height)
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     params[field] = f
-                    obj_for_edit.refresh_from_db()
+                    obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
                     self.check_on_edit_error(response, obj_for_edit, locals())
@@ -3758,7 +3758,7 @@ class EditNegativeCases(object):
                 elif isinstance(end_value, datetime):
                     end_value = end_value.date()
                 self.fill_field(params, end_field, end_value)
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assertEqual(self.get_all_form_errors(response),
@@ -3790,7 +3790,7 @@ class EditNegativeCases(object):
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     self.fill_all_fields((lead if isinstance(lead, (list, tuple)) else (lead,)) + related, params)
                     self.set_empty_value_for_field(params, field)
-                    obj_for_edit.refresh_from_db()
+                    obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
@@ -3807,7 +3807,7 @@ class EditNegativeCases(object):
                 self.fill_all_fields((lead if isinstance(lead, (list, tuple)) else (lead,)) + related, params)
                 for field in group:
                     self.set_empty_value_for_field(params, field)
-                obj_for_edit.refresh_from_db()
+                obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
@@ -4163,7 +4163,7 @@ class ChangePasswordPositiveCases(object):
             user.set_password(old_password)
             user.save()
             self.user_relogin(self.get_login_name(user), old_password, **self.additional_params)
-            user.refresh_from_db()
+            user = self.get_obj_manager.get(pk=user.pk)
             params = self.deepcopy(self.password_params)
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
@@ -4194,7 +4194,7 @@ class ChangePasswordNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
                 self.set_empty_value_for_field(params, field)
-                user.refresh_from_db()
+                user = self.get_obj_manager.get(pk=user.pk)
                 response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field, locals=locals())
@@ -4216,7 +4216,7 @@ class ChangePasswordNegativeCases(object):
                 self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)),
                                            params)
                 self.pop_field_from_params(params, field)
-                user.refresh_from_db()
+                user = self.get_obj_manager.get(pk=user.pk)
                 response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
                 error_message = self.get_error_message(message_type, field, locals=locals())
@@ -4236,7 +4236,7 @@ class ChangePasswordNegativeCases(object):
                                    params)
         params.update({self.field_password: self.get_value_for_field(None, 'password'),
                        self.field_password_repeat: self.get_value_for_field(None, 'password')})
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
@@ -4262,7 +4262,7 @@ class ChangePasswordNegativeCases(object):
         value = self.get_value_for_field(current_length, 'password')
         params.update({self.field_password: value,
                        self.field_password_repeat: value})
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
@@ -4285,7 +4285,7 @@ class ChangePasswordNegativeCases(object):
         current_length = length + 1
         params[self.field_password] = self.get_value_for_field(current_length, 'password')
         params[self.field_password_repeat] = params[self.field_password]
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
@@ -4307,7 +4307,7 @@ class ChangePasswordNegativeCases(object):
             self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
             params.update({self.field_password: value,
                            self.field_password_repeat: value})
-            user.refresh_from_db()
+            user = self.get_obj_manager.get(pk=user.pk)
             try:
                 response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
@@ -4328,7 +4328,7 @@ class ChangePasswordNegativeCases(object):
         self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
         value = self.field_old_password + get_randname(1, 'w')
         params[self.field_old_password] = value
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.send_change_password_request(user.pk, params)
             self.check_negative(user, params, response)
@@ -4359,14 +4359,14 @@ class ChangePasswordNegativeCases(object):
                 user = self.get_obj_for_edit()
                 value = self.get_value_for_field(self.password_min_length, field)
                 self.get_obj_manager.filter(pk=user.pk).update(**{field: value})
-                user.refresh_from_db()
+                user = self.get_obj_manager.get(pk=user.pk)
                 password_value = new_value(value, change_type)
                 params = self.deepcopy(self.password_params)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
                 params.update({self.field_password: password_value,
                                self.field_password_repeat: password_value})
-                user.refresh_from_db()
+                user = self.get_obj_manager.get(pk=user.pk)
                 try:
                     response = self.send_change_password_request(user.pk, params)
                     self.check_negative(user, params, response)
@@ -4394,7 +4394,7 @@ class ResetPasswordPositiveCases(object):
         try:
             response = self.send_reset_password_request(params)
             self.assert_request_password_change_mail(locals())
-            user.refresh_from_db()
+            user = self.get_obj_manager.get(pk=user.pk)
             self.assertTrue(user.check_password(self.current_password), 'Password was changed after request code')
             self.check_after_password_change_request(locals())
         except Exception:
@@ -4414,7 +4414,7 @@ class ResetPasswordPositiveCases(object):
                 response = self.send_change_after_reset_password_request(codes, params)
                 self.assert_no_form_errors(response)
                 self.assert_mail_count(mail.outbox, 0)
-                user.refresh_from_db()
+                user = self.get_obj_manager.get(pk=user.pk)
                 self.assertTrue(user.check_password(params[self.field_password]),
                                 'Password not changed to "%s"' % params[self.field_password])
                 self.check_after_password_change(locals())
@@ -4660,7 +4660,7 @@ class ResetPasswordNegativeCases(object):
             params = self.deepcopy(self.password_params)
             self.set_empty_value_for_field(params, field)
             codes = self.get_codes(user)
-            user.refresh_from_db()
+            user = self.get_obj_manager.get(pk=user.pk)
             try:
                 response = self.send_change_after_reset_password_request(codes, params)
                 self.assertEqual(self.get_all_form_errors(response),
@@ -4681,7 +4681,7 @@ class ResetPasswordNegativeCases(object):
             params = self.deepcopy(self.password_params)
             self.pop_field_from_params(params, field)
             codes = self.get_codes(user)
-            user.refresh_from_db()
+            user = self.get_obj_manager.get(pk=user.pk)
             try:
                 response = self.send_change_after_reset_password_request(codes, params)
                 self.assertEqual(self.get_all_form_errors(response),
@@ -4700,7 +4700,7 @@ class ResetPasswordNegativeCases(object):
         params.update({self.field_password: self.get_value_for_field(None, 'password'),
                        self.field_password_repeat: self.get_value_for_field(9, 'password'), })
         codes = self.get_codes(user)
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.send_change_after_reset_password_request(codes, params)
             new_user = self.get_obj_manager.get(pk=user.pk)
@@ -4724,7 +4724,7 @@ class ResetPasswordNegativeCases(object):
         params.update({self.field_password: value,
                        self.field_password_repeat: value})
         codes = self.get_codes(user)
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.send_change_after_reset_password_request(codes, params)
             new_user = self.get_obj_manager.get(pk=user.pk)
@@ -4747,7 +4747,7 @@ class ResetPasswordNegativeCases(object):
         params.update({self.field_password: value,
                        self.field_password_repeat: value})
         codes = self.get_codes(user)
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.send_change_after_reset_password_request(codes, params)
             new_user = self.get_obj_manager.get(pk=user.pk)
@@ -4768,7 +4768,7 @@ class ResetPasswordNegativeCases(object):
             params.update({self.field_password: value,
                            self.field_password_repeat: value})
             codes = self.get_codes(user)
-            user.refresh_from_db()
+            user = self.get_obj_manager.get(pk=user.pk)
             try:
                 response = self.send_change_after_reset_password_request(codes, params)
                 new_user = self.get_obj_manager.get(pk=user.pk)
@@ -4785,7 +4785,7 @@ class ResetPasswordNegativeCases(object):
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
         codes = self.get_codes(user)
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.client.get(self.get_url(self.url_reset_password, codes),
                                        params, follow=True, **self.additional_params)
@@ -4802,7 +4802,7 @@ class ResetPasswordNegativeCases(object):
         params = self.deepcopy(self.password_params)
         self.set_user_inactive(user)
         codes = self.get_codes(user)
-        user.refresh_from_db()
+        user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.send_change_after_reset_password_request(codes, params)
             new_user = self.get_obj_manager.get(pk=user.pk)
@@ -4850,13 +4850,13 @@ class ResetPasswordNegativeCases(object):
                 value = self.get_value_for_field(self.password_min_length, field)
                 self.get_obj_manager.filter(pk=user.pk).update(**{field: value})
                 password_value = new_value(value, change_type)
-                user.refresh_from_db()
+                user = self.get_obj_manager.get(pk=user.pk)
                 params = self.deepcopy(self.password_params)
                 self.update_params(params)
                 params.update({self.field_password: password_value,
                                self.field_password_repeat: password_value})
                 codes = self.get_codes(user)
-                user.refresh_from_db()
+                user = self.get_obj_manager.get(pk=user.pk)
                 try:
                     response = self.send_change_after_reset_password_request(codes, params)
                     new_user = self.get_obj_manager.get(pk=user.pk)
