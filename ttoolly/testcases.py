@@ -143,8 +143,8 @@ class AddPositiveCases(object):
                 for group in self.one_of_fields_add:
                     _field = choice(group)
                     fields_from_groups = fields_from_groups.difference(self._depend_one_of_fields_add[_field])
-                for field in set(viewkeys(self._depend_one_of_fields_add)).difference(fields_from_groups):
-                    self.set_empty_value_for_field(params, field)
+                for f in set(viewkeys(self._depend_one_of_fields_add)).difference(fields_from_groups):
+                    self.set_empty_value_for_field(params, f)
                 self.fill_all_fields(tuple(only_independent_fields) + tuple(fields_from_groups), params)
                 self.clean_depend_fields_add(params, field)
                 self.fill_all_fields((field,), params)
@@ -2075,7 +2075,6 @@ class EditPositiveCases(object):
             self.set_empty_value_for_field(params, field)
         self.fill_all_fields(list(only_independent_fields) + self.required_fields_edit +
                              self._get_required_from_related(self.required_related_fields_edit), params)
-
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
