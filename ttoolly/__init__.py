@@ -12,7 +12,7 @@ def _getDescription(self, test):
     doc_first_line = test.shortDescription()
     full_text = str(test)
     if getattr(settings, 'COLORIZE_TESTS', False):
-        full_text = "\033[38;5;230m" + full_text + "\033[38;0m"
+        full_text = "\033[38;5;230m" + full_text + "\033[0m"
     class_doc = test.__class__.__doc__
     if class_doc:
         full_text += '\n~~~~~~~~~~\n' + '\n'.join([line.strip() for line in
