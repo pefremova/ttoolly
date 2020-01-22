@@ -788,8 +788,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                         try:
                             self.assert_object_fields(el, _params)
                         except Exception as e:
-                            local_errors.append('[%s]:%s' % (field.encode('utf-8') if isinstance(field, str)
-                                                             else field, '\n  '.join(force_text(e).splitlines())))
+                            local_errors.append('[%s][%d]:%s' % (field.encode('utf-8') if isinstance(field, str)
+                                                                 else field, i, '\n  '.join(force_text(e).splitlines())))
                 elif count_for_check:
                     local_errors.append('[%s]: expected count %s, but value is None' %
                                         ((field.encode('utf-8') if isinstance(field, str) else field),
