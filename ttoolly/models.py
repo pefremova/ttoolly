@@ -2591,7 +2591,40 @@ class ChangePasswordMixIn(ChangePasswordCommonMixIn,
     pass
 
 
-class ResetPasswordCommonMixIn(object):
+class BlacklistMixIn(object):
+    blacklist_model = None
+
+    def check_blacklist_on_positive(self):
+        if self.blacklist_model:
+            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
+                             '%s blacklist objects created after valid login' % self.blacklist_model.objects.filter(host='127.0.0.1').count())
+
+    def check_blacklist_on_negative(self, response, captcha_on_form=True):
+        # TODO: login_retries
+        if self.blacklist_model:
+            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 1,
+                             '%s blacklist objects created after invalid login, expected 1' %
+                             self.blacklist_model.objects.filter(host='127.0.0.1').count())
+            fields = self.get_fields_list_from_response(response)['all_fields']
+            if captcha_on_form:
+                self.assertTrue('captcha' in fields, 'No captcha fields on form')
+            else:
+                self.assertFalse('captcha' in fields, 'Captcha fields on form')
+
+    def clean_blacklist(self):
+        if self.blacklist_model:
+            self.blacklist_model.objects.all().delete()
+
+    def set_host_blacklist(self, host, count):
+        if not self.blacklist_model:
+            return None
+        if count > 1:
+            self.blacklist_model.objects.create(host=host, count=count)
+        elif count == 1:
+            self.blacklist_model.objects.create(host=host)
+
+
+class ResetPasswordCommonMixIn(BlacklistMixIn):
     code_lifedays = None
     current_password = 'qwerty'
     field_username = None
@@ -2605,6 +2638,7 @@ class ResetPasswordCommonMixIn(object):
     password_params = None
     request_password_params = None
     request_fields = None
+    request_reset_retries = None
     change_fields = None
     obj = None
     password_positive_values = [get_randname(10, 'w') + str(randint(0, 9)),
@@ -2629,6 +2663,8 @@ class ResetPasswordCommonMixIn(object):
             value = self.get_value_for_field(None, 'password')
             self.password_params = {self.field_password: value,
                                     self.field_password_repeat: value}
+        if self.request_reset_retries and self.request_reset_retries < 2:
+            self.request_reset_retries = None
 
     def assert_request_password_change_mail(self, params):
         self.assert_mail_count(mail.outbox, 1)
@@ -2670,6 +2706,12 @@ class ResetPasswordCommonMixIn(object):
         return self.client.post(self.get_url_for_negative(self.url_reset_password, codes),
                                 params, follow=True, **self.additional_params)
 
+    def set_host_pre_blacklist_reset(self, host):
+        if not self.blacklist_model:
+            return None
+        if self.request_reset_retries:
+            self.set_host_blacklist(host=host, count=self.login_retries - 1)
+
     def set_user_inactive(self, user):
         user.is_active = False
         user.save()
@@ -2683,8 +2725,8 @@ class ResetPasswordMixIn(ResetPasswordCommonMixIn,
     pass
 
 
-class LoginCommonMixIn(object):
-    blacklist_model = None
+class LoginCommonMixIn(BlacklistMixIn):
+
     login_retries = None
     default_params = None
     field_password = 'password'
@@ -2709,23 +2751,6 @@ class LoginCommonMixIn(object):
     def add_csrf(self, params):
         response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
         params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
-
-    def check_blacklist_on_positive(self):
-        if self.blacklist_model:
-            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 0,
-                             '%s blacklist objects created after valid login' % self.blacklist_model.objects.filter(host='127.0.0.1').count())
-
-    def check_blacklist_on_negative(self, response, captcha_on_form=True):
-        # TODO: login_retries
-        if self.blacklist_model:
-            self.assertEqual(self.blacklist_model.objects.filter(host='127.0.0.1').count(), 1,
-                             '%s blacklist objects created after invalid login, expected 1' %
-                             self.blacklist_model.objects.filter(host='127.0.0.1').count())
-            fields = self.get_fields_list_from_response(response)['all_fields']
-            if captcha_on_form:
-                self.assertTrue('captcha' in fields, 'No captcha fields on form')
-            else:
-                self.assertFalse('captcha' in fields, 'Captcha fields on form')
 
     def check_is_authenticated(self):
         request = HttpRequest()
@@ -2763,10 +2788,6 @@ class LoginCommonMixIn(object):
     def check_response_on_negative(self, response):
         pass
 
-    def clean_blacklist(self):
-        if self.blacklist_model:
-            self.blacklist_model.objects.all().delete()
-
     def get_domain(self):
         return 'http://%s' % self.additional_params.get('HTTP_HOST', 'testserver')
 
@@ -2781,15 +2802,9 @@ class LoginCommonMixIn(object):
         return self.client.post(self.get_url(self.url_login) + get_params, params,
                                 follow=True, **self.additional_params)
 
-    def set_host_blacklist(self, host, count=None):
-        if count is None:
-            count = self.login_retries or 1
-        if count > 1:
-            self.blacklist_model.objects.create(host=host, count=count)
-        elif count == 1:
-            self.blacklist_model.objects.create(host=host)
-
-    def set_host_pre_blacklist(self, host):
+    def set_host_pre_blacklist_login(self, host):
+        if not self.blacklist_model:
+            return None
         if self.login_retries:
             self.set_host_blacklist(host=host, count=self.login_retries - 1)
 

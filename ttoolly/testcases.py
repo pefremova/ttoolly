@@ -4487,6 +4487,38 @@ class ResetPasswordPositiveCases(object):
         except Exception:
             self.errors_append()
 
+    def test_reset_password_page_positive(self):
+        """
+        Check password change page fields
+        """
+        user = self.get_obj_for_edit()
+        params = self.deepcopy(self.password_params)
+        codes = self.get_codes(user)
+        user = self.get_obj_manager.get(pk=user.pk)
+        try:
+            response = self.client.get(self.get_url(self.url_reset_password, codes),
+                                       params, follow=True, **self.additional_params)
+            new_user = self.get_obj_manager.get(pk=user.pk)
+            self.assert_objects_equal(new_user, user)
+            form_fields = self.get_fields_list_from_response(response)
+            try:
+                """not set because of one field can be on form many times"""
+                self.assert_form_equal(form_fields['visible_fields'], self.change_fields)
+            except Exception:
+                self.errors_append(text='For visible fields')
+
+            fields_helptext = getattr(self, 'fields_helptext_add', {})
+            for field_name, text in viewitems(fields_helptext):
+                if field_name not in self.change_fields:
+                    continue
+                try:
+                    field = get_field_from_response(response, field_name)
+                    self.assertEqual(field.help_text, text)
+                except Exception:
+                    self.errors_append(text='Helptext for field %s' % field_name)
+        except Exception:
+            self.errors_append()
+
 
 class ResetPasswordNegativeCases(object):
 
@@ -4533,6 +4565,24 @@ class ResetPasswordNegativeCases(object):
                                  self.get_error_message('wrong_value_email', self.field_username))
             except Exception:
                 self.errors_append(text='For email %s' % value)
+
+    @only_with('request_reset_retries')
+    def test_request_reset_password_not_max_retries_negative(self):
+        """
+        Try reset password. No captcha field: not max retries
+        """
+        params = self.deepcopy(self.request_password_params)
+        self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
+        params[self.field_username] += 'q'
+        self.clean_blacklist()
+        self.set_host_blacklist(host='127.0.0.1', count=self.request_reset_retries - 2)
+        try:
+            response = self.send_reset_password_request(params)
+            self.assertEqual(self.get_all_form_errors(response),
+                             self.get_error_message('wrong_value_email', self.field_username))
+            self.check_blacklist_on_negative(response, False)
+        except Exception:
+            self.errors_append()
 
     def test_request_reset_password_username_not_exists_wo_captcha_negative(self):
         """
@@ -4609,6 +4659,8 @@ class ResetPasswordNegativeCases(object):
         """
         for field in ('captcha_0', 'captcha_1'):
             for value in (u'йцу', u'\r', u'\n', u' ', ':'):
+                self.clean_blacklist()
+                self.set_host_blacklist(host='127.0.0.1', count=self.request_reset_retries or 1)
                 user = self.get_obj_for_edit()
                 mail.outbox = []
                 params = self.deepcopy(self.request_password_params)
@@ -4777,22 +4829,6 @@ class ResetPasswordNegativeCases(object):
             except Exception:
                 self.errors_append(text='New password "%s"' % value)
 
-    def test_reset_password_by_get_negative(self):
-        """
-        Check password changes only after POST, not GET request
-        """
-        user = self.get_obj_for_edit()
-        params = self.deepcopy(self.password_params)
-        codes = self.get_codes(user)
-        user = self.get_obj_manager.get(pk=user.pk)
-        try:
-            response = self.client.get(self.get_url(self.url_reset_password, codes),
-                                       params, follow=True, **self.additional_params)
-            new_user = self.get_obj_manager.get(pk=user.pk)
-            self.assert_objects_equal(new_user, user)
-        except Exception:
-            self.errors_append()
-
     def test_reset_password_inactive_user_negative(self):
         """
         Try reset password as inactive user
@@ -4897,7 +4933,7 @@ class LoginPositiveCases(object):
         """
         login as user from blacklist with correct data
         """
-        self.set_host_blacklist(host='127.0.0.1')
+        self.set_host_blacklist(host='127.0.0.1', count=self.login_retries or 1)
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
@@ -4971,7 +5007,7 @@ class LoginNegativeCases(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         params[self.field_password] = self.password + 'q'
-        self.set_host_pre_blacklist(host='127.0.0.1')
+        self.set_host_pre_blacklist_login(host='127.0.0.1')
         try:
             response = self.send_login_request(params)
             message = self.get_error_message('wrong_login', self.field_username)
@@ -4989,7 +5025,7 @@ class LoginNegativeCases(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         params[self.field_username] = self.username + 'q'
-        self.set_host_pre_blacklist(host='127.0.0.1')
+        self.set_host_pre_blacklist_login(host='127.0.0.1')
         try:
             response = self.send_login_request(params)
             message = self.get_error_message('wrong_login', self.field_username)
@@ -5023,7 +5059,7 @@ class LoginNegativeCases(object):
         """
         login as user from blacklist with empty captcha
         """
-        self.set_host_blacklist(host='127.0.0.1')
+        self.set_host_blacklist(host='127.0.0.1', count=self.login_retries or 1)
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
@@ -5048,7 +5084,7 @@ class LoginNegativeCases(object):
             for value in (u'йцу', u'\r', u'\n', u' ', ':'):
                 self.client = self.client_class()
                 self.clean_blacklist()
-                self.set_host_blacklist(host='127.0.0.1')
+                self.set_host_blacklist(host='127.0.0.1', count=self.login_retries or 1)
                 params = self.deepcopy(self.default_params)
                 self.add_csrf(params)
                 self.update_captcha_params(self.get_url(self.url_login), params)
@@ -5090,7 +5126,7 @@ class LoginNegativeCases(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         params[self.field_password] = self.password + 'q'
-        self.set_host_pre_blacklist(host='127.0.0.1')
+        self.set_host_pre_blacklist_login(host='127.0.0.1')
         try:
             response = self.send_login_request(params)
             message = self.get_error_message('wrong_login', self.field_username)
@@ -5112,7 +5148,7 @@ class LoginNegativeCases(object):
             self.add_csrf(params)
             self.set_empty_value_for_field(params, field)
             self.clean_blacklist()
-            self.set_host_pre_blacklist(host='127.0.0.1')
+            self.set_host_pre_blacklist_login(host='127.0.0.1')
             try:
                 response = self.send_login_request(params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('empty_required', field))
@@ -5133,7 +5169,7 @@ class LoginNegativeCases(object):
             self.add_csrf(params)
             self.pop_field_from_params(params, field)
             self.clean_blacklist()
-            self.set_host_pre_blacklist(host='127.0.0.1')
+            self.set_host_pre_blacklist_login(host='127.0.0.1')
             try:
                 response = self.send_login_request(params)
                 self.assertEqual(self.get_all_form_errors(response), self.get_error_message('without_required', field))
