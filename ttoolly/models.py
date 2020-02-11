@@ -394,10 +394,11 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     @property
     def get_obj_manager(self):
-        if hasattr(self, 'obj') and self.obj:
-            if self.obj == EmailLog:
-                return self.obj.objects
-            return self.obj._base_manager
+        obj = getattr(self, 'obj', None)
+        if obj == EmailLog:
+            return obj.objects
+        if obj:
+            return obj._base_manager
 
     def for_post_tear_down(self):
         self.del_files()
@@ -1166,8 +1167,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         elif value.__class__.__name__ in ('ManyRelatedManager', 'GenericRelatedObjectManager'):
             value = [force_text(v) for v in value.values_list('pk', flat=True)]
             value.sort()
-            if hasattr(params_value, '__iter__'):
-                params_value = [force_text(pv) for pv in params_value]
+            value_iterator = getattr(params_value, '__iter__', None)
+            if value_iterator:
+                params_value = [force_text(pv) for pv in value_iterator()]
                 params_value.sort()
         elif isinstance(value, (int, float)) and not isinstance(value, bool):
             if isinstance(params_value, (int, float, basestring)) and not isinstance(params_value, bool):
@@ -1241,16 +1243,14 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         # Because python2 return False on any exception, but python3 only on AttributeError.
         # Django return ValueError if use empty many_to_many field
         try:
-            if not hasattr(obj, field):
-                return None
+            value = getattr(obj, field)
         except (AttributeError, ValueError):
             return None
 
-        if getattr(obj, field).__class__.__name__ in ('ManyRelatedManager', 'RelatedManager',
-                                                      'GenericRelatedObjectManager'):
-            value = [v for v in getattr(obj, field).values_list('pk', flat=True).order_by('pk')]
+        if value.__class__.__name__ in ('ManyRelatedManager', 'RelatedManager',
+                                        'GenericRelatedObjectManager'):
+            value = [v for v in value.values_list('pk', flat=True).order_by('pk')]
         else:
-            value = getattr(obj, field)
             if 'File' in [m.__name__ for m in getattr(obj, field).__class__.__mro__] and not value:
                 value = None
         return value
@@ -1471,8 +1471,9 @@ class LoginMixIn(object):
         else:
             response = self.client.get(reverse(url_name), follow=True, **additional_params)
             params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
-        if hasattr(self, 'update_captcha_params'):
-            self.update_captcha_params(reverse(url_name), params, force=True)
+        update_captcha_params = getattr(self, 'update_captcha_params', None)
+        if update_captcha_params:
+            update_captcha_params(reverse(url_name), params, force=True)
         else:
             params.update(get_captcha_codes())
         return self.client.post(reverse(url_name), params, **additional_params)
