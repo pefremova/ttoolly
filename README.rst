@@ -732,9 +732,18 @@ Django test tools. Django >= 1.8
    * - Название
      - Значение по умолчанию
      - Описание
+   * - CAPTCHA_TYPE
+     - 'simplecaptcha'
+     - тип используемой в проекте капчи. 'supercaptcha' или 'simplecaptcha'
    * - COLORIZE_TESTS
      - False
      - раскраска вывода результатов тестов
+   * - LOGIN_URL_NAME
+     - 'login'
+     - url, по которому выполняется логин
+   * - LOGOUT_URL_NAME
+     - 'auth_logout'
+     - url, по которому выполняется логаут
    * - ERROR_MESSAGES
      - {}
      - переопределение сообщений об ошибках для всего проекта
@@ -753,3 +762,6 @@ Django test tools. Django >= 1.8
    * - TEST_TRACEBACK_LIMIT
      - None
      - глубина трейсбека в результатах тестов
+   * - TEST_USE_REAL_SETTINGS
+     - False
+     - если True, не переопределяются номера баз редиса, используются реальные пути для сохранения файлов
