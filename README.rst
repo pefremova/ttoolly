@@ -750,6 +750,15 @@ Django test tools. Django >= 1.8
    * - SIMPLE_TEST_EMAIL
      - False
      - генерация случайных значений адресов электронной почты исключая спецсимволы
+   * - TEST_DATE_INPUT_FORMAT
+     - settings.DATE_INPUT_FORMATS[0]
+     - формат входных значений дат
+   * - TEST_DATETIME_INPUT_FORMAT
+     - settings.DATETIME_INPUT_FORMATS[0]
+     - формат входных значений в datetime-полях
+   * - TEST_TIME_INPUT_FORMAT
+     - settings.TIME_INPUT_FORMATS[0]
+     - формат входных значений времени
    * - TEST_GENERATE_REAL_SIZE_FILE
      - True
      - генерация файлов с указанным размером. При False для обработки файлов используется FakeSizeMemoryFileUploadHandler

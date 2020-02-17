@@ -3,37 +3,58 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import ast
-from builtins import str
-from past.builtins import xrange
-
 from collections import OrderedDict
+from copy import copy
 from datetime import date, datetime, time
-from shutil import rmtree
 import hashlib
 import imghdr
 import os
 import os.path
 import re
+from shutil import rmtree
 import sys
+import tempfile
 import unittest
 
+from builtins import str
 from django.conf import settings
 from django.core.files.base import File, ContentFile
 from django.db.models.fields.files import FieldFile
 from django.http import HttpResponse
 from django.test import TestCase
+from past.builtins import xrange
+from test_project.test_app.models import OtherModel, SomeModel
 from ttoolly import utils
 from ttoolly.models import FormTestMixIn, GlobalTestMixIn
-import tempfile
-TEMP_DIR = tempfile.mkdtemp()
-
-from test_project.test_app.models import OtherModel, SomeModel
+from ttoolly.utils import FILE_TYPES, to_bytes
 import xml.etree.cElementTree as et
 
-from ttoolly.utils import FILE_TYPES, to_bytes
+
+TEMP_DIR = tempfile.mkdtemp()
 
 
-class TestGlobalTestMixInMethods(unittest.TestCase):
+class custom_override_settings:
+    def __init__(self, **kwargs):
+        self.options = kwargs
+        super().__init__()
+
+    def __enter__(self):
+        from django.conf import settings
+        self.wrapped = copy(settings._wrapped)
+        for key, new_value in self.options.items():
+            setattr(settings, key, new_value)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        settings._wrapped = self.wrapped
+        del self.wrapped
+
+
+class TestWithSettingsOwerride(unittest.TestCase):
+    def settings(self, **kwargs):
+        return custom_override_settings(**kwargs)
+
+
+class TestGlobalTestMixInMethods(TestWithSettingsOwerride):
 
     maxDiff = None
 
@@ -403,12 +424,14 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(self.btc.get_params_according_to_type(True, 'test'), (True, True))
 
         self.assertEqual(self.btc.get_params_according_to_type(datetime(2012, 3, 4, 3, 5), ''),
-                         ('04.03.2012 03:05:00', ''))
+                         (datetime(2012, 3, 4, 3, 5).strftime(settings.DATETIME_INPUT_FORMATS[0]), ''))
         self.assertEqual(self.btc.get_params_according_to_type('', datetime(2012, 3, 4, 3, 5)),
                          ('', datetime(2012, 3, 4, 3, 5)))
-        self.assertEqual(self.btc.get_params_according_to_type(date(2012, 3, 4), ''), ('04.03.2012', ''))
+        self.assertEqual(self.btc.get_params_according_to_type(date(2012, 3, 4), ''),
+                         (date(2012, 3, 4).strftime(settings.DATE_INPUT_FORMATS[0]), ''))
         self.assertEqual(self.btc.get_params_according_to_type('', date(2012, 3, 4)), ('', date(2012, 3, 4)))
-        self.assertEqual(self.btc.get_params_according_to_type(time(12, 23, 4), ''), ('12:23:04', ''))
+        self.assertEqual(self.btc.get_params_according_to_type(time(12, 23, 4), ''),
+                         (time(12, 23, 4).strftime(settings.TIME_INPUT_FORMATS[0]), ''))
         self.assertEqual(self.btc.get_params_according_to_type('', time(12, 23, 4)), ('', time(12, 23, 4)))
 
         self.assertEqual(self.btc.get_params_according_to_type('1', 2), ('1', 2))
@@ -425,6 +448,21 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(self.btc.get_params_according_to_type('text', f), ('text', 'file_for_test.ext'))
         self.assertEqual(self.btc.get_params_according_to_type(el_1.file_field, 'text'), ('', 'text'))
         self.assertEqual(self.btc.get_params_according_to_type(el_2.file_field, 'text'), ('file_for.ext', 'text'))
+
+    def test_get_time_params_according_to_type_with_settings(self):
+        with self.settings(TEST_TIME_INPUT_FORMAT='%H-%M-%S.%f'):
+            self.assertEqual(self.btc.get_params_according_to_type(time(12, 10, 3, 456789), ''),
+                             ('12-10-03.456789', ''))
+
+    def test_get_date_params_according_to_type_with_settings(self):
+        with self.settings(TEST_DATE_INPUT_FORMAT='%Y=%m=%d'):
+            self.assertEqual(self.btc.get_params_according_to_type(date(2020, 1, 5), ''),
+                             ('2020=01=05', ''))
+
+    def test_get_dt_params_according_to_type_with_settings(self):
+        with self.settings(TEST_DATETIME_INPUT_FORMAT='%d=%m=%Y|%H-%M-%S'):
+            self.assertEqual(self.btc.get_params_according_to_type(datetime(2020, 1, 5, 6, 7, 8, 123), ''),
+                             ('05=01=2020|06-07-08', ''))
 
     def test_update_params_not_need_update(self):
         self.btc.not_file = ('file',)
@@ -580,15 +618,37 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
     def test_get_value_for_datetime_field(self):
         self.btc.date_fields = ('some_field_name_0',)
-        settings.DATE_INPUT_FORMATS = ('%Y-%m-%d',)
-        res = self.btc.get_value_for_field(5, 'some_field_name_0')
-        self.assertEqual(re.findall('\d{4}\-\d{2}\-\d{2}', res), [res])
+        with self.settings(DATE_INPUT_FORMATS=('%Y-%m-%d',)):
+            res = self.btc.get_value_for_field(5, 'some_field_name_0')
+            self.assertEqual(re.findall('^\d{4}\-\d{2}\-\d{2}$', res), [res])
 
     def test_get_value_for_datetime_field_2(self):
         self.btc.date_fields = ('some_field_name_1',)
-        settings.DATE_INPUT_FORMATS = ('%Y-%m-%d',)
-        res = self.btc.get_value_for_field(5, 'some_field_name_1')
-        self.assertEqual(re.findall('\d{2}\:\d{2}', res), [res])
+        with self.settings(DATE_INPUT_FORMATS=('%Y-%m-%d',),
+                           TIME_INPUT_FORMATS=('%H:%M',)):
+            res = self.btc.get_value_for_field(5, 'some_field_name_1')
+            self.assertEqual(re.findall('^\d{2}\:\d{2}$', res), [res])
+
+    def test_get_value_for_datetime_field_with_settings(self):
+        self.btc.date_fields = self.btc.datetime_fields = ('some_field_name',)
+        with self.settings(TEST_DATETIME_INPUT_FORMAT='%d=%m=%Y|%H-%M-%S|%f',
+                           DATETIME_INPUT_FORMATS=('%Y-%m-%d',)):
+            res = self.btc.get_value_for_field(5, 'some_field_name')
+            self.assertEqual(re.findall('^\d{2}\=\d{2}\=\d{4}\|\d{2}-\d{2}-\d{2}\|\d{6}$', res), [res])
+
+    def test_get_value_for_date_field_with_settings(self):
+        self.btc.date_fields = ('some_field_name',)
+        with self.settings(TEST_DATE_INPUT_FORMAT='%d=%m=%Y',
+                           DATE_INPUT_FORMATS=('%Y-%m-%d',)):
+            res = self.btc.get_value_for_field(5, 'some_field_name')
+            self.assertEqual(re.findall('^\d{2}\=\d{2}\=\d{4}$', res), [res])
+
+    def test_get_value_for_datetime_field_2_with_settings(self):
+        self.btc.date_fields = self.btc.datetime_fields = ('some_field_name_1',)
+        with self.settings(TEST_TIME_INPUT_FORMAT='%H=%M.%S=%f',
+                           TIME_INPUT_FORMATS=('%H-%M',)):
+            res = self.btc.get_value_for_field(5, 'some_field_name_1')
+            self.assertEqual(re.findall('^\d{2}\=\d{2}\.\d{2}\=\d{6}$', res), [res])
 
     def test_set_empty_value_for_field(self):
         try:
@@ -764,33 +824,33 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
 
     def test_errors_append_with_text(self):
         self.btc.errors = []
-        settings.COLORIZE_TESTS = False
-        try:
-            int('q')
-        except Exception:
-            self.btc.errors_append(text='Тестовый текст')
+        with self.settings(COLORIZE_TESTS=False):
+            try:
+                int('q')
+            except Exception:
+                self.btc.errors_append(text='Тестовый текст')
         self.assertEqual(len(self.btc.errors), 1)
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", self.btc.errors[0])
         self.assertTrue(self.btc.errors[0].startswith('Тестовый текст:\n'))
 
     def test_errors_append_with_text_and_colorize(self):
         self.btc.errors = []
-        settings.COLORIZE_TESTS = True
-        try:
-            int('q')
-        except Exception:
-            self.btc.errors_append(text='Test text')
+        with self.settings(COLORIZE_TESTS=True):
+            try:
+                int('q')
+            except Exception:
+                self.btc.errors_append(text='Test text')
         self.assertEqual(len(self.btc.errors), 1)
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", self.btc.errors[0])
         self.assertTrue(self.btc.errors[0].startswith('\x1B[38;5;231mTest text:\n\x1B[0m'))
 
     def test_errors_append_with_text_and_colorize_and_color(self):
         self.btc.errors = []
-        settings.COLORIZE_TESTS = True
-        try:
-            int('q')
-        except Exception:
-            self.btc.errors_append(text='Test text', color=11)
+        with self.settings(COLORIZE_TESTS=True):
+            try:
+                int('q')
+            except Exception:
+                self.btc.errors_append(text='Test text', color=11)
         self.assertEqual(len(self.btc.errors), 1)
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", self.btc.errors[0])
         self.assertTrue(self.btc.errors[0].startswith('\x1B[38;5;11mTest text:\n\x1B[0m'))
@@ -816,11 +876,11 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
     def test_custom_errors_append_with_text(self):
         self.btc.errors = []
         some_errors = []
-        settings.COLORIZE_TESTS = False
-        try:
-            int('q')
-        except Exception:
-            self.btc.errors_append(some_errors, text='Тестовый текст')
+        with self.settings(COLORIZE_TESTS=False):
+            try:
+                int('q')
+            except Exception:
+                self.btc.errors_append(some_errors, text='Тестовый текст')
         self.assertEqual(len(some_errors), 1)
         self.assertEqual(self.btc.errors, [])
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", some_errors[0])
@@ -829,11 +889,11 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
     def test_custom_errors_append_with_text_and_colorize(self):
         self.btc.errors = []
         some_errors = []
-        settings.COLORIZE_TESTS = True
-        try:
-            int('q')
-        except Exception:
-            self.btc.errors_append(some_errors, text='Test text')
+        with self.settings(COLORIZE_TESTS=True):
+            try:
+                int('q')
+            except Exception:
+                self.btc.errors_append(some_errors, text='Test text')
         self.assertEqual(len(some_errors), 1)
         self.assertEqual(self.btc.errors, [])
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", some_errors[0])
@@ -842,11 +902,11 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
     def test_custom_errors_append_with_text_and_colorize_and_color(self):
         self.btc.errors = []
         some_errors = []
-        settings.COLORIZE_TESTS = True
-        try:
-            int('q')
-        except Exception:
-            self.btc.errors_append(some_errors, text='Test text', color=11)
+        with self.settings(COLORIZE_TESTS=True):
+            try:
+                int('q')
+            except Exception:
+                self.btc.errors_append(some_errors, text='Test text', color=11)
         self.assertEqual(len(some_errors), 1)
         self.assertEqual(self.btc.errors, [])
         self.assertIn("int('q')\nValueError: invalid literal for int() with base 10: 'q'\n", some_errors[0])
@@ -857,7 +917,6 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         try:
             self.btc.formatted_assert_errors()
         except Exception as e:
-            print(e)
             self.assertTrue(False, 'With raise')
 
     def test_formatted_assert_errors_with_errors(self):
@@ -875,7 +934,7 @@ class TestGlobalTestMixInMethods(unittest.TestCase):
         self.assertEqual(self.btc.errors, [])
 
 
-class TestFormTestMixInMethods(unittest.TestCase):
+class TestFormTestMixInMethods(TestWithSettingsOwerride):
 
     maxDiff = None
 
@@ -1300,18 +1359,40 @@ class TestFormTestMixInMethods(unittest.TestCase):
 
     def test_get_value_for_datetime_field(self):
         self.ftc.date_fields = ('some_field_name_0',)
-        settings.DATE_INPUT_FORMATS = ('%Y-%m-%d',)
-        res = self.ftc.get_value_for_field(5, 'some_field_name_0')
-        self.assertEqual(re.findall('\d{4}\-\d{2}\-\d{2}', res), [res])
+        with self.settings(DATE_INPUT_FORMATS=('%Y-%m-%d',)):
+            res = self.ftc.get_value_for_field(5, 'some_field_name_0')
+            self.assertEqual(re.findall('^\d{4}\-\d{2}\-\d{2}$', res), [res])
 
     def test_get_value_for_datetime_field_2(self):
         self.ftc.date_fields = ('some_field_name_1',)
-        settings.DATE_INPUT_FORMATS = ('%Y-%m-%d',)
-        res = self.ftc.get_value_for_field(5, 'some_field_name_1')
-        self.assertEqual(re.findall('\d{2}\:\d{2}', res), [res])
+        with self.settings(DATE_INPUT_FORMATS=('%Y-%m-%d',),
+                           TIME_INPUT_FORMATS=('%H:%M',)):
+            res = self.ftc.get_value_for_field(5, 'some_field_name_1')
+            self.assertEqual(re.findall('^\d{2}\:\d{2}$', res), [res])
+
+    def test_get_value_for_datetime_field_with_settings(self):
+        self.ftc.date_fields = self.ftc.datetime_fields = ('some_field_name',)
+        with self.settings(TEST_DATETIME_INPUT_FORMAT='%d=%m=%Y|%H-%M-%S|%f',
+                           DATETIME_INPUT_FORMATS=('%Y-%m-%d',)):
+            res = self.ftc.get_value_for_field(5, 'some_field_name')
+            self.assertEqual(re.findall('^\d{2}\=\d{2}\=\d{4}\|\d{2}-\d{2}-\d{2}\|\d{6}$', res), [res])
+
+    def test_get_value_for_date_field_with_settings(self):
+        self.ftc.date_fields = ('some_field_name',)
+        with self.settings(TEST_DATE_INPUT_FORMAT='%d=%m=%Y',
+                           DATE_INPUT_FORMATS=('%Y-%m-%d',)):
+            res = self.ftc.get_value_for_field(5, 'some_field_name')
+            self.assertEqual(re.findall('^\d{2}\=\d{2}\=\d{4}$', res), [res])
+
+    def test_get_value_for_datetime_field_2_with_settings(self):
+        self.ftc.date_fields = self.ftc.datetime_fields = ('some_field_name_1',)
+        with self.settings(TEST_TIME_INPUT_FORMAT='%H=%M.%S=%f',
+                           TIME_INPUT_FORMATS=('%H-%M',)):
+            res = self.ftc.get_value_for_field(5, 'some_field_name_1')
+            self.assertEqual(re.findall('^\d{2}\=\d{2}\.\d{2}\=\d{6}$', res), [res])
 
 
-class TestUtils(unittest.TestCase):
+class TestUtils(TestWithSettingsOwerride):
 
     def setUp(self):
         OtherModel.objects.all().delete()
@@ -1612,12 +1693,11 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(os.path.splitext(new_file.name)[1], '.zzz')
 
     def test_get_random_file_fake_size(self):
-        settings.TEST_GENERATE_REAL_SIZE_FILE = False
-        new_file = utils.get_random_file(size=100, filename='test.qwe')
-        settings.TEST_GENERATE_REAL_SIZE_FILE = True
-        self.assertIsInstance(new_file, ContentFile)
-        self.assertEqual(new_file.size, 10)
-        self.assertEqual(new_file.name, '_size_100_.qwe')
+        with self.settings(TEST_GENERATE_REAL_SIZE_FILE=False):
+            new_file = utils.get_random_file(size=100, filename='test.qwe')
+            self.assertIsInstance(new_file, ContentFile)
+            self.assertEqual(new_file.size, 10)
+            self.assertEqual(new_file.name, '_size_100_.qwe')
 
     def test_get_random_pdf_file_with_size(self):
         new_file = utils.get_random_file(size='1K', filename='test.pdf', )

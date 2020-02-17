@@ -10,12 +10,12 @@ def readme():
 
 
 install_requires = ['django>=1.8', 'psycopg2-binary', 'lxml', 'chardet', 'Pillow', 'rstr', 'future',
-                    'freezegun', 'boolean.py>=3.6']
+                    'freezegun', 'boolean.py>=3.6', 'functools32;python_version<"3"']
 if sys.version[0] == '2':
     install_requires.append('functools32')
 
 setup(name='ttoolly',
-      version='0.34.1',
+      version='0.34.2',
       description="Django test tools",
       long_description=readme(),
       author="Polina Efremova",

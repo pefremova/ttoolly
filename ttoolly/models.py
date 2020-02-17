@@ -1121,43 +1121,17 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if isinstance(value, bool):
             params_value = bool(params_value)
             return value, params_value
-        if (isinstance(value, date) or isinstance(value, time)) and not (isinstance(params_value, date) or
-                                                                         isinstance(params_value, time)):
-            params_value_delimiters = re.findall(r'\d+(.)\d+\1\d+', params_value)
+        if ((isinstance(value, date) or isinstance(value, time)) and
+                not (isinstance(params_value, date) or isinstance(params_value, time))):
 
             if isinstance(value, datetime):
-                format_str = '%d.%m.%Y %H:%M:%S'
-                if params_value_delimiters:
-                    date_format_elements = ['%d', '%m', '%Y']
-                    date_delimiter = params_value_delimiters[0]
-                    if len(params_value.split(date_delimiter)[0]) == 4:
-                        date_format_elements.reverse()
-                    time_format_elements = ['%H', '%M', '%S']
-                    if len(params_value_delimiters) > 1:
-                        time_delimiter = params_value_delimiters[1]
-                    else:
-                        time_delimiter = ':'
-                    format_str = date_delimiter.join(
-                        date_format_elements) + ' ' + time_delimiter.join(time_format_elements)
-
+                format_str = getattr(settings, 'TEST_DATETIME_INPUT_FORMAT', settings.DATETIME_INPUT_FORMATS[0])
                 value = value.strftime(format_str)
             elif isinstance(value, date):
-                format_str = '%d.%m.%Y'
-                if params_value_delimiters:
-                    date_format_elements = ['%d', '%m', '%Y']
-                    date_delimiter = params_value_delimiters[0]
-                    if len(params_value.split(date_delimiter)[0]) == 4:
-                        date_format_elements.reverse()
-                    format_str = date_delimiter.join(date_format_elements)
-
+                format_str = getattr(settings, 'TEST_DATE_INPUT_FORMAT', settings.DATE_INPUT_FORMATS[0])
                 value = value.strftime(format_str)
             elif isinstance(value, time):
-                format_str = '%H:%M:%S'
-                if params_value_delimiters:
-                    time_format_elements = ['%H', '%M', '%S']
-                    time_delimiter = params_value_delimiters[0]
-                    format_str = time_delimiter.join(time_format_elements)
-
+                format_str = getattr(settings, 'TEST_TIME_INPUT_FORMAT', settings.TIME_INPUT_FORMATS[0])
                 value = value.strftime(format_str)
             return value, params_value
 
@@ -1296,12 +1270,15 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             values = self.choice_fields_values[field_name]
             return list(set([choice(values) for _ in xrange(randint(1, len(values)))]))
         if self.is_date_field(field_name):
-            if field_name.endswith('1'):
-                return datetime.now().strftime('%H:%M')
+            if field_name.endswith('_1'):
+                return datetime.now().strftime(getattr(settings, 'TEST_TIME_INPUT_FORMAT',
+                                                       settings.TIME_INPUT_FORMATS[0]))
             elif self.is_datetime_field(field_name):
-                return datetime.now().strftime(settings.DATETIME_INPUT_FORMATS[0])
+                return datetime.now().strftime(getattr(settings, 'TEST_DATETIME_INPUT_FORMAT',
+                                                       settings.DATETIME_INPUT_FORMATS[0]))
             else:
-                return datetime.now().strftime(settings.DATE_INPUT_FORMATS[0])
+                return datetime.now().strftime(getattr(settings, 'TEST_DATE_INPUT_FORMAT',
+                                                       settings.DATE_INPUT_FORMATS[0]))
 
         length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 1),
                                                            getattr(self, 'max_fields_length', {}).get(field_name, 100000))
@@ -1930,7 +1907,8 @@ class FormCommonMixIn(object):
                 mro_names = [b.__name__ for b in field_class.__class__.__mro__]
                 if 'DateField' in mro_names:
                     try:
-                        value = datetime.strptime(value, '%d.%m.%Y').date()
+                        value = datetime.strptime(value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
+                                                                 settings.DATE_INPUT_FORMATS[0])).date()
                     except Exception:
                         pass
                 if 'ForeignKey' in mro_names:
@@ -2095,7 +2073,8 @@ class FormCommonMixIn(object):
                     mro_names = [b.__name__ for b in field_class.__class__.__mro__]
                     if 'DateField' in mro_names:
                         try:
-                            value = datetime.strptime(value, '%d.%m.%Y').date()
+                            value = datetime.strptime(value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
+                                                                     settings.DATE_INPUT_FORMATS[0])).date()
                         except Exception:
                             pass
                     if 'ForeignKey' in mro_names:
