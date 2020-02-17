@@ -1217,11 +1217,13 @@ class TestFormTestMixInMethods(TestWithSettingsOwerride):
         el_2 = SomeModel(text_field='other text', int_field=1)
         with self.assertRaises(AssertionError) as ar:
             self.ftc.assert_objects_equal(el_1, el_2)
-        text = ("\n[text_field]: u'text' != u'other text'"
+        text = ("\n[text_field]: %r != %r" % ('text', 'other text') +
                 "\n[id]: %d != None" % el_1.id +
                 "\n[foreign_key_field]: %r != None" % om1 +
                 "\n[many_related_field]: [%d, %d] != None" % (om2.pk, om3.pk))
-        self.assertEqual(str(ar.exception), text)
+        self.assertEqual(sorted(str(ar.exception).splitlines()),
+                         sorted(text.splitlines()))
+        self.assertTrue(str(ar.exception).startswith('\n'))
 
     def test_assert_objects_equal_with_difference_2(self):
         om1 = OtherModel.objects.create()
@@ -1233,7 +1235,9 @@ class TestFormTestMixInMethods(TestWithSettingsOwerride):
             self.ftc.assert_objects_equal(om1, om2)
         text = ("\n[somemodel_set]: [%d] != []" % el_1.pk +
                 "\n[id]: %d != %d" % (om1.id, om2.id))
-        self.assertEqual(str(ar.exception), text)
+        self.assertEqual(sorted(str(ar.exception).splitlines()),
+                         sorted(text.splitlines()))
+        self.assertTrue(str(ar.exception).startswith('\n'))
 
     def test_assert_objects_equal_with_exclude(self):
         el_1 = SomeModel(text_field='текст 1')
