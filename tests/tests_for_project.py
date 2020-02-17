@@ -10,6 +10,9 @@ from test_project.test_app.models import SomeModel, OtherModel
 from ttoolly.models import (FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn)
 from ttoolly.utils import FILE_TYPES
 import inspect
+from PIL import Image
+Image.init()
+IMG_FORMATS = ', '.join([ext.lower()[1:] for ext in Image.EXTENSION.keys()])
 
 
 class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, TestCase):
@@ -20,10 +23,7 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
     choice_fields = ('foreign_key_field', 'one_to_one_field', 'one_to_one_field2')
     if VERSION >= (1, 11,):
         custom_error_messages = {'image_field': {'wrong_extension': [
-            "Формат файлов '{ext}' не поддерживается. Поддерживаемые форматы файлов: 'bmp, bufr, cur, pcx, dcx, "
-            "dds, ps, eps, fit, fits, fli, flc, ftc, ftu, gbr, gif, grib, h5, hdf, png, jp2, j2k, jpc, jpf, jpx, "
-            "j2c, icns, ico, im, iim, tif, tiff, jfif, jpe, jpg, jpeg, mpg, mpeg, mpo, msp, palm, pcd, pdf, pxr, "
-            "pbm, pgm, ppm, psd, bw, rgb, rgba, sgi, ras, tga, webp, wmf, emf, xbm, xpm'."]}}
+            "Формат файлов '{ext}' не поддерживается. Поддерживаемые форматы файлов: '%s'." % IMG_FORMATS]}}
     else:
         custom_error_messages = {'image_field': {'wrong_extension': [
             'Загрузите правильное изображение. Файл, который вы загрузили, поврежден или не является изображением.']}}
