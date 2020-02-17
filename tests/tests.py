@@ -33,10 +33,10 @@ import xml.etree.cElementTree as et
 TEMP_DIR = tempfile.mkdtemp()
 
 
-class custom_override_settings:
+class custom_override_settings(object):
     def __init__(self, **kwargs):
         self.options = kwargs
-        super().__init__()
+        super(custom_override_settings, self).__init__()
 
     def __enter__(self):
         from django.conf import settings
