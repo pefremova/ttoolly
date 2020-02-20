@@ -1027,11 +1027,13 @@ class AddPositiveCases(object):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 start_value = self.get_value_for_field(None, start_field)
                 if self.is_datetime_field(start_field):
-                    start_value = datetime.strptime(start_value, settings.DATETIME_INPUT_FORMATS[0])
+                    start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATETIME_INPUT_FORMAT',
+                                                                         settings.DATETIME_INPUT_FORMATS[0]))
                     if start_value.minute < 1:
                         start_value.replace(minute=1)
                 elif self.is_date_field(start_field):
-                    start_value = datetime.strptime(start_value, settings.DATE_INPUT_FORMATS[0]).date()
+                    start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
+                                                                         settings.DATE_INPUT_FORMATS[0])).date()
                 self.fill_field(params, start_field, start_value)
                 if date_diff is None:
                     end_value = None
@@ -1944,11 +1946,13 @@ class AddNegativeCases(object):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 start_value = self.get_value_for_field(None, start_field)
                 if self.is_datetime_field(start_field):
-                    start_value = datetime.strptime(start_value, settings.DATETIME_INPUT_FORMATS[0])
+                    start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATETIME_INPUT_FORMAT',
+                                                                         settings.DATETIME_INPUT_FORMATS[0]))
                     if start_value.minute < 1:
                         start_value.replace(minute=1)
                 elif self.is_date_field(start_field):
-                    start_value = datetime.strptime(start_value, settings.DATE_INPUT_FORMATS[0]).date()
+                    start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
+                                                                         settings.DATE_INPUT_FORMATS[0])).date()
                 self.fill_field(params, start_field, start_value)
                 end_value = start_value + timedelta(days=date_diff)
                 if time_diff is not None:
@@ -2884,11 +2888,13 @@ class EditPositiveCases(object):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 start_value = self.get_value_for_field(None, start_field)
                 if self.is_datetime_field(start_field):
-                    start_value = datetime.strptime(start_value, settings.DATETIME_INPUT_FORMATS[0])
+                    start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATETIME_INPUT_FORMAT',
+                                                                         settings.DATETIME_INPUT_FORMATS[0]))
                     if start_value.minute < 1:
                         start_value.replace(minute=1)
                 elif self.is_date_field(start_field):
-                    start_value = datetime.strptime(start_value, settings.DATE_INPUT_FORMATS[0]).date()
+                    start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
+                                                                         settings.DATE_INPUT_FORMATS[0])).date()
                 self.fill_field(params, start_field, start_value)
                 if date_diff is None:
                     end_value = None
@@ -3743,11 +3749,13 @@ class EditNegativeCases(object):
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 start_value = self.get_value_for_field(None, start_field)
                 if self.is_datetime_field(start_field):
-                    start_value = datetime.strptime(start_value, settings.DATETIME_INPUT_FORMATS[0])
+                    start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATETIME_INPUT_FORMAT',
+                                                                         settings.DATETIME_INPUT_FORMATS[0]))
                     if start_value.minute < 1:
                         start_value.replace(minute=1)
                 elif self.is_date_field(start_field):
-                    start_value = datetime.strptime(start_value, settings.DATE_INPUT_FORMATS[0]).date()
+                    start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
+                                                                         settings.DATE_INPUT_FORMATS[0])).date()
                 self.fill_field(params, start_field, start_value)
                 end_value = start_value + timedelta(days=date_diff)
                 if time_diff is not None:
