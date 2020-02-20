@@ -1619,9 +1619,12 @@ class FormCommonMixIn(object):
         return result_all_fields
 
     def _get_field_value_by_name(self, obj, field):
+        related_names_map = self.get_related_names(obj)
+        field = related_names_map.get(re.sub('\-\d+\-', '-0-', field), field)
+
         if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
             model_name, index, field_name = field.split('-')
-            qs = getattr(obj, model_name).all().order_by('pk')
+            qs = getattr(obj, related_names_map.get(model_name, model_name)).all().order_by('pk')
             if qs.count() > int(index):
                 return getattr(qs[int(index)], field_name)
         else:
