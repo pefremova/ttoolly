@@ -2552,11 +2552,16 @@ class ChangePasswordCommonMixIn(object):
         new_user = self.get_obj_manager.get(pk=user.pk)
         self.assert_objects_equal(new_user, user)
 
-    def get_obj_for_edit(self):
+    def _get_obj_for_edit(self):
         user = choice(self.get_obj_manager.all())
         self.user_relogin(user.email, self.current_password)
         user = self.get_obj_manager.get(pk=user.pk)
         return user
+
+    def get_obj_for_edit(self):
+        obj = self._get_obj_for_edit()
+        self.update_params_for_obj(obj)
+        return obj
 
     def get_login_name(self, user):
         return user.email
@@ -2564,6 +2569,9 @@ class ChangePasswordCommonMixIn(object):
     def send_change_password_request(self, user_pk, params):
         return self.client.post(self.get_url_for_negative(self.url_change_password, (user_pk,)),
                                 params, **self.additional_params)
+
+    def update_params_for_obj(self, obj):
+        pass
 
 
 class ChangePasswordMixIn(ChangePasswordCommonMixIn,
@@ -2676,10 +2684,15 @@ class ResetPasswordCommonMixIn(BlacklistMixIn):
     def get_login_name(self, user):
         return user.email
 
-    def get_obj_for_edit(self):
+    def _get_obj_for_edit(self):
         user = choice(self.get_obj_manager.all())
         self.username = self.get_login_name(user)
         return user
+
+    def get_obj_for_edit(self):
+        obj = self._get_obj_for_edit()
+        self.update_params_for_obj(obj)
+        return obj
 
     def send_reset_password_request(self, params):
         return self.client.post(self.get_url(self.url_reset_password_request), params,
@@ -2698,6 +2711,9 @@ class ResetPasswordCommonMixIn(BlacklistMixIn):
     def set_user_inactive(self, user):
         user.is_active = False
         user.save()
+
+    def update_params_for_obj(self, obj):
+        pass
 
 
 class ResetPasswordMixIn(ResetPasswordCommonMixIn,
