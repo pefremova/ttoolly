@@ -41,6 +41,7 @@ if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrun
     _XMLTestResult._report_testcase = _report_testcase
 
     class XMLInfoClass(_TestInfo):
+
         def __init__(self, test_result, test_method, *args, **kwargs):
             super().__init__(test_result, test_method, *args, **kwargs)
             tags = set(getattr(test_method, 'tags', set()))
@@ -50,6 +51,7 @@ if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrun
             self.tags = tags.union(test_fn_tags)
 
     class CustomXMLTestRunner(XMLTestRunner):
+
         def _make_result(self):
             return self.resultclass(self.stream, self.descriptions, self.verbosity, self.elapsed_times,
                                     infoclass=XMLInfoClass)
@@ -187,6 +189,8 @@ class RegexpTestSuiteRunner(ParentRunner):
                 full_name = '.'.join(full_name)
                 if (full_re and re.findall(r'%s' % full_re, full_name)):
                     my_suite.addTest(el)
+        else:
+            my_suite = full_suite
         if labels_for_suite:
             my_suite.addTests(ParentRunner.build_suite(self, labels_for_suite, extra_tests=None, **kwargs))
 
