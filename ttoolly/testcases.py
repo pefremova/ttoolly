@@ -36,7 +36,7 @@ class ListPositiveCases(object):
             try:
                 response = self.client.get(self.get_url(self.url_list), {field: value},
                                            follow=True, **self.additional_params)
-                self.assertEqual(response.status_code, 200)
+                self.assert_status_code(response.status_code, 200)
             except Exception:
                 self.errors_append(text='For filter %s=%s' % (field, value))
 
@@ -55,7 +55,7 @@ class ListNegativeCases(object):
                 try:
                     response = self.client.get(self.get_url(self.url_list), {field: value}, follow=True,
                                                **self.additional_params)
-                    self.assertEqual(response.status_code, 200)
+                    self.assert_status_code(response.status_code, 200)
                 except Exception:
                     self.errors_append(text='For filter %s=%s' % (field, value))
 
@@ -3069,8 +3069,7 @@ class EditNegativeCases(object):
             try:
                 response = self.client.get(self.get_url_for_negative(self.url_edit, (value,)),
                                            follow=True, **self.additional_params)
-                self.assertEqual(response.status_code, self.status_code_not_exist,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
+                self.assert_status_code(response.status_code, self.status_code_not_exist)
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
@@ -3083,8 +3082,7 @@ class EditNegativeCases(object):
             sp = transaction.savepoint()
             try:
                 response = self.send_edit_request(value, params)
-                self.assertEqual(response.status_code, self.status_code_not_exist,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
+                self.assert_status_code(response.status_code, self.status_code_not_exist)
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
@@ -3875,8 +3873,7 @@ class DeleteNegativeCases(object):
             sp = transaction.savepoint()
             try:
                 response = self.send_delete_request(value)
-                self.assertEqual(response.status_code, self.status_code_not_exist,
-                                 'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
+                self.assert_status_code(response.status_code, self.status_code_not_exist)
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
@@ -3975,7 +3972,7 @@ class RemoveNegativeCases(object):
                 response = self.send_delete_request(value)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
-                self.assertEqual(response.status_code, 200)
+                self.assert_status_code(response.status_code, 200)
                 error_message = self.get_error_message('delete_not_exists', None)
                 self.assertEqual(self.get_all_form_messages(response), [error_message])
             except Exception:
@@ -3991,7 +3988,7 @@ class RemoveNegativeCases(object):
                 response = self.send_recovery_request(value)
                 self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)),
                                 'Redirect was %s' % response.redirect_chain[0][0])
-                self.assertEqual(response.status_code, 200)
+                self.assert_status_code(response.status_code, 200)
                 error_message = self.get_error_message('recovery_not_exists', None)
                 self.assertEqual(self.get_all_form_messages(response), [error_message])
             except Exception:
@@ -4011,7 +4008,7 @@ class RemoveNegativeCases(object):
             url = self.get_url_for_negative(self.url_edit_in_trash, (obj_id,))
             response = self.client.post(url, params, follow=True, **self.additional_params)
             self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)))
-            self.assertEqual(response.status_code, 200)
+            self.assert_status_code(response.status_code, 200)
             error_message = 'Вы не можете изменять объекты в корзине.'
             self.assertEqual(self.get_all_form_messages(response), [error_message])
         except Exception:
@@ -4030,8 +4027,7 @@ class RemoveNegativeCases(object):
         params = self.deepcopy(self.default_params_edit)
         try:
             response = self.send_edit_request(value, params)
-            self.assertEqual(response.status_code, self.status_code_not_exist,
-                             'Status code %s != %s' % (response.status_code, self.status_code_not_exist))
+            self.assert_status_code(response.status_code, self.status_code_not_exist)
             if self.status_code_not_exist == 200:
                 """for Django 1.11 admin"""
                 self.assertEqual(self.get_all_form_messages(response), self.get_error_message('not_exist', '')[''])
@@ -4866,7 +4862,7 @@ class ResetPasswordNegativeCases(object):
             codes = self.get_codes(user)
         try:
             response = self.send_change_after_reset_password_request(codes, self.password_params)
-            self.assertEqual(response.status_code, 404)
+            self.assert_status_code(response.status_code, 404)
         except Exception:
             self.errors_append()
 

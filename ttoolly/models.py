@@ -814,6 +814,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if local_errors:
             raise AssertionError("Values from object != expected values from dict:\n" + "\n".join(local_errors))
 
+    def assert_status_code(self, response_status_code, expected_status_code):
+        self.assertEqual(response_status_code, expected_status_code,
+                         'Status code %s != %s' % (response_status_code, expected_status_code))
+
     def assert_text_equal_by_symbol(self, first, second, additional=20):
         full_error_text = ''
         if '-v' in sys.argv:
@@ -1857,25 +1861,21 @@ class FormCommonMixIn(object):
 
     def check_on_add_success(self, response, initial_obj_count, _locals):
         self.assert_no_form_errors(response)
-        self.assertEqual(response.status_code, self.status_code_success_add,
-                         'Status code %s != %s' % (response.status_code, self.status_code_success_add))
+        self.assert_status_code(response.status_code, self.status_code_success_add)
         self.assert_objects_count_on_add(True, initial_obj_count)
 
     def check_on_add_error(self, response, initial_obj_count, _locals):
         self.assert_objects_count_on_add(False, initial_obj_count)
-        self.assertEqual(response.status_code, self.status_code_error,
-                         'Status code %s != %s' % (response.status_code, self.status_code_error))
+        self.assert_status_code(response.status_code, self.status_code_error)
 
     def check_on_edit_success(self, response, _locals):
         self.assert_no_form_errors(response)
-        self.assertEqual(response.status_code, self.status_code_success_edit,
-                         'Status code %s != %s' % (response.status_code, self.status_code_success_edit))
+        self.assert_status_code(response.status_code, self.status_code_success_edit)
 
     def check_on_edit_error(self, response, obj_for_edit, _locals):
         new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
         self.assert_objects_equal(new_object, obj_for_edit)
-        self.assertEqual(response.status_code, self.status_code_error,
-                         'Status code %s != %s' % (response.status_code, self.status_code_error))
+        self.assert_status_code(response.status_code, self.status_code_error)
 
     def create_copy(self, obj_for_edit, fields_for_change=None):
         fields_for_change = fields_for_change or []
@@ -2781,7 +2781,7 @@ class LoginCommonMixIn(BlacklistMixIn):
             self.assertEqual(response.status_code, 200, "Final response code was %d (expected 200)" %
                              response.status_code)
         else:
-            self.assertEqual(response.status_code, 200)
+            self.assert_status_code(response.status_code, 200)
             self.assertEqual(response.redirect_chain, [])
 
     def check_response_on_negative(self, response):
