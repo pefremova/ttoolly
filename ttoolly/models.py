@@ -43,6 +43,7 @@ from builtins import str
 from freezegun import freeze_time
 from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
 from past.builtins import xrange, basestring
+from uuid import UUID
 
 from .testcases import (AddNegativeCases, AddPositiveCases, EditPositiveCases, EditNegativeCases,
                         ListNegativeCases, ListPositiveCases,
@@ -1141,7 +1142,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         if isinstance(value, models.Model) and not isinstance(params_value, models.Model):
             value = value.pk
-            params_value = int(params_value) if params_value else params_value
+            params_value = int(params_value) if (params_value and
+                                                 isinstance(params_value, (str, bytes)) and
+                                                 params_value.isdigit()) else params_value
         elif value.__class__.__name__ in ('ManyRelatedManager', 'GenericRelatedObjectManager'):
             value = [force_text(v) for v in value.values_list('pk', flat=True)]
             value.sort()
@@ -1169,6 +1172,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 value = ''
             params_value = params_value if isinstance(params_value, basestring) else params_value.name
             params_value = os.path.basename(params_value)
+
+        if isinstance(value, UUID) and isinstance(params_value, (str, bytes)):
+            value = force_text(value)
 
         return value, params_value
 
