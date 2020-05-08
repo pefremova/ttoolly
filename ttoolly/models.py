@@ -6,7 +6,6 @@ from copy import copy, deepcopy
 from datetime import datetime, date, time
 from decimal import Decimal
 import inspect
-from itertools import cycle
 import json
 import os
 from random import choice, randint, uniform
@@ -294,13 +293,19 @@ class MetaCheckFailures(type):
         super(MetaCheckFailures, cls).__init__(name, bases, dct)
 
 
-class Ring(cycle):
+class Ring(list):
+
+    def __init__(self, l=None):
+        self.__n = -1
+        l = l or []
+        super().__init__(l)
 
     def turn(self):
-        next(self)
+        self.__n = (self.__n + 1) if self.__n + 1 < len(self) else 0
 
     def get_and_turn(self):
-        return next(self)
+        self.turn()
+        return self[self.__n]
 
 
 class DictWithPassword(dict):
