@@ -723,6 +723,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                                                               'OneToOneField',
                                                                               'OneToOneRel',
                                                                               'ManyToManyField')]
+        object_fields = sum([[name, name + '_0', name + '_1']
+                             if fields_map[name].__class__.__name__ == 'DateTimeField'
+                             else [name, ] for name in object_fields], [])
 
         form_to_field_map = self.get_related_names(obj)
         field_to_form_map = {v: k for k, v in iter(viewitems(form_to_field_map)) if v != k}
@@ -757,7 +760,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 else:
                     value = None
             else:
-                value = getattr(obj, name_in_object)
+                value = self._get_field_value_by_name(obj, name_in_object)
             if (name_on_form in viewkeys(form_to_field_map) or name_in_field in viewkeys(field_to_form_map) and
                 (hasattr(params.get(name_on_form, []), '__len__') and  # params value is list or not exists (inline form)
                  (value.__class__.__name__ in ('RelatedManager', 'QuerySet') or
@@ -1102,6 +1105,26 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             model = getattr(related, 'related_model', getattr(getattr(related, 'rel', None), 'to', related.model))
             field = field.split('-')[-1]
         return model._meta.get_field(field)
+
+    def _get_field_value_by_name(self, obj, field):
+        related_names_map = self.get_related_names(obj)
+        field = related_names_map.get(re.sub('\-\d+\-', '-0-', field), field)
+
+        if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
+            model_name, index, field_name = field.split('-')
+            qs = getattr(obj, related_names_map.get(model_name, model_name)).all().order_by('pk')
+            if qs.count() > int(index):
+                return getattr(qs[int(index)], field_name)
+        else:
+            if re.match('.+?_[01]$', field):
+                value = getattr(obj, re.sub('_[01]$', '', field))
+                if isinstance(value, datetime):
+                    if field.endswith('_0'):
+                        return value.astimezone().date()
+                    if field.endswith('_1'):
+                        return value.astimezone().time()
+                return value
+            return getattr(obj, field)
 
     def get_fields_list_from_response(self, response):
         if getattr(settings, 'TEST_REAL_FORM_FIELDS', False):
@@ -1633,18 +1656,6 @@ class FormCommonMixIn(object):
                 result_all_fields.append(el)
         return result_all_fields
 
-    def _get_field_value_by_name(self, obj, field):
-        related_names_map = self.get_related_names(obj)
-        field = related_names_map.get(re.sub('\-\d+\-', '-0-', field), field)
-
-        if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
-            model_name, index, field_name = field.split('-')
-            qs = getattr(obj, related_names_map.get(model_name, model_name)).all().order_by('pk')
-            if qs.count() > int(index):
-                return getattr(qs[int(index)], field_name)
-        else:
-            return getattr(obj, field)
-
     def _get_required_from_related(self, fields_list):
         return [choice(l) for l in fields_list]
 
@@ -1973,9 +1984,6 @@ class FormCommonMixIn(object):
                             if existing_value in (None, '', [], ()):
                                 params[field] = self.get_value_for_field(None, field)
                     else:
-                        if self.get_field_by_name(self.obj, field).__class__.__name__ == 'DateTimeField':
-                            params[field + '_0'] = self.get_value_for_field(None, field + '_0')
-                            params[field + '_1'] = self.get_value_for_field(None, field + '_1')
                         params[field] = self.get_value_for_field(None, field)
                 else:
                     params[field] = self.get_value_for_field(None, field)
