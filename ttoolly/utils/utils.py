@@ -11,6 +11,7 @@ import decimal
 import io
 import json
 import os
+import pytz
 import random
 import re
 import string
@@ -744,6 +745,8 @@ def get_value_for_obj_field(f, filename=None):
         else:
             return get_randname(length)
     elif 'DateTimeField' in mro_names:
+        if getattr(settings, 'USE_TZ', False) and getattr(settings, 'TIME_ZONE', None):
+            return datetime.now(pytz.timezone(settings.TIME_ZONE))
         return datetime.now()
     elif 'DateField' in mro_names:
         return date.today()
