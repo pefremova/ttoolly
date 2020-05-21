@@ -55,7 +55,7 @@ from .testcases import (AddNegativeCases, AddPositiveCases, EditPositiveCases, E
 from .utils import (format_errors, get_error, get_randname, get_url_for_negative, get_url, get_captcha_codes,
                     get_random_email_value, get_fixtures_data, generate_sql, unicode_to_readable,
                     get_fields_list_from_response, get_real_fields_list_from_response, get_all_form_errors,
-                    generate_random_obj, get_all_urls,
+                    generate_random_obj, get_all_urls, prepare_custom_file_for_tests,
                     get_random_file, get_all_field_names_from_model, FILE_TYPES)
 from .utils.decorators import only_with, only_with_obj, only_with_any_files_params, only_with_files_params
 
@@ -1987,6 +1987,23 @@ class FormCommonMixIn(object):
                         params[field] = self.get_value_for_field(None, field)
                 else:
                     params[field] = self.get_value_for_field(None, field)
+
+    def fill_fields_from_obj(self, params, obj, fields):
+        for field in [f for f in fields if not f.endswith('-DELETE')]:
+            value = self._get_field_value_by_name(obj, field)
+            if self.is_file_field(field) and value:
+                if not os.path.exists(value.path):
+                    prepare_custom_file_for_tests(value.path)
+                params[field] = ContentFile(value.file.read(), os.path.basename(value.name))
+            elif self.is_date_field(field):
+                l = [re.findall('%s_\d' % field, k) for k in viewkeys(params)]
+                subfields = [item for sublist in l for item in sublist]
+                if subfields:
+                    for subfield in subfields:
+                        params[subfield] = self.get_params_according_to_type(
+                            self._get_field_value_by_name(obj, field), '')[0]
+            else:
+                params[field] = self.get_params_according_to_type(value, '')[0]
 
     def get_all_not_str_fields(self, additional=''):
         other_fields = []

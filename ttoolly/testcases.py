@@ -341,12 +341,70 @@ class AddPositiveCases(object):
                                    (field, length, value if len(str(value)) <= 1000 else str(value)[:1000] + '...'))
 
     @only_with_obj
+    @only_with('unique_fields_add')
+    def test_add_object_different_unique_values_positive(self):
+        """
+        Create object: only unique fields are different, other values are equal to existing object fields
+        """
+        already_in_check = {k: [] for k in self.unique_fields_add}
+        checks_list = []
+        for el in self.unique_fields_add:
+            for el_field in set(el).difference(already_in_check[el]):
+                fields_for_change = [el_field, ]
+                already_in_check[el].append(el_field)
+                for other_group in [g for g in self.unique_fields_add if g != el]:
+                    other_group_fields = set(other_group).difference(
+                        set(el).difference((el_field,))).difference(already_in_check[other_group])
+                    if not other_group_fields:
+                        if el_field in other_group:
+                            other_group_fields = [el_field, ]
+                        else:
+                            other_group_fields = set(other_group).difference(set(el).difference((el_field,)))
+                    other_group_field = list(other_group_fields)[0]
+                    fields_for_change.append(other_group_field)
+                    already_in_check[other_group].append(other_group_field)
+                checks_list.append(set(fields_for_change))
+
+        for fields_for_change in checks_list:
+            self.prepare_for_add()
+            existing_obj = self.get_existing_obj()
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url(self.url_add), params)
+
+            for field in fields_for_change:
+                self.clean_depend_fields_add(params, el_field)
+                value = params.get(field, None)
+                old_value = self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), '')[0]
+                n = 0
+                while n < 3 and (not value or value == old_value):
+                    n += 1
+                    value = self.get_value_for_field(None, field)
+                params[field] = value
+
+            self.fill_fields_from_obj(params, existing_obj,
+                                      set([f for f in self.all_fields_add if f not in
+                                           (self.hidden_fields_add or ())]).difference(fields_for_change))
+
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+            try:
+                response = self.send_add_request(params)
+                self.check_on_add_success(response, initial_obj_count, locals())
+                new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except Exception:
+                self.errors_append(text='Fields %s was changed, others equals to fields of existing object' %
+                                   fields_for_change)
+
+    @only_with_obj
     @only_with(('unique_fields_add', 'unique_with_case',))
     def test_add_object_unique_alredy_exists_in_other_case_positive(self):
         """
         Add object with unique field values, to values, that already used in other objects but in other case
         """
-        for el in self.unique_fields_edit:
+        for el in self.unique_fields_add:
             if not set(self.unique_with_case).intersection(el):
                 continue
             for existing_command, new_command in (('lower', 'upper'),
@@ -2338,6 +2396,61 @@ class EditPositiveCases(object):
                                    (field, length, value if len(str(value)) <= 1000 else str(value)[:1000] + '...'))
             finally:
                 mail.outbox = []
+
+    @only_with_obj
+    @only_with('unique_fields_edit')
+    def test_edit_object_different_unique_values_positive(self):
+        """
+        Change object: only unique fields are different, other values are equal to existing object fields
+        """
+        already_in_check = {k: [] for k in self.unique_fields_edit}
+        checks_list = []
+        for el in self.unique_fields_edit:
+            for el_field in set(el).difference(already_in_check[el]):
+                fields_for_change = [el_field, ]
+                already_in_check[el].append(el_field)
+                for other_group in [g for g in self.unique_fields_add if g != el]:
+                    other_group_fields = set(other_group).difference(
+                        set(el).difference((el_field,))).difference(already_in_check[other_group])
+                    if not other_group_fields:
+                        if el_field in other_group:
+                            other_group_fields = [el_field, ]
+                        else:
+                            other_group_fields = set(other_group).difference(set(el).difference((el_field,)))
+                    other_group_field = list(other_group_fields)[0]
+                    fields_for_change.append(other_group_field)
+                    already_in_check[other_group].append(other_group_field)
+                checks_list.append(set(fields_for_change))
+
+        for fields_for_change in checks_list:
+            obj_for_edit = self.get_obj_for_edit()
+            existing_obj = self.get_other_obj_with_filled(fields_for_change, obj_for_edit)
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+
+            for field in fields_for_change:
+                self.clean_depend_fields_edit(params, el_field)
+                value = params.get(field, None)
+                old_value = self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), '')[0]
+                n = 0
+                while n < 3 and (not value or value == old_value):
+                    n += 1
+                    value = self.get_value_for_field(None, field)
+                params[field] = value
+
+            self.fill_fields_from_obj(params, existing_obj,
+                                      set([f for f in self.all_fields_edit if f not in
+                                           (self.hidden_fields_edit or ())]).difference(fields_for_change))
+            try:
+                response = self.send_edit_request(obj_for_edit.pk, params)
+                self.check_on_edit_success(response, locals())
+                new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+                exclude = getattr(self, 'exclude_from_check_edit', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except Exception:
+                self.errors_append(text='Fields %s was changed, others equals to fields of existing object' %
+                                   fields_for_change)
 
     @only_with_obj
     @only_with(('unique_fields_edit', 'unique_with_case',))
