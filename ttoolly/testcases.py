@@ -422,7 +422,10 @@ class AddPositiveCases(object):
                         """only if user can fill this field"""
                         continue
                     self.clean_depend_fields_add(params, el_field)
-                    value = self._get_field_value_by_name(existing_obj, el_field)
+                    if el_field in self.unique_with_case:
+                        value = self.get_value_for_field(None, el_field)
+                    else:
+                        value = self._get_field_value_by_name(existing_obj, el_field)
                     params[el_field] = self.get_params_according_to_type(value, '')[0]
                     if el_field in self.unique_with_case:
                         self.get_obj_manager.filter(pk=existing_obj.pk).update(
@@ -2474,7 +2477,11 @@ class EditPositiveCases(object):
                         """only if user can change this field"""
                         continue
                     self.clean_depend_fields_edit(params, el_field)
-                    value = self.get_value_for_field(None, el_field)
+
+                    if el_field in self.unique_with_case:
+                        value = self.get_value_for_field(None, el_field)
+                    else:
+                        value = self._get_field_value_by_name(existing_obj, el_field)
                     params[el_field] = self.get_params_according_to_type(value, '')[0]
                     if el_field in self.unique_with_case:
                         self.get_obj_manager.filter(pk=existing_obj.pk).update(
