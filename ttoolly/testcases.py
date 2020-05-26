@@ -10,6 +10,7 @@ import re
 from django.conf import settings
 from django.core import mail
 from django.db import transaction
+from django.db.models import Q
 from django.utils.encoding import force_text
 
 from builtins import str
@@ -363,7 +364,7 @@ class AddPositiveCases(object):
                     other_group_field = list(other_group_fields)[0]
                     fields_for_change.append(other_group_field)
                     already_in_check[other_group].append(other_group_field)
-                checks_list.append(set(fields_for_change))
+                checks_list.append(list(set(fields_for_change)))
 
         for fields_for_change in checks_list:
             self.prepare_for_add()
@@ -375,9 +376,13 @@ class AddPositiveCases(object):
             for field in fields_for_change:
                 self.clean_depend_fields_add(params, el_field)
                 value = params.get(field, None)
-                old_value = self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), '')[0]
                 n = 0
-                while n < 3 and (not value or value == old_value):
+                existing_filters = Q(**{f: params[f] for f in fields_for_change[:fields_for_change.index(field)]})
+                for el in self.unique_fields_add:
+                    if field in el:
+                        existing_filters |= Q(**{f: getattr(existing_obj, f) for f in el if f not in fields_for_change})
+                existing_objs = self.get_obj_manager.filter(existing_filters)
+                while n < 3 and (not value or existing_objs.filter(**{field: value}).exists()):
                     n += 1
                     value = self.get_value_for_field(None, field)
                 params[field] = value
@@ -2425,7 +2430,7 @@ class EditPositiveCases(object):
                     other_group_field = list(other_group_fields)[0]
                     fields_for_change.append(other_group_field)
                     already_in_check[other_group].append(other_group_field)
-                checks_list.append(set(fields_for_change))
+                checks_list.append(list(set(fields_for_change)))
 
         for fields_for_change in checks_list:
             obj_for_edit = self.get_obj_for_edit()
@@ -2437,9 +2442,13 @@ class EditPositiveCases(object):
             for field in fields_for_change:
                 self.clean_depend_fields_edit(params, el_field)
                 value = params.get(field, None)
-                old_value = self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), '')[0]
                 n = 0
-                while n < 3 and (not value or value == old_value):
+                existing_filters = Q(**{f: params[f] for f in fields_for_change[:fields_for_change.index(field)]})
+                for el in self.unique_fields_edit:
+                    if field in el:
+                        existing_filters |= Q(**{f: getattr(existing_obj, f) for f in el if f not in fields_for_change})
+                existing_objs = self.get_obj_manager.exclude(pk=obj_for_edit.pk).filter(existing_filters)
+                while n < 3 and (not value or existing_objs.filter(**{field: value}).exists()):
                     n += 1
                     value = self.get_value_for_field(None, field)
                 params[field] = value
