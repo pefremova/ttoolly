@@ -431,6 +431,7 @@ class AddPositiveCases(object):
                         self.get_obj_manager.filter(pk=existing_obj.pk).update(
                             **{el_field: getattr(value, existing_command)()})
                         params[el_field] = getattr(params[el_field], new_command)()
+                existing_obj = self.get_obj_manager.get(pk=existing_obj.pk)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
@@ -444,7 +445,8 @@ class AddPositiveCases(object):
                     self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
                                        (', '.join('field "%s" with value "%s"\n' %
                                                   (field,
-                                                   self._get_field_value_by_name(existing_obj, el_field))
+                                                   self.get_params_according_to_type(
+                                                       self._get_field_value_by_name(existing_obj, field), '')[0])
                                                   for field in el),
                                         ', '.join('field "%s" with value "%s"\n' % (field, params[field])
                                                   for field in el if field in viewkeys(params))))
@@ -2497,8 +2499,10 @@ class EditPositiveCases(object):
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
-                                       (', '.join('field "%s" with value "%s"\n' % (field,
-                                                                                    self._get_field_value_by_name(existing_obj, el_field))
+                                       (', '.join('field "%s" with value "%s"\n' %
+                                                  (field,
+                                                   self.get_params_according_to_type(
+                                                       self._get_field_value_by_name(existing_obj, field), '')[0])
                                                   for field in el),
                                         ', '.join('field "%s" with value "%s"\n' % (field, params[field])
                                                   for field in el if field in viewkeys(params))))
