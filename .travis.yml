@@ -4,13 +4,12 @@ python:
   - "3.5"
   - "3.6"
 env:
-  - DJANGO_VERSION=1.8.19
-  - DJANGO_VERSION=1.9.13
-  - DJANGO_VERSION=1.10.8
-  - DJANGO_VERSION=1.11.27
+  - DJANGO_VERSION=1.11.29
   - DJANGO_VERSION=2.0.13
   - DJANGO_VERSION=2.1.15
-  - DJANGO_VERSION=2.2.10
+  - DJANGO_VERSION=2.2.12
+  - DJANGO_VERSION=3.0.6
+  - DJANGO_VERSION=3.1a1
 matrix:
   exclude:
     - python: "2.7"
@@ -18,7 +17,11 @@ matrix:
     - python: "2.7"
       env: "DJANGO_VERSION=2.1.15"
     - python: "2.7"
-      env: "DJANGO_VERSION=2.2.10"
+      env: "DJANGO_VERSION=2.2.12"
+    - python: "2.7"
+      env: "DJANGO_VERSION=3.0.6"
+    - python: "2.7"
+      env: "DJANGO_VERSION=3.1a1"
 install: 
   - pip install -U pip
   - pip install -q Django==$DJANGO_VERSION
