@@ -1445,7 +1445,7 @@ class AddNegativeCases(object):
                 self.clean_depend_fields_add(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
-                if not el_field in other_fields:
+                if not el_field in other_fields and not el_field in self.unique_with_case:
                     params[el_field] = params[el_field].swapcase()
             initial_obj_count = self.get_obj_manager.count()
             try:
@@ -3391,7 +3391,7 @@ class EditNegativeCases(object):
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 params[el_field] = self.get_params_according_to_type(value, '')[0]
-                if not el_field in other_fields:
+                if not el_field in other_fields and not el_field in self.unique_with_case:
                     params[el_field] = params[el_field].swapcase()
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
