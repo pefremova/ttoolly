@@ -342,7 +342,6 @@ class AddPositiveCases(object):
                                    (field, length, value if len(str(value)) <= 1000 else str(value)[:1000] + '...'))
 
     @only_with_obj
-    @only_with('unique_fields_add')
     def test_add_object_different_unique_values_positive(self):
         """
         Create object: only unique fields are different, other values are equal to existing object fields
@@ -366,6 +365,7 @@ class AddPositiveCases(object):
                     already_in_check[other_group].append(other_group_field)
                 checks_list.append(list(set(fields_for_change)))
 
+        checks_list = checks_list or ((),)
         for fields_for_change in checks_list:
             self.prepare_for_add()
             existing_obj = self.get_existing_obj()
@@ -400,8 +400,8 @@ class AddPositiveCases(object):
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
-                self.errors_append(text='Fields %s was changed, others equals to fields of existing object' %
-                                   fields_for_change)
+                self.errors_append(text='Fields (%s) was changed, others equals to fields of existing object' %
+                                   ', '.join(fields_for_change))
 
     @only_with_obj
     @only_with(('unique_fields_add', 'unique_with_case',))
@@ -2408,7 +2408,6 @@ class EditPositiveCases(object):
                 mail.outbox = []
 
     @only_with_obj
-    @only_with('unique_fields_edit')
     def test_edit_object_different_unique_values_positive(self):
         """
         Change object: only unique fields are different, other values are equal to existing object fields
@@ -2432,6 +2431,7 @@ class EditPositiveCases(object):
                     already_in_check[other_group].append(other_group_field)
                 checks_list.append(list(set(fields_for_change)))
 
+        checks_list = checks_list or ((),)
         for fields_for_change in checks_list:
             obj_for_edit = self.get_obj_for_edit()
             existing_obj = self.get_other_obj_with_filled(fields_for_change, obj_for_edit)
@@ -2463,8 +2463,8 @@ class EditPositiveCases(object):
                 exclude = getattr(self, 'exclude_from_check_edit', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
-                self.errors_append(text='Fields %s was changed, others equals to fields of existing object' %
-                                   fields_for_change)
+                self.errors_append(text='Fields (%s) was changed, others equals to fields of existing object' %
+                                   ', '.join(fields_for_change))
 
     @only_with_obj
     @only_with(('unique_fields_edit', 'unique_with_case',))
