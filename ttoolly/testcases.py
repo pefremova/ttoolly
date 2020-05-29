@@ -385,6 +385,10 @@ class AddPositiveCases(object):
                 while n < 3 and (not value or existing_objs.filter(**{field: value}).exists()):
                     n += 1
                     value = self.get_value_for_field(None, field)
+                if existing_objs.filter(**{field: value}).exists():
+                    raise Exception(
+                        "Can't generate value for field \"%s\" that not exists. Now is \"%s\"" % (field, value))
+
                 params[field] = value
 
             self.fill_fields_from_obj(params, existing_obj,
@@ -400,8 +404,16 @@ class AddPositiveCases(object):
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
-                self.errors_append(text='Fields (%s) was changed, others equals to fields of existing object' %
-                                   ', '.join(fields_for_change))
+                self.errors_append(text='Values in (%s) was changed, others equals to fields of existing object'
+                                   '\nExisting values:\n%s\n\nNew params:\n%s' %
+                                   (', '.join(fields_for_change),
+                                    ',\n'.join('field "%s" with value "%s"' %
+                                               (field,
+                                                self.get_params_according_to_type(
+                                                    self._get_field_value_by_name(existing_obj, field), '')[0])
+                                               for field in fields_for_change),
+                                    ',\n'.join('field "%s" with value "%s"' % (field, params[field])
+                                               for field in fields_for_change if field in viewkeys(params))))
 
     @only_with_obj
     @only_with(('unique_fields_add', 'unique_with_case',))
@@ -448,13 +460,13 @@ class AddPositiveCases(object):
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
-                                       (', '.join('field "%s" with value "%s"\n' %
-                                                  (field,
-                                                   self.get_params_according_to_type(
-                                                       self._get_field_value_by_name(existing_obj, field), '')[0])
-                                                  for field in el),
-                                        ', '.join('field "%s" with value "%s"\n' % (field, params[field])
-                                                  for field in el if field in viewkeys(params))))
+                                       (',\n'.join('field "%s" with value "%s"' %
+                                                   (field,
+                                                    self.get_params_according_to_type(
+                                                        self._get_field_value_by_name(existing_obj, field), '')[0])
+                                                   for field in el),
+                                        ',\n'.join('field "%s" with value "%s"' % (field, params[field])
+                                                   for field in el if field in viewkeys(params))))
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2451,6 +2463,9 @@ class EditPositiveCases(object):
                 while n < 3 and (not value or existing_objs.filter(**{field: value}).exists()):
                     n += 1
                     value = self.get_value_for_field(None, field)
+                if existing_objs.filter(**{field: value}).exists():
+                    raise Exception(
+                        "Can't generate value for field \"%s\" that not exists. Now is \"%s\"" % (field, value))
                 params[field] = value
 
             self.fill_fields_from_obj(params, existing_obj,
@@ -2463,8 +2478,16 @@ class EditPositiveCases(object):
                 exclude = getattr(self, 'exclude_from_check_edit', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
-                self.errors_append(text='Fields (%s) was changed, others equals to fields of existing object' %
-                                   ', '.join(fields_for_change))
+                self.errors_append(text='Values in (%s) was changed, others equals to fields of existing object'
+                                   '\nExisting values:\n%s\n\nNew params:\n%s' %
+                                   (', '.join(fields_for_change),
+                                    ',\n'.join('field "%s" with value "%s"' %
+                                               (field,
+                                                self.get_params_according_to_type(
+                                                    self._get_field_value_by_name(existing_obj, field), '')[0])
+                                               for field in fields_for_change),
+                                    ',\n'.join('field "%s" with value "%s"' % (field, params[field])
+                                               for field in fields_for_change if field in viewkeys(params))))
 
     @only_with_obj
     @only_with(('unique_fields_edit', 'unique_with_case',))
@@ -2508,13 +2531,13 @@ class EditPositiveCases(object):
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For existing values:\n%s\nnew params:\n%s' %
-                                       (', '.join('field "%s" with value "%s"\n' %
-                                                  (field,
-                                                   self.get_params_according_to_type(
-                                                       self._get_field_value_by_name(existing_obj, field), '')[0])
-                                                  for field in el),
-                                        ', '.join('field "%s" with value "%s"\n' % (field, params[field])
-                                                  for field in el if field in viewkeys(params))))
+                                       (',\n'.join('field "%s" with value "%s"' %
+                                                   (field,
+                                                    self.get_params_according_to_type(
+                                                        self._get_field_value_by_name(existing_obj, field), '')[0])
+                                                   for field in el),
+                                        ',\n'.join('field "%s" with value "%s"' % (field, params[field])
+                                                   for field in el if field in viewkeys(params))))
                 finally:
                     mail.outbox = []
 
