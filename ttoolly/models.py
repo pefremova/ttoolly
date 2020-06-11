@@ -1996,12 +1996,14 @@ class FormCommonMixIn(object):
                     prepare_custom_file_for_tests(value.path)
                 params[field] = ContentFile(value.file.read(), os.path.basename(value.name))
             elif self.is_date_field(field):
-                l = [re.findall('%s_\d' % field, k) for k in viewkeys(params)]
+                l = [re.findall('^%s_\d' % field, k) for k in viewkeys(params)]
                 subfields = [item for sublist in l for item in sublist]
                 if subfields:
                     for subfield in subfields:
                         params[subfield] = self.get_params_according_to_type(
-                            self._get_field_value_by_name(obj, field), '')[0]
+                            self._get_field_value_by_name(obj, subfield), '')[0]
+                else:
+                    params[field] = self.get_params_according_to_type(value, '')[0]
             else:
                 params[field] = self.get_params_according_to_type(value, '')[0]
 
