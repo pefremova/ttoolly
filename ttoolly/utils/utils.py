@@ -357,7 +357,8 @@ def get_captcha_codes():
     return {}
 
 
-def get_error(tr_limit=getattr(settings, 'TEST_TRACEBACK_LIMIT', None)):
+def get_error(tr_limit=None):
+    tr_limit = tr_limit or getattr(settings, 'TEST_TRACEBACK_LIMIT', None)
     etype, value, tb = sys.exc_info()
     result = ''
     if any([etype, value, tb]):
