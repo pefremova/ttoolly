@@ -772,7 +772,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     count_for_check = params.get('%s-TOTAL_FORMS' % name_on_form, None)
 
                 if value is not None:
-                    if count_for_check is not None and value.__class__.__name__ == 'RelatedManager':
+                    if count_for_check is not None and value.__class__.__name__ in ('RelatedManager',
+                                                                                    'ManyRelatedManager'):
                         try:
                             self.assertEqual(value.all().count(), count_for_check)
                         except Exception as e:
@@ -780,7 +781,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                                                   else field) + force_text(e))
 
                     for i, el in enumerate(value.all().order_by('pk')
-                                           if value.__class__.__name__ in ('RelatedManager', 'QuerySet')
+                                           if value.__class__.__name__ in ('RelatedManager', 'QuerySet',
+                                                                           'ManyRelatedManager')
                                            else [value, ]):
                         _params = dict([(k.replace('%s-%d-' % (name_on_form, i), ''),
                                          params[k]) for k in viewkeys(params) if
