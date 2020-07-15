@@ -408,8 +408,24 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def for_post_tear_down(self):
         self.del_files()
+
+        def get_settings_value(name, value=None):
+            if name.isdigit():
+                name = int(name)
+            if not '.' in name:
+                return value and value[name] or getattr(settings, name)
+            else:
+                name, others = name.split('.', 1)
+                if name.isdigit():
+                    name = int(name)
+                if value:
+                    value = value[name]
+                else:
+                    value = getattr(settings, name)
+                return get_settings_value(others, value)
+
         for name in get_settings_for_move():
-            path = getattr(settings, name)
+            path = get_settings_value(name)
             if path.startswith(tempfile.gettempdir()):
                 rmtree(path)
         modified_settings = getattr(self, '_ttoolly_modified_settings', None)
@@ -419,9 +435,21 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def for_pre_setup(self):
         self.errors = []
         d = new_redis_settings()
+
+        def update_path(d, name):
+            if not '.' in name:
+                d[name] = tempfile.mkdtemp('_' + name)
+            else:
+                name, others = name.split('.', 1)
+                if name.isdigit():
+                    name = int(name)
+                d[name] = d.get(name, None) or self.deepcopy(getattr(settings, name))
+                update_path(d[name], others)
+
         if not getattr(settings, 'TEST_USE_REAL_SETTINGS', False):
-            d.update({name: tempfile.mkdtemp('_' + name)
-                      for name in get_settings_for_move()})
+            for name in get_settings_for_move():
+                update_path(d, name)
+
         self._ttoolly_modified_settings = override_settings(**d)
         self._ttoolly_modified_settings.enable()
         for k in [k for k in dir(self) if not k.startswith(('_', 'test_'))
