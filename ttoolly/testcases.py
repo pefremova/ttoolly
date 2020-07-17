@@ -52,7 +52,7 @@ class ListNegativeCases(object):
         """
         for field in viewkeys(self.filter_params):
             self.check_and_create_objects_for_filter(field)
-            for value in ('qwe', '1', '0', 'йцу'):
+            for value in ('qwe', '1', '0', 'йцу', '²'):
                 try:
                     response = self.client.get(self.get_url(self.url_list), {field: value}, follow=True,
                                                **self.additional_params)
@@ -1482,7 +1482,7 @@ class AddNegativeCases(object):
         """
         for field in [f for f in self.digital_fields_add]:
             message_type = 'wrong_value_int' if field in self.int_fields_add else 'wrong_value_digital'
-            for value in ('q', 'й', 'NaN', 'inf', '-inf'):
+            for value in ('q', 'й', 'NaN', 'inf', '-inf', '²'):
                 sp = transaction.savepoint()
                 try:
                     self.prepare_for_add()
@@ -3436,7 +3436,7 @@ class EditNegativeCases(object):
         """
         for field in self.digital_fields_edit:
             message_type = 'wrong_value_int' if field in self.int_fields_edit else 'wrong_value_digital'
-            for value in ('q', 'й', 'NaN', 'inf', '-inf'):
+            for value in ('q', 'й', 'NaN', 'inf', '-inf', '²'):
                 sp = transaction.savepoint()
                 try:
                     obj_for_edit = self.get_obj_for_edit()
