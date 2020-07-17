@@ -2095,7 +2095,7 @@ class FormCommonMixIn(object):
     def get_existing_obj(self):
         if '_get_obj_for_edit' in dir(self):
             return self._get_obj_for_edit()
-        return choice(self.get_obj_manager.all())
+        return self.get_obj_manager.order_by('?').first()
 
     def get_existing_obj_with_filled(self, param_names):
         obj = self.get_existing_obj()
@@ -2117,7 +2117,7 @@ class FormCommonMixIn(object):
                     filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.get_obj_manager.filter(filters)
         if qs.exists():
-            obj = choice(qs)
+            obj = qs.order_by('?').first()
 
         """Next block is like in create_copy"""
         inline_models_dict = {}
@@ -2287,7 +2287,7 @@ class EditCommonMixIn(object):
     def get_obj_id_for_edit(self):
         if '%' not in self.url_edit and '/' in self.url_edit:
             return int(re.findall(r"/(\d+)/", self.url_edit)[0])
-        return choice(self.get_obj_manager.all()).pk
+        return self.get_obj_manager.order_by('?').values_list('pk', flat=True).first()
 
     def _get_obj_for_edit(self):
         return self.get_obj_manager.get(pk=self.get_obj_id_for_edit())
@@ -2318,7 +2318,7 @@ class EditCommonMixIn(object):
         qs = self.get_obj_manager.filter(filters)
 
         if qs.exists():
-            return choice(qs)
+            return qs.order_by('?').first()
         else:
             return self.create_copy(other_obj, param_names)
 
@@ -2621,7 +2621,7 @@ class ChangePasswordCommonMixIn(object):
         self.assert_objects_equal(new_user, user)
 
     def _get_obj_for_edit(self):
-        user = choice(self.get_obj_manager.all())
+        user = self.get_obj_manager.order_by('?').first()
         self.user_relogin(user.email, self.current_password)
         user = self.get_obj_manager.get(pk=user.pk)
         return user
@@ -2753,7 +2753,7 @@ class ResetPasswordCommonMixIn(BlacklistMixIn):
         return user.email
 
     def _get_obj_for_edit(self):
-        user = choice(self.get_obj_manager.all())
+        user = self.get_obj_manager.order_by('?').first()
         self.username = self.get_login_name(user)
         return user
 
