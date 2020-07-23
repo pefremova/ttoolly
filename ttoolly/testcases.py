@@ -194,8 +194,8 @@ class AddPositiveCases(object):
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
-                for field in group:
-                    self.set_empty_value_for_field(params, field)
+                for f in group:
+                    self.set_empty_value_for_field(params, f)
                 """if unique fields"""
                 mail.outbox = []
                 initial_obj_count = self.get_obj_manager.count()
@@ -245,8 +245,8 @@ class AddPositiveCases(object):
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
-                for field in group:
-                    self.pop_field_from_params(params, field)
+                for f in group:
+                    self.pop_field_from_params(params, f)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.fill_all_fields((field,), params)
                 initial_obj_count = self.get_obj_manager.count()
