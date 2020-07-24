@@ -427,6 +427,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         for name in get_settings_for_move():
             path = get_settings_value(name)
             if path.startswith(tempfile.gettempdir()):
+                filename, ext = os.path.splitext(os.path.basename(path))
+                if ext:
+                    path = os.path.dirname(path)
                 rmtree(path)
         modified_settings = getattr(self, '_ttoolly_modified_settings', None)
         if modified_settings:
@@ -438,7 +441,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         def update_path(d, name):
             if not '.' in name:
-                d[name] = tempfile.mkdtemp('_' + name)
+                current = getattr(settings, name, '')
+                filename, ext = os.path.splitext(os.path.basename(current))
+                if ext:
+                    d[name] = os.path.join(tempfile.mkdtemp('_' + name), filename + ext)
+                else:
+                    d[name] = tempfile.mkdtemp('_' + name)
             else:
                 name, others = name.split('.', 1)
                 if name.isdigit():
