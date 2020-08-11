@@ -27,7 +27,6 @@ from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
 from django.db.models import Q, Manager, DateTimeField
-from django.db.models.fields import FieldDoesNotExist
 from django.http import HttpRequest
 from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
@@ -69,9 +68,15 @@ else:
 
 try:
     from django.core.urlresolvers import reverse, resolve
-except Exception:
+except ImportError:
     # Django 2.0
     from django.urls import reverse, resolve
+
+try:
+    from django.db.models.fields import FieldDoesNotExist
+except ImportError:
+    # Django 3.1+
+    from django.core.exceptions import FieldDoesNotExist
 
 
 __all__ = ('ChangePasswordMixIn',
