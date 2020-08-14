@@ -309,7 +309,7 @@ class AddPositiveCases(object):
             self.formatted_assert_errors()
 
         for k in set(viewkeys(max_length_params)).intersection((k for el in viewkeys(self.all_unique) for k in el)):
-            max_length_params[k] = self.get_value_for_field(fields_for_check[k], field)
+            max_length_params[k] = self.get_value_for_field(fields_for_check[k], k)
 
         for field, length in viewitems(fields_for_check):
             sp = transaction.savepoint()
@@ -2370,7 +2370,7 @@ class EditPositiveCases(object):
             self.formatted_assert_errors()
 
         for k in set(viewkeys(max_length_params)).intersection((k for el in viewkeys(self.all_unique) for k in el)):
-            max_length_params[k] = self.get_value_for_field(fields_for_check[k], field)
+            max_length_params[k] = self.get_value_for_field(fields_for_check[k], k)
 
         for field, length in viewitems(fields_for_check):
             sp = transaction.savepoint()
