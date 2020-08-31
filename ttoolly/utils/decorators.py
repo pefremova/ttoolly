@@ -137,7 +137,7 @@ def use_in_all_tests(decorator):
             child = cls
 
         for attr in cls.__dict__:
-            if callable(getattr(cls, attr)) and attr.startswith('test_'):
+            if attr.startswith('test_') and callable(getattr(cls, attr)):
                 fn = getattr(child, attr, getattr(cls, attr))
                 if fn and decorator not in getattr(fn, 'decorators', ()):
                     decorated = decorator(fn)
