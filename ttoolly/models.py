@@ -2014,7 +2014,6 @@ class FormCommonMixIn(object):
         params[block_name + '-TOTAL_FORMS'] = max_count
 
     def fill_all_fields(self, fields, params):
-        fields = set(fields)
         for field in [f for f in fields if not f.endswith('-DELETE')]:
             existing_value = params.get(field, None)
             if existing_value in (None, '', [], ()):
