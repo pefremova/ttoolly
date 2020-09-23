@@ -1752,6 +1752,7 @@ class AddNegativeCases(object):
                 continue
             size = convert_size_to_bytes(sum_max_size)
             current_size = size + 100
+            human_current_size = self.humanize_file_size(current_size)
             max_size = self.humanize_file_size(size)
             one_size = current_size / field_dict['max_count']
             try:
@@ -3712,6 +3713,7 @@ class EditNegativeCases(object):
                 current_size = size + 100
                 max_size = self.humanize_file_size(size)
                 one_size = current_size / field_dict['max_count']
+                human_current_size = self.humanize_file_size(current_size)
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
