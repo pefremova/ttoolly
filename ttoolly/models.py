@@ -621,7 +621,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             except Exception:
                 self.errors_append(errors, text='[%s]' % field)
         try:
-            self.assert_text_equal_by_symbol(m.body, default_params['body'])
+            if getattr(m, 'content_subtype', None) in ('html', 'text/html'):
+                self.assertHTMLEqual(m.body, default_params['body'])
+            else:
+                self.assert_text_equal_by_symbol(m.body, default_params['body'])
         except Exception:
             self.errors_append(errors, text='[body]')
 
