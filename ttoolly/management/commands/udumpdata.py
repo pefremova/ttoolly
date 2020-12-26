@@ -34,7 +34,8 @@ class Command(BaseCommand):
                 qs = qs.filter(pk__in=kwargs.get('pks'))
             objects_list.extend(qs)
 
-            if 'PolymorphicModelBase' in [b.__name__ for b in obj_model.__class__.__bases__]:
+            if ('PolymorphicModelBase' in [b.__name__ for b in obj_model.__class__.__bases__] or
+                    obj_model.__class__.__name__ == 'PolymorphicModelBase'):
                 polymorphic_model = obj_model.polymorphic_ctype.field.model
                 polymorphic_model = polymorphic_model if polymorphic_model != obj_model else obj_model
                 base_objects_qs = polymorphic_model.base_objects.filter(
