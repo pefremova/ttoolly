@@ -1607,12 +1607,14 @@ class FormCommonMixIn(object):
     one_of_fields = None
     one_of_fields_add = None
     one_of_fields_edit = None
+    only_if_value = None
     required_fields = None
     required_fields_add = None
     required_fields_edit = None
     required_if = None
     required_if_add = None
     required_if_edit = None
+    required_if_value = None
     status_code_error = 200
     status_code_not_exist = 404
     status_code_success_add = 200
