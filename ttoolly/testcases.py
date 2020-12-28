@@ -105,15 +105,23 @@ class AddPositiveCases(object):
         """
         self.prepare_for_add()
         params = self.deepcopy(self.default_params_add)
-        prepared_depends_fields = self.prepare_depend_from_one_of(
-            self.one_of_fields_add) if self.one_of_fields_add else {}
-        only_independent_fields = set(self.all_fields_add).difference(viewkeys(prepared_depends_fields))
-        for field in viewkeys(prepared_depends_fields):
-            self.set_empty_value_for_field(params, field)
-        self.fill_all_fields(list(only_independent_fields) + self.required_fields_add +
-                             self._get_required_from_related(self.required_related_fields_add), params)
         self.update_params(params)
         self.update_captcha_params(self.get_url(self.url_add), params)
+        prepared_depends_fields = self.prepare_depend_from_one_of(
+            self.one_of_fields_add) if self.one_of_fields_add else {}
+
+        only_independent_fields = set(self.all_fields_add).difference(
+            viewkeys(prepared_depends_fields)).difference(viewkeys(self.only_if_value or {}))
+
+        for field in viewkeys(prepared_depends_fields):
+            self.set_empty_value_for_field(params, field)
+
+        self.fill_all_fields(list(only_independent_fields) + self.required_fields_add +
+                             self._get_required_from_related(self.required_related_fields_add),
+                             params)
+        only_if_value_fields = [field for field, values in viewitems(self.only_if_value or {}) if
+                                all((params.get(k, None) == v for k, v in viewitems(values)))]
+        self.fill_all_fields(only_if_value_fields, params)
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
         try:
@@ -1264,6 +1272,52 @@ class AddPositiveCases(object):
 
     @only_with_obj
     @only_with('required_if_value')
+    def test_add_object_required_related_empty_lead_with_other_value_positive(self):
+        """
+        Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
+        Поле, включающее обязательность, заполнено другим значением - связанное поле должно быть необязательным
+        """
+        for field, values in self.only_if_value.items():
+            if not isinstance(values, (list, tuple)):
+                values = [values]
+
+            for value in values:
+                for test_field, v in value.items():
+                    additional_params = self.deepcopy(value)
+                    self.prepare_for_add()
+                    params = self.deepcopy(self.default_params_add)
+                    self.update_params(params)
+                    self.update_captcha_params(self.get_url(self.url_add), params)
+                    params[field] = ''
+                    self.set_empty_value_for_field(params, field)
+                    test_value = v
+                    excluded_values = [d[test_field] for l in self.only_if_value.values()
+                                       for d in (l if isinstance(l, (list, tuple)) else [l])
+                                       if test_field in d.keys()]
+                    n = 0
+                    try:
+                        while test_value in excluded_values and n < 5:
+                            test_value = self.get_value_for_field(None, test_field)
+                            n += 1
+                        if test_value == v:
+                            raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
+                        additional_params[test_field] = test_value
+                        params.update(additional_params)
+
+                        new_object = None
+                        initial_obj_count = self.get_obj_manager.count()
+                        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+
+                        response = self.send_add_request(params)
+                        self.check_on_add_success(response, initial_obj_count, locals())
+                        new_object = self.get_obj_manager.exclude(pk__in=old_pks).last()
+                        exclude = getattr(self, 'exclude_from_check_add', [])
+                        self.assert_object_fields(new_object, params, exclude=exclude)
+                    except Exception:
+                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
+
+    @only_with_obj
+    @only_with('required_if_value')
     def test_add_object_required_related_filled_lead_empty_positive(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
@@ -2224,7 +2278,10 @@ class AddNegativeCases(object):
                     self.prepare_for_add()
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
+                    self.update_captcha_params(self.get_url(self.url_add), params)
                     additional_params = self.deepcopy(value)
+
+                    params[field] = self.get_value_for_field(None, field)
                     test_value = v
                     excluded_values = [d[test_field] for l in self.only_if_value.values()
                                        for d in (l if isinstance(l, (list, tuple)) else [l])
@@ -2238,9 +2295,7 @@ class AddNegativeCases(object):
                             raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
                         additional_params[test_field] = test_value
                         params.update(additional_params)
-                        params[field] = self.get_value_for_field(None, field)
 
-                        self.update_captcha_params(self.get_url(self.url_add), params)
                         new_object = None
                         initial_obj_count = self.get_obj_manager.count()
                         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -2338,11 +2393,15 @@ class EditPositiveCases(object):
         self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
         prepared_depends_fields = self.prepare_depend_from_one_of(
             self.one_of_fields_edit) if self.one_of_fields_edit else {}
-        only_independent_fields = set(self.all_fields_edit).difference(viewkeys(prepared_depends_fields))
+        only_independent_fields = set(self.all_fields_edit).difference(
+            viewkeys(prepared_depends_fields)).difference(viewkeys(self.only_if_value or {}))
         for field in viewkeys(prepared_depends_fields):
             self.set_empty_value_for_field(params, field)
         self.fill_all_fields(list(only_independent_fields) + self.required_fields_edit +
                              self._get_required_from_related(self.required_related_fields_edit), params)
+        only_if_value_fields = [field for field, values in viewitems(self.only_if_value or {}) if
+                                all((params.get(k, None) == v for k, v in viewitems(values)))]
+        self.fill_all_fields(only_if_value_fields, params)
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -3372,6 +3431,49 @@ class EditPositiveCases(object):
 
     @only_with_obj
     @only_with('required_if_value')
+    def test_edit_object_required_related_empty_lead_with_other_value_positive(self):
+        """
+        Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
+        Поле, включающее обязательность, заполнено другим значением - связанное поле должно быть необязательным
+        """
+        for field, values in self.only_if_value.items():
+            if not isinstance(values, (list, tuple)):
+                values = [values]
+
+            for value in values:
+                for test_field, v in value.items():
+                    additional_params = self.deepcopy(value)
+                    obj_for_edit = self.get_obj_for_edit()
+                    params = self.deepcopy(self.default_params_edit)
+                    self.update_params(params)
+                    self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+                    params[field] = ''
+                    self.set_empty_value_for_field(params, field)
+                    test_value = v
+                    excluded_values = [d[test_field] for l in self.only_if_value.values()
+                                       for d in (l if isinstance(l, (list, tuple)) else [l])
+                                       if test_field in d.keys()]
+                    n = 0
+                    try:
+                        while test_value in excluded_values and n < 5:
+                            test_value = self.get_value_for_field(None, test_field)
+                            n += 1
+                        if test_value == v:
+                            raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
+                        additional_params[test_field] = test_value
+                        params.update(additional_params)
+
+                        new_object = None
+                        response = self.send_edit_request(obj_for_edit.pk, params)
+                        self.check_on_edit_success(response, locals())
+                        new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+                        exclude = getattr(self, 'exclude_from_check_edit', [])
+                        self.assert_object_fields(new_object, params, exclude=exclude)
+                    except Exception:
+                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
+
+    @only_with_obj
+    @only_with('required_if_value')
     def test_edit_object_required_related_filled_lead_empty_positive(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
@@ -4305,7 +4407,7 @@ class EditNegativeCases(object):
     @only_with('required_if_value')
     def test_edit_object_related_empty_lead_with_value_negative(self):
         """
-        Проверка полей, возможность заполнения которых зависит от значения в другом поле.
+        Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
         Поле-инициатор заполнено значением, зависимое поле не заполнено
         """
         message_type = 'empty_required'
