@@ -184,6 +184,12 @@ class AddPositiveCases(object):
             self.set_empty_value_for_field(params, field)
 
         self.fill_all_fields(required_fields, params)
+        for related_field, lead_params in viewitems(self.required_if_value or {}):
+            if (field in viewkeys(lead_params) and
+                    lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
+                    and params.get(related_field, None) in (None, '')):
+                params[related_field] = self.get_value_for_field(None, related_field)
+
         self.update_captcha_params(self.get_url(self.url_add), params)
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -281,10 +287,17 @@ class AddPositiveCases(object):
         if not fields_for_check:
             self.skipTest('No any string fields')
         max_length_params = {}
-        fields_for_clean = []
+        only_if_values = {}
+        need_one_by_one_check = []
         for field, length in viewitems(fields_for_check):
             self.clean_depend_fields_add(max_length_params, field)
             max_length_params[field] = self.get_value_for_field(length, field)
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -292,9 +305,11 @@ class AddPositiveCases(object):
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(only_if_values)
             params.update(max_length_params)
-            for depended_field in fields_for_clean:
-                self.set_empty_value_for_field(params, depended_field)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.send_add_request(params)
@@ -310,8 +325,11 @@ class AddPositiveCases(object):
                                                   else str(max_length_params[field])[:1000] + '...')
                                                  for field, length in viewitems(fields_for_check)]))
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors and not set(viewkeys(fields_for_check)).intersection(viewkeys(self._depend_one_of_fields_add)):
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(viewkeys(fields_for_check)).intersection(viewkeys(self._depend_one_of_fields_add))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -329,7 +347,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = max_length_params[field]
+                self.fill_with_related(params, field, max_length_params[field])
                 if self.is_file_field(field):
                     if self.is_file_list(field):
                         for f in params[field]:
@@ -451,11 +469,11 @@ class AddPositiveCases(object):
                         value = self.get_value_for_field(None, el_field)
                     else:
                         value = self._get_field_value_by_name(existing_obj, el_field)
-                    params[el_field] = self.get_params_according_to_type(value, '')[0]
+                    self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
                     if el_field in self.unique_with_case:
                         self.get_obj_manager.filter(pk=existing_obj.pk).update(
                             **{el_field: getattr(value, existing_command)()})
-                        params[el_field] = getattr(params[el_field], new_command)()
+                        self.fill_with_related(params, el_field, getattr(params[el_field], new_command)())
                 existing_obj = self.get_obj_manager.get(pk=existing_obj.pk)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -493,12 +511,26 @@ class AddPositiveCases(object):
             self.clean_depend_fields_add(max_value_params, field)
             max_value_params[field] = min(max_values)
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         sp = transaction.savepoint()
         try:
             self.prepare_for_add()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
             params.update(max_value_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -514,8 +546,11 @@ class AddPositiveCases(object):
                                                  (field, max_value_params[field])
                                                  for field in fields_for_check]))
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -530,7 +565,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = value
+                self.fill_with_related(params, field, max_length_params[field])
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -559,12 +594,27 @@ class AddPositiveCases(object):
             self.clean_depend_fields_add(min_value_params, field)
             min_value_params[field] = max(min_values)
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         sp = transaction.savepoint()
         try:
             self.prepare_for_add()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
+            self.clean_depend_fields_add(params, field)
             params.update(min_value_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -580,8 +630,11 @@ class AddPositiveCases(object):
                                                  (field, min_value_params[field])
                                                  for field in fields_for_check]))
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -597,7 +650,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = value
+                self.fill_with_related(params, field, value)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -684,12 +737,26 @@ class AddPositiveCases(object):
             max_count = field_dict['max_count']
             max_count_params[field] = self.get_random_file(field, count=max_count)
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         sp = transaction.savepoint()
         try:
             self.prepare_for_add()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
             params.update(max_count_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -703,8 +770,11 @@ class AddPositiveCases(object):
             self.errors_append(text='For max count files in all fields\n%s' %
                                     '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check]))
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -718,7 +788,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = max_count_params[field]
+                self.fill_with_related(params, field, max_count_params[field])
                 for f in params[field]:
                     f.seek(0)
                 initial_obj_count = self.get_obj_manager.count()
@@ -750,12 +820,27 @@ class AddPositiveCases(object):
             self.clean_depend_fields_add(max_size_params, field)
             max_size_params[field] = self.get_random_file(field, size=size, count=count)
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         sp = transaction.savepoint()
         try:
             self.prepare_for_add()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
+            self.clean_depend_fields_add(params, field)
             params.update(max_size_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -776,8 +861,11 @@ class AddPositiveCases(object):
                                                         self.file_fields_params_add[field].get('one_max_size', '10M'))))
                                                for field in fields_for_check]))
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -794,7 +882,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = max_size_params[field]
+                self.fill_with_related(params, field, max_size_params[field])
                 if self.is_file_list(field):
                     for f in params[field]:
                         f.seek(0)
@@ -835,7 +923,8 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
+                self.fill_with_related(params, field, self.get_random_file(
+                    field, size=one_size, count=field_dict['max_count']))
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -872,7 +961,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
@@ -906,7 +995,7 @@ class AddPositiveCases(object):
                 f = self.get_random_file(field, width=width, height=height)
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -937,7 +1026,7 @@ class AddPositiveCases(object):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 f = self.get_random_file(field, width=width, height=height)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -962,6 +1051,16 @@ class AddPositiveCases(object):
         if not fields_for_check:
             self.skipTest('No any string fields')
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         test_params = {}
         fields_for_clean = []
         for field in fields_for_check:
@@ -973,6 +1072,11 @@ class AddPositiveCases(object):
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
+            self.clean_depend_fields_add(params, field)
             params.update(test_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -986,8 +1090,11 @@ class AddPositiveCases(object):
         except Exception:
             self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_add)):
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_add))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -1001,7 +1108,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = test_params[field]
+                self.fill_with_related(params, field, test_params[field])
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -1028,11 +1135,26 @@ class AddPositiveCases(object):
             self.clean_depend_fields_add(test_params, field)
             test_params[field] = f
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         try:
             self.prepare_for_add()
             params = self.deepcopy(self.default_params_add)
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
+            self.clean_depend_fields_add(params, field)
             params.update(test_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -1046,8 +1168,11 @@ class AddPositiveCases(object):
         except Exception:
             self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -1060,7 +1185,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = test_params[field]
+                self.fill_with_related(params, field, test_params[field])
                 if self.is_file_list(field):
                     for f in params[field]:
                         f.seek(0)
@@ -1123,6 +1248,7 @@ class AddPositiveCases(object):
                     start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
                                                                          settings.DATE_INPUT_FORMATS[0])).date()
                 self.fill_field(params, start_field, start_value)
+                self.fill_with_related(params, start_field, params[start_value])
                 if date_diff is None:
                     end_value = None
                     self.set_empty_value_for_field(params, end_field)
@@ -1135,6 +1261,7 @@ class AddPositiveCases(object):
                     elif isinstance(end_value, datetime):
                         end_value = end_value.date()
                     self.fill_field(params, end_field, end_value)
+                    self.fill_with_related(params, end_field, params[end_field])
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
@@ -1288,21 +1415,18 @@ class AddPositiveCases(object):
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_add), params)
-                    params[field] = ''
-                    self.set_empty_value_for_field(params, field)
                     test_value = v
-                    excluded_values = [d[test_field] for l in self.only_if_value.values()
-                                       for d in (l if isinstance(l, (list, tuple)) else [l])
-                                       if test_field in d.keys()]
                     n = 0
                     try:
-                        while test_value in excluded_values and n < 5:
+                        while test_value == v and n < 5:
                             test_value = self.get_value_for_field(None, test_field)
                             n += 1
                         if test_value == v:
                             raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
-                        additional_params[test_field] = test_value
-                        params.update(additional_params)
+                        self.fill_with_related(params, test_field, test_value)
+                        params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
+                        params[field] = ''
+                        self.set_empty_value_for_field(params, field)
 
                         new_object = None
                         initial_obj_count = self.get_obj_manager.count()
@@ -1464,7 +1588,7 @@ class AddNegativeCases(object):
             self.update_captcha_params(self.get_url(self.url_add), params)
             self.clean_depend_fields_add(params, field)
             current_length = length + 1
-            params[field] = self.get_value_for_field(current_length, field)
+            self.fill_with_related(params, field, self.get_value_for_field(current_length, field))
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
@@ -1494,7 +1618,7 @@ class AddNegativeCases(object):
             self.update_captcha_params(self.get_url(self.url_add), params)
             self.clean_depend_fields_add(params, field)
             current_length = length - 1
-            params[field] = self.get_value_for_field(current_length, field)
+            self.fill_with_related(params, field, self.get_value_for_field(current_length, field))
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
@@ -1519,7 +1643,7 @@ class AddNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = value
+                self.fill_with_related(params, field, value)
                 initial_obj_count = self.get_obj_manager.count()
                 try:
                     response = self.send_add_request(params)
@@ -1545,7 +1669,7 @@ class AddNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = [value, ]
+                self.fill_with_related(params, field, [value, ])
                 initial_obj_count = self.get_obj_manager.count()
                 try:
                     response = self.send_add_request(params)
@@ -1577,7 +1701,7 @@ class AddNegativeCases(object):
                     continue
                 self.clean_depend_fields_add(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                params[el_field] = self.get_params_according_to_type(value, '')[0]
+                self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
@@ -1613,7 +1737,7 @@ class AddNegativeCases(object):
                     continue
                 self.clean_depend_fields_add(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                params[el_field] = self.get_params_according_to_type(value, '')[0]
+                self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
                 if not el_field in other_fields and not el_field in self.unique_with_case:
                     params[el_field] = params[el_field].swapcase()
             initial_obj_count = self.get_obj_manager.count()
@@ -1647,7 +1771,7 @@ class AddNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.clean_depend_fields_add(params, field)
-                    params[field] = value
+                    self.fill_with_related(params, field, value)
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
@@ -1673,7 +1797,7 @@ class AddNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.clean_depend_fields_add(params, field)
-                    params[field] = value
+                    self.fill_with_related(params, field, value)
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
@@ -1700,7 +1824,7 @@ class AddNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.clean_depend_fields_add(params, field)
-                    params[field] = value
+                    self.fill_with_related(params, field, value)
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
@@ -1727,7 +1851,7 @@ class AddNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.clean_depend_fields_add(params, field)
-                    params[field] = value
+                    self.fill_with_related(params, field, value)
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
@@ -1847,7 +1971,8 @@ class AddNegativeCases(object):
                 self.clean_depend_fields_add(params, field)
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                  choice(field_dict.get('extensions', ('',)))] if s])
-                params[field] = self.get_random_file(field, filename=filename, count=current_count)
+                self.fill_with_related(params, field,
+                                       self.get_random_file(field, filename=filename, count=current_count))
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -1882,7 +2007,7 @@ class AddNegativeCases(object):
                 self.clean_depend_fields_add(params, field)
                 f = self.get_random_file(field, size=current_size)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
@@ -1919,7 +2044,7 @@ class AddNegativeCases(object):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 f = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
@@ -1950,7 +2075,7 @@ class AddNegativeCases(object):
                 self.clean_depend_fields_add(params, field)
                 f = self.get_random_file(field, size=0)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -1985,7 +2110,7 @@ class AddNegativeCases(object):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 f = self.get_random_file(field, filename=filename)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 try:
                     response = self.send_add_request(params)
@@ -2025,7 +2150,7 @@ class AddNegativeCases(object):
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
-                    params[field] = f
+                    self.fill_with_related(params, field, f)
                     initial_obj_count = self.get_obj_manager.count()
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     response = self.send_add_request(params)
@@ -2063,7 +2188,7 @@ class AddNegativeCases(object):
                     self.clean_depend_fields_add(params, field)
                     f = self.get_random_file(field, width=width, height=height)
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
-                    params[field] = f
+                    self.fill_with_related(params, field, f)
                     initial_obj_count = self.get_obj_manager.count()
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                     response = self.send_add_request(params)
@@ -2098,7 +2223,7 @@ class AddNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = test_params[field]
+                self.fill_with_related(params, field, test_params[field])
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
@@ -2121,7 +2246,7 @@ class AddNegativeCases(object):
             self.clean_depend_fields_add(params, field)
             f = self.get_random_file(field, filename='qwe\x00' + get_randname(10, 'wrd') + '.' +
                                      choice(field_dict.get('extensions', ['', ])))
-            params[field] = f
+            self.fill_with_related(params, field, f)
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
@@ -2192,6 +2317,7 @@ class AddNegativeCases(object):
                     start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
                                                                          settings.DATE_INPUT_FORMATS[0])).date()
                 self.fill_field(params, start_field, start_value)
+                self.fill_with_related(params, start_field, params[start_field])
                 end_value = start_value + timedelta(days=date_diff)
                 if time_diff is not None:
                     if not isinstance(end_value, datetime):
@@ -2200,6 +2326,7 @@ class AddNegativeCases(object):
                 elif isinstance(end_value, datetime):
                     end_value = end_value.date()
                 self.fill_field(params, end_field, end_value)
+                self.fill_with_related(params, end_field, params[end_field])
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 try:
@@ -2281,20 +2408,18 @@ class AddNegativeCases(object):
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     additional_params = self.deepcopy(value)
 
-                    params[field] = self.get_value_for_field(None, field)
                     test_value = v
-                    excluded_values = [d[test_field] for l in self.only_if_value.values()
-                                       for d in (l if isinstance(l, (list, tuple)) else [l])
-                                       if test_field in d.keys()]
                     n = 0
                     try:
-                        while test_value in excluded_values and n < 5:
+                        while test_value == v and n < 5:
                             test_value = self.get_value_for_field(None, test_field)
                             n += 1
                         if test_value == v:
                             raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
-                        additional_params[test_field] = test_value
-                        params.update(additional_params)
+
+                        self.fill_with_related(params, test_field, test_value)
+                        params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
+                        params[field] = self.get_value_for_field(None, field)
 
                         new_object = None
                         initial_obj_count = self.get_obj_manager.count()
@@ -2306,7 +2431,8 @@ class AddNegativeCases(object):
                         self.assert_errors(response, error_message)
                         self.check_on_add_error(response, initial_obj_count, locals())
                     except Exception:
-                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
+                        self.errors_append(text='%s=%s\n%s' % (field, params.get(field, None),
+                                                               {test_field: params[test_field]}))
 
     @only_with_obj
     @only_with('required_if_value')
@@ -2460,6 +2586,11 @@ class EditPositiveCases(object):
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         self.fill_all_fields(required_fields, params)
+        for related_field, lead_params in viewitems(self.required_if_value or {}):
+            if (field in viewkeys(lead_params) and
+                    lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
+                    and params.get(related_field, None) in (None, '')):
+                params[related_field] = self.get_value_for_field(None, related_field)
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -2555,20 +2686,30 @@ class EditPositiveCases(object):
 
         max_length_params = {}
         file_fields = []
-
-        fields_for_clean = []
+        only_if_values = {}
+        need_one_by_one_check = []
         for field, length in viewitems(fields_for_check):
-            self.clean_depend_fields_edit(max_length_params, field)
+            self.clean_depend_fields_add(max_length_params, field)
             max_length_params[field] = self.get_value_for_field(length, field)
             if self.is_file_field(field):
                 file_fields.append(field)
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+            params.update(only_if_values)
             params.update(max_length_params)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -2606,8 +2747,11 @@ class EditPositiveCases(object):
         finally:
             mail.outbox = []
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors and not set(viewkeys(fields_for_check)).intersection(viewkeys(self._depend_one_of_fields_edit)):
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(viewkeys(fields_for_check)).intersection(viewkeys(self._depend_one_of_fields_edit))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -2623,7 +2767,7 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = max_length_params[field]
+                self.fill_with_related(params, field, max_length_params[field])
                 if field in file_fields:
                     if self.is_file_list(field):
                         for f in params[field]:
@@ -2709,7 +2853,7 @@ class EditPositiveCases(object):
                 if existing_objs.filter(**{field: value}).exists():
                     raise Exception(
                         "Can't generate value for field \"%s\" that not exists. Now is \"%s\"" % (field, value))
-                params[field] = value
+                self.fill_with_related(params, field, value)
 
             self.fill_fields_from_obj(params, existing_obj,
                                       set([f for f in self.all_fields_edit if f not in
@@ -2759,7 +2903,7 @@ class EditPositiveCases(object):
                         value = self.get_value_for_field(None, el_field)
                     else:
                         value = self._get_field_value_by_name(existing_obj, el_field)
-                    params[el_field] = self.get_params_according_to_type(value, '')[0]
+                    self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
                     if el_field in self.unique_with_case:
                         self.get_obj_manager.filter(pk=existing_obj.pk).update(
                             **{el_field: getattr(value, existing_command)()})
@@ -2800,6 +2944,15 @@ class EditPositiveCases(object):
             fields_for_check.append(field)
             self.clean_depend_fields_edit(min_value_params, field)
             min_value_params[field] = max(min_values)
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -2821,8 +2974,11 @@ class EditPositiveCases(object):
         finally:
             mail.outbox = []
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -2836,7 +2992,7 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = value
+                self.fill_with_related(params, field, value)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -2865,11 +3021,25 @@ class EditPositiveCases(object):
             self.clean_depend_fields_edit(max_value_params, field)
             max_value_params[field] = min(max_values)
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         sp = transaction.savepoint()
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
             params.update(max_value_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -2885,8 +3055,11 @@ class EditPositiveCases(object):
         finally:
             mail.outbox = []
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -2900,7 +3073,7 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = value
+                self.fill_with_related(params, field, value)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -2985,11 +3158,25 @@ class EditPositiveCases(object):
             self.clean_depend_fields_edit(max_count_params, field)
             max_count_params[field] = f
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         sp = transaction.savepoint()
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
             params.update(max_count_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -3003,8 +3190,11 @@ class EditPositiveCases(object):
         finally:
             mail.outbox = []
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -3017,7 +3207,7 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = max_count_params[field]
+                self.fill_with_related(params, field, max_count_params[field])
                 for f in params[field]:
                     f.seek(0)
                 response = self.send_edit_request(obj_for_edit.pk, params)
@@ -3052,11 +3242,26 @@ class EditPositiveCases(object):
             self.clean_depend_fields_edit(max_size_params, field)
             max_size_params[field] = f
 
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
         sp = transaction.savepoint()
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
+            self.clean_depend_fields_add(params, field)
             params.update(max_size_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
 
@@ -3078,8 +3283,11 @@ class EditPositiveCases(object):
         finally:
             mail.outbox = []
 
-        """Дальнейшие отдельные проверки только если не прошла совместная и полей много"""
-        if not self.errors:
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
+                and not need_one_by_one_check):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
@@ -3096,7 +3304,7 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = max_size_params[field]
+                self.fill_with_related(params, field, max_size_params[field])
                 if self.is_file_list(field):
                     for f in params[field]:
                         f.seek(0)
@@ -3136,9 +3344,8 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = []
                 f = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -3174,7 +3381,7 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
@@ -3206,7 +3413,7 @@ class EditPositiveCases(object):
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, width=width, height=height)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -3237,7 +3444,7 @@ class EditPositiveCases(object):
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 f = self.get_random_file(field, width=width, height=height)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
                 new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -3248,6 +3455,161 @@ class EditPositiveCases(object):
                 self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
             finally:
                 mail.outbox = []
+
+    @only_with_obj
+    @only_with(('check_null', 'check_null_str_positive'))
+    def test_edit_object_str_with_null_positive(self):
+        """
+        Edit object with \\x00 in str fields
+        """
+        other_fields = ['captcha', 'captcha_0', 'captcha_1'] + self.get_all_not_str_fields('edit')
+        other_fields.extend(list(getattr(self, 'file_fields_params_edit', {}).keys()))
+
+        fields_for_check = [k for k in self.all_fields_edit if re.sub('\-\d+\-', '-0-', k) not in other_fields]
+        if not fields_for_check:
+            self.skipTest('No any string fields')
+
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
+        test_params = {}
+        fields_for_clean = []
+        for field in fields_for_check:
+            self.clean_depend_fields_edit(test_params, field)
+            test_params[field] = '\x00' + self.get_value_for_field(None, field)[1:]
+
+        try:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
+            self.clean_depend_fields_edit(params, field)
+            params.update(test_params)
+            response = self.send_edit_request(obj_for_edit.pk, params)
+            self.check_on_edit_success(response, locals())
+            new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+            self.assert_object_fields(new_object, params, exclude=exclude)
+        except Exception:
+            self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_edit))
+                and not need_one_by_one_check):
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field in fields_for_check:
+            """if unique fields"""
+            mail.outbox = []
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+                self.clean_depend_fields_edit(params, field)
+                self.fill_with_related(params, field, test_params[field])
+                response = self.send_edit_request(obj_for_edit.pk, params)
+                self.check_on_edit_success(response, locals())
+                new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except Exception:
+                self.errors_append(text='\\x00 value in field %s' % field)
+
+    @only_with_obj
+    @only_with(('check_null', 'file_fields_params_edit', 'check_null_file_positive'))
+    def test_edit_object_with_null_in_file_positive(self):
+        """
+        Edit object with \\x00 in filenames
+        """
+        fields_for_check = list(self.file_fields_params_edit.keys())
+        test_params = {}
+        for field in fields_for_check:
+            field_dict = self.file_fields_params_add[field]
+            f = self.get_random_file(field, filename='qwe\x00' + get_randname(10, 'wrd') + '.' +
+                                     choice(field_dict.get('extensions', ['', ])))
+            self.clean_depend_fields_add(test_params, field)
+            test_params[field] = f
+
+        only_if_values = {}
+        need_one_by_one_check = []
+        for field in fields_for_check:
+            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+                if only_if_values.get(k, v) != v:
+                    need_one_by_one_check.append(field)
+                    continue
+            if field not in need_one_by_one_check:
+                only_if_values.update((self.only_if_value or {}).get(field, {}))
+
+        try:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+            params.update(only_if_values)
+            for depended_field, lead_values in viewitems(self.required_if_value or {}):
+                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
+                    self.fill_all_fields((depended_field,), params)
+            self.clean_depend_fields_edit(params, field)
+            params.update(test_params)
+
+            response = self.send_edit_request(obj_for_edit.pk, params)
+            self.check_on_edit_success(response, locals())
+            new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+            self.assert_object_fields(new_object, params, exclude=exclude, other_values={
+                                      field: test_params[field].name.replace('\x00', '') for
+                                      field in fields_for_check})
+        except Exception:
+            self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
+
+        """Дальнейшие отдельные проверки только если не прошла совместная и полей много
+        ИЛИ если среди проверяемых есть поля, зависящие от значений в других полях, и они требуют отдельной проверки
+        """
+        if (not self.errors and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
+                and not need_one_by_one_check):
+            return
+        if len(fields_for_check) == 1:
+            self.formatted_assert_errors()
+
+        for field, field_dict in fields_for_check:
+            mail.outbox = []
+            try:
+                obj_for_edit = self.get_obj_for_edit()
+                params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+                self.clean_depend_fields_edit(params, field)
+                self.fill_with_related(params, field, test_params[field])
+                if self.is_file_list(field):
+                    for f in params[field]:
+                        f.seek(0)
+                else:
+                    params[field].seek(0)
+                response = self.send_edit_request(obj_for_edit.pk, params)
+                self.check_on_edit_success(response, locals())
+                new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+                exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference([field, ])
+                self.assert_object_fields(new_object, params, exclude=exclude, other_values={
+                    field: test_params[field].name.replace('\x00', '') for
+                    field in fields_for_check})
+            except Exception:
+                self.errors_append(text='\\x00 value in field %s' % field)
 
     @only_with_obj
     @only_with('intervals')
@@ -3295,6 +3657,7 @@ class EditPositiveCases(object):
                     start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
                                                                          settings.DATE_INPUT_FORMATS[0])).date()
                 self.fill_field(params, start_field, start_value)
+                self.fill_with_related(params, start_field, params[start_field])
                 if date_diff is None:
                     end_value = None
                     self.set_empty_value_for_field(params, end_field)
@@ -3307,6 +3670,7 @@ class EditPositiveCases(object):
                     elif isinstance(end_value, datetime):
                         end_value = end_value.date()
                     self.fill_field(params, end_field, end_value)
+                    self.fill_with_related(params, end_field, params[end_field])
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
@@ -3447,21 +3811,20 @@ class EditPositiveCases(object):
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
-                    params[field] = ''
-                    self.set_empty_value_for_field(params, field)
                     test_value = v
-                    excluded_values = [d[test_field] for l in self.only_if_value.values()
-                                       for d in (l if isinstance(l, (list, tuple)) else [l])
-                                       if test_field in d.keys()]
+
                     n = 0
                     try:
-                        while test_value in excluded_values and n < 5:
+                        while test_value == v and n < 5:
                             test_value = self.get_value_for_field(None, test_field)
                             n += 1
                         if test_value == v:
                             raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
-                        additional_params[test_field] = test_value
-                        params.update(additional_params)
+
+                        self.fill_with_related(params, test_field, test_value)
+                        params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
+                        params[field] = ''
+                        self.set_empty_value_for_field(params, field)
 
                         new_object = None
                         response = self.send_edit_request(obj_for_edit.pk, params)
@@ -3647,7 +4010,7 @@ class EditNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = self.get_value_for_field(current_length, field)
+                self.fill_with_related(params, field, self.get_value_for_field(current_length, field))
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
@@ -3676,7 +4039,7 @@ class EditNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = self.get_value_for_field(current_length, field)
+                self.fill_with_related(params, field, self.get_value_for_field(current_length, field))
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 error_message = self.get_error_message(message_type, field, locals=locals())
@@ -3700,7 +4063,7 @@ class EditNegativeCases(object):
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.update_params(params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = value
+                self.fill_with_related(params, field, value)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
@@ -3728,7 +4091,7 @@ class EditNegativeCases(object):
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.update_params(params)
                 self.clean_depend_fields_edit(params, field)
-                params[field] = [value, ]
+                self.fill_with_related(params, field, [value, ])
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
@@ -3761,7 +4124,7 @@ class EditNegativeCases(object):
                     continue
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                params[el_field] = self.get_params_according_to_type(value, '')[0]
+                self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
 
             try:
@@ -3796,7 +4159,7 @@ class EditNegativeCases(object):
                     continue
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                params[el_field] = self.get_params_according_to_type(value, '')[0]
+                self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
                 if not el_field in other_fields and not el_field in self.unique_with_case:
                     params[el_field] = params[el_field].swapcase()
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -3827,7 +4190,7 @@ class EditNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
-                    params[field] = value
+                    self.fill_with_related(params, field, value)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
@@ -3854,7 +4217,7 @@ class EditNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
-                    params[field] = value
+                    self.fill_with_related(params, field, value)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
@@ -3881,7 +4244,7 @@ class EditNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
-                    params[field] = value
+                    self.fill_with_related(params, field, value)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
@@ -3908,7 +4271,7 @@ class EditNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                     self.clean_depend_fields_edit(params, field)
-                    params[field] = value
+                    self.fill_with_related(params, field, value)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     error_message = self.get_error_message(message_type, field, locals=locals())
@@ -4028,7 +4391,7 @@ class EditNegativeCases(object):
                 filename = '.'.join([s for s in [get_randname(10, 'wrd '),
                                                  choice(field_dict.get('extensions', ('',)))] if s])
                 f = self.get_random_file(field, filename=filename, count=current_count)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
@@ -4063,7 +4426,7 @@ class EditNegativeCases(object):
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, size=current_size)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
@@ -4102,7 +4465,7 @@ class EditNegativeCases(object):
                 self.clean_depend_fields_edit(params, field)
                 params[field] = []
                 f = self.get_random_file(field, count=field_dict['max_count'], size=one_size)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
@@ -4132,7 +4495,7 @@ class EditNegativeCases(object):
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, size=0)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
@@ -4167,7 +4530,7 @@ class EditNegativeCases(object):
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, filename=filename)
-                params[field] = f
+                self.fill_with_related(params, field, f)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
@@ -4205,7 +4568,7 @@ class EditNegativeCases(object):
                     f = self.get_random_file(field, width=width, height=height)
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
                     self.clean_depend_fields_edit(params, field)
-                    params[field] = f
+                    self.fill_with_related(params, field, f)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
@@ -4242,7 +4605,7 @@ class EditNegativeCases(object):
                     self.clean_depend_fields_edit(params, field)
                     f = self.get_random_file(field, width=width, height=height)
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
-                    params[field] = f
+                    self.fill_with_related(params, field, f)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assert_errors(response, self.get_error_message(message_type, field, locals=locals()))
@@ -4295,6 +4658,7 @@ class EditNegativeCases(object):
                     start_value = datetime.strptime(start_value, getattr(settings, 'TEST_DATE_INPUT_FORMAT',
                                                                          settings.DATE_INPUT_FORMATS[0])).date()
                 self.fill_field(params, start_field, start_value)
+                self.fill_with_related(params, start_field, params[start_field])
                 end_value = start_value + timedelta(days=date_diff)
                 if time_diff is not None:
                     if not isinstance(end_value, datetime):
@@ -4303,6 +4667,7 @@ class EditNegativeCases(object):
                 elif isinstance(end_value, datetime):
                     end_value = end_value.date()
                 self.fill_field(params, end_field, end_value)
+                self.fill_with_related(params, end_field, params[end_field])
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
@@ -4378,21 +4743,17 @@ class EditNegativeCases(object):
                     obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
-
                     additional_params = self.deepcopy(value)
                     test_value = v
-                    excluded_values = [d[test_field] for l in self.only_if_value.values()
-                                       for d in (l if isinstance(l, (list, tuple)) else [l])
-                                       if test_field in d.keys()]
                     n = 0
                     try:
-                        while test_value in excluded_values and n < 5:
+                        while test_value == v and n < 5:
                             test_value = self.get_value_for_field(None, test_field)
                             n += 1
                         if test_value == v:
                             raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
-                        additional_params[test_field] = test_value
-                        params.update(additional_params)
+                        self.fill_with_related(params, test_field, test_value)
+                        params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
                         params[field] = self.get_value_for_field(None, field)
 
                         self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)

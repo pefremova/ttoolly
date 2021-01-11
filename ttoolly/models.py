@@ -2054,6 +2054,46 @@ class FormCommonMixIn(object):
             else:
                 params[field] = self.get_params_according_to_type(value, '')[0]
 
+    def fill_field(self, params, field_name, value):
+        if self.is_datetime_field(field_name) and isinstance(value, datetime):
+            params[
+                field_name + '_0'] = value.strftime(getattr(settings, 'TEST_DATE_INPUT_FORMAT', settings.DATE_INPUT_FORMATS[0]))
+            params[
+                field_name + '_1'] = value.strftime(getattr(settings, 'TEST_TIME_INPUT_FORMAT', settings.TIME_INPUT_FORMATS[0]))
+        else:
+            param, _ = self.get_params_according_to_type(value, '')
+            params[field_name] = value
+
+    def fill_with_related(self, params, field, value):
+        params[field] = value
+        test_name = self.id()
+        test_type = ''
+        if 'test_add_' in test_name:
+            test_type = '_add'
+        elif 'test_edit_' in test_name:
+            test_type = '_edit'
+
+        related = (getattr(self, 'required_if' + test_type) or {}).get(field, ())
+        for related_field in related if isinstance(related, (list, tuple)) else (related,):
+            if params.get(related_field, None) in (None, ''):
+                self.fill_with_related(params, related_field, self.get_value_for_field(None, related_field))
+
+        getattr(self, 'clean_depend_fields' + test_type)(params, field)
+
+        for related_field, lead_params in viewitems(self.only_if_value or {}):
+            if (field in viewkeys(lead_params) and
+                    lead_params != {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}):
+                self.set_empty_value_for_field(params, related_field)
+
+        for related_field, lead_params in viewitems(self.required_if_value or {}):
+            if (field in viewkeys(lead_params) and
+                    lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
+                    and params.get(related_field, None) in (None, '')):
+                self.fill_with_related(params, related_field,
+                                       self.get_value_for_field(None, related_field))
+
+        params.update((self.only_if_value or {}).get(field, {}))
+
     def get_all_not_str_fields(self, additional=''):
         other_fields = []
         additional = '_' + additional if additional else ''
