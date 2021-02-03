@@ -798,7 +798,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 cls = fields_map[name_in_field]
                 obj_field_in_related_query = self.get_related_field_name(cls)
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
-                value = _model._base_manager.filter(**{obj_field_in_related_query: obj})
+                value = _model._base_manager.filter(**{obj_field_in_related_query + '__pk': obj.pk})
                 if value:
                     value = value[0]
                 else:
