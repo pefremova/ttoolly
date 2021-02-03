@@ -275,8 +275,8 @@ class MetaCheckFailures(type):
     def __init__(cls, name, bases, dct):
         def check_errors(fn):
             @wraps(fn)
-            def tmp(self):
-                fn(self)
+            def tmp(self, *args, **kwargs):
+                fn(self, *args, **kwargs)
                 self.formatted_assert_errors()
             decorators = getattr(tmp, 'decorators', ())
             if not 'check_errors' in [getattr(d, '__name__', d.__class__.__name__) for d in decorators]:
