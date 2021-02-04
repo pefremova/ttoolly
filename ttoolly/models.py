@@ -630,11 +630,15 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         try:
             self.assertEqual(len(getattr(m, 'alternatives', [])), len(default_params['alternatives']),
-                             '%s alternatives in mail, expected %s' % (len(getattr(m, 'alternatives', [])),
-                                                                       len(default_params['alternatives'])))
+                             '%s alternatives in mail, expected %s' %
+                             (len(getattr(m, 'alternatives', [])),
+                              len(default_params['alternatives'])))
             for n, alternative in enumerate(default_params['alternatives']):
-                m_alternative = m.alternative[n]
-                self.assert_text_equal_by_symbol(m_alternative[0], alternative[0])
+                m_alternative = m.alternatives[n]
+                if m_alternative[1] in ('html', 'text/html') and m.alternatives[n][1] in ('html', 'text/html'):
+                    self.assertHTMLEqual(m_alternative[0], alternative[0])
+                else:
+                    self.assert_text_equal_by_symbol(m_alternative[0], alternative[0])
                 self.assertEqual(m_alternative[1], alternative[1])
         except Exception:
             self.errors_append(errors, text='[alternatives]')
