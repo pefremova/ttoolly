@@ -1158,7 +1158,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def _get_field_value_by_name(self, obj, field):
         related_names_map = self.get_related_names(obj)
-        field = related_names_map.get(re.sub('\-\d+\-', '-0-', field), field)
+        field = related_names_map.get(re.sub('\-\d+\-', '-0-', field)
+                                      if isinstance(field, basestring) else field, field)
 
         if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
             model_name, index, field_name = field.split('-')
@@ -1319,7 +1320,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def get_value_for_field(self, length, field_name):
         """for fill use name with -0-"""
-        field_name = re.sub('\-\d+\-', '-0-', field_name)
+        field_name = re.sub('\-\d+\-', '-0-', field_name) if isinstance(field_name, basestring) else field_name
         if self.is_email_field(field_name):
             length = length if length is not None else randint(getattr(self, 'min_fields_length', {}).get(field_name, 6),
                                                                getattr(self, 'max_fields_length', {}).get(field_name, 254))
@@ -1388,7 +1389,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return get_url_for_negative(*args, **kwargs)
 
     def is_choice_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return ((field in (getattr(self, 'choice_fields', ()) or ())) or
                 (field in (getattr(self, 'choice_fields_add', ()) or ())) or
                 (field in (getattr(self, 'choice_fields_edit', ()) or ())) or
@@ -1397,21 +1398,21 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 (field in (getattr(self, 'choice_fields_edit_with_value_in_error', ()) or ())))
 
     def is_date_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return field in getattr(self, 'date_fields', ())
 
     def is_datetime_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return field in getattr(self, 'datetime_fields', ())
 
     def is_digital_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return ((field in (getattr(self, 'digital_fields', ()) or ())) or
                 (field in (getattr(self, 'digital_fields_add', ()) or ())) or
                 (field in (getattr(self, 'digital_fields_edit', ()) or ())))
 
     def is_email_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return ('email' in field and [getattr(self, 'email_fields', None),
                                       getattr(self, 'email_fields_add', None),
                                       getattr(self, 'email_fields_edit', None)] == [None, None, None]) \
@@ -1420,7 +1421,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 (field in (getattr(self, 'email_fields_edit', ()) or ())))
 
     def is_file_list(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         if not self.is_file_field(field):
             return False
         for param_name in ('default_params', 'default_params_add', 'default_params_edit'):
@@ -1430,13 +1431,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return False
 
     def is_int_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return ((field in (getattr(self, 'int_fields', ()) or ())) or
                 (field in (getattr(self, 'int_fields_add', ()) or ())) or
                 (field in (getattr(self, 'int_fields_edit', ()) or ())))
 
     def is_file_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
 
         def check_by_params_name(name):
             params = getattr(self, name, None)
@@ -1453,13 +1454,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return field not in getattr(self, 'not_file', []) and \
             (field in getattr(self, 'file_fields_params_add', {}).keys() or
              field in getattr(self, 'file_fields_params_edit', {}).keys() or
-             re.findall(r'(^|[^a-zA-Z])(file)', field) or
+             (isinstance(field, basestring) and re.findall(r'(^|[^a-zA-Z])(file)', field)) or
              check_by_params_name('default_params') or
              check_by_params_name('default_params_add') or
              check_by_params_name('default_params_edit'))
 
     def is_multiselect_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return ((field in (getattr(self, 'multiselect_fields', ()) or ())) or
                 (field in (getattr(self, 'multiselect_fields_add', ()) or ())) or
                 (field in (getattr(self, 'multiselect_fields_edit', ()) or ())))
@@ -2141,7 +2142,7 @@ class FormCommonMixIn(object):
 
     def get_digital_values_range(self, field):
         """use name with -0-"""
-        field = re.sub('\-\d+\-', '-0-', field)
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         class_name = self.get_field_by_name(self.obj, field).__class__.__name__
         max_value_from_params = getattr(self, 'max_fields_length', {}).get(field, None)
         max_values = [max_value_from_params] if max_value_from_params is not None else []
