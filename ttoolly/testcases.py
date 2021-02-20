@@ -184,11 +184,14 @@ class AddPositiveCases(object):
             self.set_empty_value_for_field(params, field)
 
         self.fill_all_fields(required_fields, params)
-        for related_field, lead_params in viewitems(self.required_if_value or {}):
-            if (field in viewkeys(lead_params) and
-                    lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
-                    and params.get(related_field, None) in (None, '')):
-                params[related_field] = self.get_value_for_field(None, related_field)
+        for related_field, lead_params_list in viewitems(self.required_if_value or {}):
+            if not isinstance(lead_params_list, (tuple, list)):
+                lead_params_list = (lead_params_list,)
+            for lead_params in lead_params_list:
+                if (field in viewkeys(lead_params) and
+                        lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
+                        and params.get(related_field, None) in (None, '')):
+                    params[related_field] = self.get_value_for_field(None, related_field)
 
         self.update_captcha_params(self.get_url(self.url_add), params)
         initial_obj_count = self.get_obj_manager.count()
@@ -239,6 +242,7 @@ class AddPositiveCases(object):
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
         self.fill_all_fields(required_fields, params)
+        self.fill_required_if(params)
         self.update_captcha_params(self.get_url(self.url_add), params)
         initial_obj_count = self.get_obj_manager.count()
         old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -307,9 +311,7 @@ class AddPositiveCases(object):
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(only_if_values)
             params.update(max_length_params)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
             response = self.send_add_request(params)
@@ -528,9 +530,7 @@ class AddPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             params.update(max_value_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -611,9 +611,7 @@ class AddPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             self.clean_depend_fields_add(params, field)
             params.update(min_value_params)
             initial_obj_count = self.get_obj_manager.count()
@@ -754,9 +752,7 @@ class AddPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             params.update(max_count_params)
             initial_obj_count = self.get_obj_manager.count()
             old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -837,9 +833,7 @@ class AddPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             self.clean_depend_fields_add(params, field)
             params.update(max_size_params)
             initial_obj_count = self.get_obj_manager.count()
@@ -1073,9 +1067,7 @@ class AddPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             self.clean_depend_fields_add(params, field)
             params.update(test_params)
             initial_obj_count = self.get_obj_manager.count()
@@ -1151,9 +1143,7 @@ class AddPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url(self.url_add), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             self.clean_depend_fields_add(params, field)
             params.update(test_params)
             initial_obj_count = self.get_obj_manager.count()
@@ -2586,11 +2576,7 @@ class EditPositiveCases(object):
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
         self.fill_all_fields(required_fields, params)
-        for related_field, lead_params in viewitems(self.required_if_value or {}):
-            if (field in viewkeys(lead_params) and
-                    lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
-                    and params.get(related_field, None) in (None, '')):
-                params[related_field] = self.get_value_for_field(None, related_field)
+        self.fill_required_if(params)
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -2638,6 +2624,8 @@ class EditPositiveCases(object):
             self.pop_field_from_params(params, field)
 
         self.fill_all_fields(required_fields, params)
+        self.fill_required_if(params)
+
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -2707,9 +2695,7 @@ class EditPositiveCases(object):
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
             params.update(max_length_params)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -3037,9 +3023,7 @@ class EditPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             params.update(max_value_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -3174,9 +3158,7 @@ class EditPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             params.update(max_count_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -3258,10 +3240,8 @@ class EditPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
-            self.clean_depend_fields_add(params, field)
+            self.fill_required_if(params)
+            self.clean_depend_fields_edit(params, field)
             params.update(max_size_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
 
@@ -3491,9 +3471,7 @@ class EditPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             self.clean_depend_fields_edit(params, field)
             params.update(test_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
@@ -3562,9 +3540,7 @@ class EditPositiveCases(object):
             self.update_params(params)
             self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
-            for depended_field, lead_values in viewitems(self.required_if_value or {}):
-                if all((params.get(k, None) == v for k, v in viewitems(lead_values))):
-                    self.fill_all_fields((depended_field,), params)
+            self.fill_required_if(params)
             self.clean_depend_fields_edit(params, field)
             params.update(test_params)
 
@@ -3770,7 +3746,7 @@ class EditPositiveCases(object):
         """
         if self.required_if_value == self.only_if_value:
             self.skipTest("Проверка выполняется в тесте test_add_object_related_filled_lead_with_value_positive")
-        for field, values in self.only_if_value.items():
+        for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -3800,7 +3776,7 @@ class EditPositiveCases(object):
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
         Поле, включающее обязательность, заполнено другим значением - связанное поле должно быть необязательным
         """
-        for field, values in self.only_if_value.items():
+        for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -4772,7 +4748,7 @@ class EditNegativeCases(object):
         Поле-инициатор заполнено значением, зависимое поле не заполнено
         """
         message_type = 'empty_required'
-        for field, values in self.only_if_value.items():
+        for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 

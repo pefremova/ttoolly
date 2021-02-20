@@ -2068,6 +2068,14 @@ class FormCommonMixIn(object):
             param, _ = self.get_params_according_to_type(value, '')
             params[field_name] = value
 
+    def fill_required_if(self, params):
+        for depended_field, lead_params_list in viewitems(self.required_if_value or {}):
+            if not isinstance(lead_params_list, (tuple, list)):
+                lead_params_list = (lead_params_list,)
+            for lead_params in lead_params_list:
+                if all((params.get(k, None) == v for k, v in viewitems(lead_params))):
+                    self.fill_all_fields((depended_field,), params)
+
     def fill_with_related(self, params, field, value):
         params[field] = value
         test_name = self.id()
@@ -2089,12 +2097,15 @@ class FormCommonMixIn(object):
                     lead_params != {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}):
                 self.set_empty_value_for_field(params, related_field)
 
-        for related_field, lead_params in viewitems(self.required_if_value or {}):
-            if (field in viewkeys(lead_params) and
-                    lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
-                    and params.get(related_field, None) in (None, '')):
-                self.fill_with_related(params, related_field,
-                                       self.get_value_for_field(None, related_field))
+        for related_field, lead_params_list in viewitems(self.required_if_value or {}):
+            if not isinstance(lead_params_list, (tuple, list)):
+                lead_params_list = (lead_params_list,)
+            for lead_params in lead_params_list:
+                if (field in viewkeys(lead_params) and
+                        lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
+                        and params.get(related_field, None) in (None, '')):
+                    self.fill_with_related(params, related_field,
+                                           self.get_value_for_field(None, related_field))
 
         params.update((self.only_if_value or {}).get(field, {}))
 
