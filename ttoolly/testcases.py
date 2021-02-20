@@ -2490,7 +2490,7 @@ class EditPositiveCases(object):
 
         fields_helptext = getattr(self, 'fields_helptext_edit', {})
         for field_name, text in viewitems(fields_helptext):
-            if field_name not in self.all_fields_add:
+            if field_name not in self.all_fields_edit:
                 continue
             try:
                 field = get_field_from_response(response, field_name)
@@ -2677,7 +2677,7 @@ class EditPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field, length in viewitems(fields_for_check):
-            self.clean_depend_fields_add(max_length_params, field)
+            self.clean_depend_fields_edit(max_length_params, field)
             max_length_params[field] = self.get_value_for_field(length, field)
             if self.is_file_field(field):
                 file_fields.append(field)
@@ -2803,7 +2803,7 @@ class EditPositiveCases(object):
             for el_field in set(el).difference(already_in_check[el]):
                 fields_for_change = [el_field, ]
                 already_in_check[el].append(el_field)
-                for other_group in [g for g in self.unique_fields_add if g != el]:
+                for other_group in [g for g in self.unique_fields_edit if g != el]:
                     other_group_fields = set(other_group).difference(
                         set(el).difference((el_field,))).difference(already_in_check[other_group])
                     if not other_group_fields:
@@ -3518,10 +3518,10 @@ class EditPositiveCases(object):
         fields_for_check = list(self.file_fields_params_edit.keys())
         test_params = {}
         for field in fields_for_check:
-            field_dict = self.file_fields_params_add[field]
+            field_dict = self.file_fields_params_edit[field]
             f = self.get_random_file(field, filename='qwe\x00' + get_randname(10, 'wrd') + '.' +
                                      choice(field_dict.get('extensions', ['', ])))
-            self.clean_depend_fields_add(test_params, field)
+            self.clean_depend_fields_edit(test_params, field)
             test_params[field] = f
 
         only_if_values = {}
@@ -3820,14 +3820,14 @@ class EditPositiveCases(object):
         """
         if not set(sum([list(d.keys()) for l in self.required_if_value.values()
                         for d in (l if isinstance(l, (list, tuple)) else [l])], [])
-                   ).difference(self.required_fields_add):
+                   ).difference(self.required_fields_edit):
             self.skipTest("Нет полей для проверки")
-        for field, values in self.only_if_value.items():
+        for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
             for value in values:
-                for k in set(value.keys()).difference(self.required_fields_add):
+                for k in set(value.keys()).difference(self.required_fields_edit):
                     obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
