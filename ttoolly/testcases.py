@@ -349,7 +349,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                self.fill_with_related(params, field, max_length_params[field])
+                self.fill_with_related(params, field, self.get_value_for_field(length, field))
                 if self.is_file_field(field):
                     if self.is_file_list(field):
                         for f in params[field]:
@@ -2753,7 +2753,7 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                self.fill_with_related(params, field, max_length_params[field])
+                self.fill_with_related(params, field, self.get_value_for_field(length, field))
                 if field in file_fields:
                     if self.is_file_list(field):
                         for f in params[field]:
