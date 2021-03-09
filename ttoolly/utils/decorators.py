@@ -47,9 +47,10 @@ class only_with(object):
     def __call__(self, fn, *args, **kwargs):
 
         @wraps(fn)
-        def tmp(cls):
+        def tmp(cls, *additional_args, **additional_kwargs):
             if self.check(cls):
-                return fn(cls, *args, **kwargs)
+                kwargs.update(additional_kwargs)
+                return fn(cls, *(args + additional_args), **kwargs)
             else:
                 raise SkipTest(self.skip_text)
 
@@ -70,9 +71,10 @@ class only_with_files_params(object):
     def __call__(self, fn, *args, **kwargs):
 
         @wraps(fn)
-        def tmp(cls):
+        def tmp(cls, *additional_args, **additional_kwargs):
             if self.check(cls):
-                return fn(cls, *args, **kwargs)
+                kwargs.update(additional_kwargs)
+                return fn(cls, *(args + additional_args), **kwargs)
             else:
                 raise SkipTest(self.skip_text)
 
@@ -106,9 +108,10 @@ class only_with_any_files_params(object):
     def __call__(self, fn, *args, **kwargs):
 
         @wraps(fn)
-        def tmp(cls):
+        def tmp(cls, *additional_args, **additional_kwargs):
             if self.check(cls):
-                return fn(cls, *args, **kwargs)
+                kwargs.update(additional_kwargs)
+                return fn(cls, *(args + additional_args), **kwargs)
             else:
                 raise SkipTest(self.skip_text)
 
