@@ -179,19 +179,13 @@ class AddPositiveCases(object):
         params = self.deepcopy(self.default_params_add)
         required_fields = self.required_fields_add + \
             self._get_required_from_related(self.required_related_fields_add)
+
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
 
         self.fill_all_fields(required_fields, params)
-        for related_field, lead_params_list in viewitems(self.required_if_value or {}):
-            if not isinstance(lead_params_list, (tuple, list)):
-                lead_params_list = (lead_params_list,)
-            for lead_params in lead_params_list:
-                if (field in viewkeys(lead_params) and
-                        lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
-                        and params.get(related_field, None) in (None, '')):
-                    params[related_field] = self.get_value_for_field(None, related_field)
+        self.fill_required_if(params)
 
         self.update_captcha_params(self.get_url(self.url_add), params)
         initial_obj_count = self.get_obj_manager.count()
@@ -410,7 +404,7 @@ class AddPositiveCases(object):
                     if field in el:
                         existing_filters |= Q(**{f: getattr(existing_obj, f) for f in el if f not in fields_for_change})
                 existing_objs = self.get_obj_manager.filter(existing_filters)
-                while n < 3 and (not value or existing_objs.filter(**{field: value}).exists()):
+                while n < 3 and (value in ('', None) or existing_objs.filter(**{field: value}).exists()):
                     n += 1
                     value = self.get_value_for_field(None, field)
                 if existing_objs.filter(**{field: value}).exists():
@@ -1362,7 +1356,7 @@ class AddPositiveCases(object):
         """
         if self.required_if_value == self.only_if_value:
             self.skipTest("Проверка выполняется в тесте test_add_object_related_filled_lead_with_value_positive")
-        for field, values in self.only_if_value.items():
+        for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -1394,41 +1388,43 @@ class AddPositiveCases(object):
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
         Поле, включающее обязательность, заполнено другим значением - связанное поле должно быть необязательным
         """
-        for field, values in self.only_if_value.items():
+        for fields, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
+            if not isinstance(fields, (list, tuple)):
+                fields = (fields,)
 
-            for value in values:
-                for test_field, v in value.items():
-                    additional_params = self.deepcopy(value)
-                    self.prepare_for_add()
-                    params = self.deepcopy(self.default_params_add)
-                    self.update_params(params)
-                    self.update_captcha_params(self.get_url(self.url_add), params)
-                    test_value = v
-                    n = 0
-                    try:
-                        while test_value == v and n < 5:
-                            test_value = self.get_value_for_field(None, test_field)
-                            n += 1
-                        if test_value == v:
-                            raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
-                        self.fill_with_related(params, test_field, test_value)
-                        params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
-                        params[field] = ''
-                        self.set_empty_value_for_field(params, field)
+            for field in fields:
+                for value in values:
+                    for test_field, v in value.items():
+                        additional_params = self.deepcopy(value)
+                        self.prepare_for_add()
+                        params = self.deepcopy(self.default_params_add)
+                        self.update_params(params)
+                        self.update_captcha_params(self.get_url(self.url_add), params)
+                        test_value = v
+                        n = 0
+                        try:
+                            while test_value == v and n < 5:
+                                test_value = self.get_value_for_field(None, test_field)
+                                n += 1
+                            if test_value == v:
+                                raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
+                            self.fill_with_related(params, test_field, test_value)
+                            params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
+                            params[field] = ''
+                            self.set_empty_value_for_field(params, field)
 
-                        new_object = None
-                        initial_obj_count = self.get_obj_manager.count()
-                        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
-
-                        response = self.send_add_request(params)
-                        self.check_on_add_success(response, initial_obj_count, locals())
-                        new_object = self.get_obj_manager.exclude(pk__in=old_pks).last()
-                        exclude = getattr(self, 'exclude_from_check_add', [])
-                        self.assert_object_fields(new_object, params, exclude=exclude)
-                    except Exception:
-                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
+                            new_object = None
+                            initial_obj_count = self.get_obj_manager.count()
+                            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+                            response = self.send_add_request(params)
+                            self.check_on_add_success(response, initial_obj_count, locals())
+                            new_object = self.get_obj_manager.exclude(pk__in=old_pks).last()
+                            exclude = getattr(self, 'exclude_from_check_add', [])
+                            self.assert_object_fields(new_object, params, exclude=exclude)
+                        except Exception:
+                            self.errors_append(text='%s=%s\n%s' % (field, params.get(field, None), additional_params))
 
     @only_with_obj
     @only_with('required_if_value')
@@ -1441,7 +1437,7 @@ class AddPositiveCases(object):
                         for d in (l if isinstance(l, (list, tuple)) else [l])], [])
                    ).difference(self.required_fields_add):
             self.skipTest("Нет полей для проверки")
-        for field, values in self.only_if_value.items():
+        for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -2432,7 +2428,7 @@ class AddNegativeCases(object):
         Поле-инициатор заполнено значением, зависимое поле не заполнено
         """
         message_type = 'empty_required'
-        for field, values in self.only_if_value.items():
+        for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -2833,7 +2829,7 @@ class EditPositiveCases(object):
                     if field in el:
                         existing_filters |= Q(**{f: getattr(existing_obj, f) for f in el if f not in fields_for_change})
                 existing_objs = self.get_obj_manager.exclude(pk=obj_for_edit.pk).filter(existing_filters)
-                while n < 3 and (not value or existing_objs.filter(**{field: value}).exists()):
+                while n < 3 and (value in ('', None) or existing_objs.filter(**{field: value}).exists()):
                     n += 1
                     value = self.get_value_for_field(None, field)
                 if existing_objs.filter(**{field: value}).exists():
@@ -4274,7 +4270,7 @@ class EditNegativeCases(object):
                 value = params.get(field, None)
                 old_value = self.get_params_according_to_type(self._get_field_value_by_name(obj_for_edit, field), '')[0]
                 n = 0
-                while n < 3 and (not value or value == old_value):
+                while n < 3 and (value in ('', None, []) or value == old_value):
                     n += 1
                     value = self.get_value_for_field(None, field)
                 params[field] = value

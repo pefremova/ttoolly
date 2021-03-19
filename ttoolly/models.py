@@ -1473,7 +1473,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             transaction.savepoint_rollback(sp)
 
     def set_empty_value_for_field(self, params, field):
-        mro_names = [m.__name__ for m in params[field].__class__.__mro__]
+        mro_names = [m.__name__ for m in params.get(field, '').__class__.__mro__]
         if 'list' in mro_names or 'tuple' in mro_names or 'QuerySet' in mro_names:
             params[field] = []
         else:
@@ -1489,7 +1489,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if '-' in key:
                 key_for_get_values = '__'.join([key.split('-')[0].replace('_set', ''), key.split('-')[-1]])
 
-            existing_values = [default_value]
+            existing_values = [force_text(default_value)]
             try:
                 existing_values = [force_text(el)
                                    for el in self.get_obj_manager.values_list(key_for_get_values, flat=True)]
@@ -2075,7 +2075,9 @@ class FormCommonMixIn(object):
                 lead_params_list = (lead_params_list,)
             for lead_params in lead_params_list:
                 if all((params.get(k, None) == v for k, v in viewitems(lead_params))):
-                    self.fill_all_fields((depended_field,), params)
+                    if isinstance(depended_field, tuple):
+                        depended_field = self._get_required_from_related((depended_field,))[0]
+                    self.fill_with_related(params, depended_field, self.get_value_for_field(None, depended_field))
 
     def fill_with_related(self, params, field, value):
         params[field] = value
@@ -2105,8 +2107,11 @@ class FormCommonMixIn(object):
                 if (field in viewkeys(lead_params) and
                         lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
                         and params.get(related_field, None) in (None, '')):
-                    self.fill_with_related(params, related_field,
-                                           self.get_value_for_field(None, related_field))
+                    related_field = self._get_required_from_related(
+                        (related_field,) if isinstance(related_field, (tuple, list)) else ((related_field,)))
+                    for rf in related_field:
+                        self.fill_with_related(params, rf,
+                                               self.get_value_for_field(None, rf))
 
         params.update((self.only_if_value or {}).get(field, {}))
 
