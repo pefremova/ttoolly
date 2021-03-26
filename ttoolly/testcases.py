@@ -399,15 +399,18 @@ class AddPositiveCases(object):
                 self.clean_depend_fields_add(params, el_field)
                 value = params.get(field, None)
                 n = 0
-                existing_filters = Q(**{f: params[f] for f in fields_for_change[:fields_for_change.index(field)]})
+                existing_filters = Q(**{f + ('__in' if self.is_multiselect_field(f) else '')
+                                     : params[f] for f in fields_for_change[:fields_for_change.index(field)]})
                 for el in self.unique_fields_add:
                     if field in el:
-                        existing_filters |= Q(**{f: getattr(existing_obj, f) for f in el if f not in fields_for_change})
+                        existing_filters |= Q(**{f + ('__in' if self.is_multiselect_field(f) else ''): getattr(existing_obj, f).all() if
+                                                 hasattr(getattr(existing_obj, f), 'all') else getattr(existing_obj, f)
+                                                 for f in el if f not in fields_for_change})
                 existing_objs = self.get_obj_manager.filter(existing_filters)
-                while n < 3 and (value in ('', None) or existing_objs.filter(**{field: value}).exists()):
+                while n < 3 and (value in ('', None) or existing_objs.filter(**{field + ('__in' if self.is_multiselect_field(field) else ''): value}).exists()):
                     n += 1
                     value = self.get_value_for_field(None, field)
-                if existing_objs.filter(**{field: value}).exists():
+                if existing_objs.filter(**{field + ('__in' if self.is_multiselect_field(field) else ''): value}).exists():
                     raise Exception(
                         "Can't generate value for field \"%s\" that not exists. Now is \"%s\"" % (field, value))
 
@@ -2824,15 +2827,19 @@ class EditPositiveCases(object):
                 self.clean_depend_fields_edit(params, el_field)
                 value = params.get(field, None)
                 n = 0
-                existing_filters = Q(**{f: params[f] for f in fields_for_change[:fields_for_change.index(field)]})
+                existing_filters = Q(**{f + ('__in' if self.is_multiselect_field(f) else ''):
+                                        params[f] for f in fields_for_change[:fields_for_change.index(field)]})
                 for el in self.unique_fields_edit:
                     if field in el:
-                        existing_filters |= Q(**{f: getattr(existing_obj, f) for f in el if f not in fields_for_change})
+                        existing_filters |= Q(**{f + ('__in' if self.is_multiselect_field(f) else ''):
+                                                 getattr(existing_obj, f).all() if hasattr(
+                                                     getattr(existing_obj, f)) else getattr(existing_obj, f)
+                                                 for f in el if f not in fields_for_change})
                 existing_objs = self.get_obj_manager.exclude(pk=obj_for_edit.pk).filter(existing_filters)
-                while n < 3 and (value in ('', None) or existing_objs.filter(**{field: value}).exists()):
+                while n < 3 and (value in ('', None) or existing_objs.filter(**{field + ('__in' if self.is_multiselect_field(field) else ''): value}).exists()):
                     n += 1
                     value = self.get_value_for_field(None, field)
-                if existing_objs.filter(**{field: value}).exists():
+                if existing_objs.filter(**{field + ('__in' if self.is_multiselect_field(field) else ''): value}).exists():
                     raise Exception(
                         "Can't generate value for field \"%s\" that not exists. Now is \"%s\"" % (field, value))
                 self.fill_with_related(params, field, value)
