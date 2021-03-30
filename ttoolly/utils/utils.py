@@ -102,7 +102,7 @@ def convert_size_to_bytes(size):
     return int(size)
 
 
-def fill_all_obj_fields(obj, fields=(), save=True):
+def fill_all_obj_fields(obj, fields=(), save=True, get_value_method=None):
     required_fields = fields
     if not fields:
         fields = [f.name for f in obj.__class__._meta.fields]
@@ -118,7 +118,7 @@ def fill_all_obj_fields(obj, fields=(), save=True):
         value = None
         i = 0
         while not value and i < 3:
-            value = get_value_for_obj_field(f)
+            value = (get_value_method or get_value_for_obj_field)(f)
             if isinstance(value, basestring):
                 value = value.strip()
             i += 1
@@ -137,7 +137,8 @@ def format_errors(errors, space_count=0):
     return '\n%s' % joined_errors
 
 
-def generate_random_obj(obj_model, additional_params=None, filename=None, with_save=True):
+def generate_random_obj(obj_model, additional_params=None, filename=None, with_save=True,
+                        get_value_method=None):
     additional_params = additional_params or {}
     params = {}
     for f in obj_model._meta.fields:
@@ -145,7 +146,7 @@ def generate_random_obj(obj_model, additional_params=None, filename=None, with_s
             continue
         if f.null and f.blank and random.randint(0, 1):
             continue
-        params[f.name] = get_value_for_obj_field(f, filename)
+        params[f.name] = (get_value_method or get_value_for_obj_field)(f, filename)
     params.update(additional_params)
     if with_save:
         return obj_model.objects.create(**params)
