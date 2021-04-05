@@ -1609,6 +1609,9 @@ class FormCommonMixIn(object):
     multiselect_fields = None
     multiselect_fields_add = None
     multiselect_fields_edit = None
+    not_empty_fields = None
+    not_empty_fields_add = None
+    not_empty_fields_edit = None
     one_of_fields = None
     one_of_fields_add = None
     one_of_fields_edit = None
@@ -1641,6 +1644,7 @@ class FormCommonMixIn(object):
         self.exclude_from_check_edit = getattr(self, 'exclude_from_check_edit', None) or copy(self.exclude_from_check)
         """set required fields attributes"""
         self._prepare_required_fields()
+        self._prepare_not_empty_fields()
 
         self._prepare_disabled_fields()
         self._prepare_hidden_fields()
@@ -1924,6 +1928,7 @@ class FormCommonMixIn(object):
                 self.required_fields_edit = viewkeys(self.default_params_edit)
             else:
                 self.required_fields_edit = copy(self.required_fields)
+
         self.required_fields_add, self.required_related_fields_add = \
             self._divide_common_and_related_fields(self.required_fields_add)
         self.required_fields_edit, self.required_related_fields_edit = \
@@ -1933,6 +1938,30 @@ class FormCommonMixIn(object):
             self.required_if_add = self.deepcopy(self.required_if or {})
         if self.required_if_edit is None:
             self.required_if_edit = self.deepcopy(self.required_if or {})
+
+    def _prepare_not_empty_fields(self):
+        if self.not_empty_fields_add is None:
+            if self.not_empty_fields is None:
+                if self.required_fields_add is None:
+                    self.not_empty_fields_add = viewkeys(self.default_params_add)
+                else:
+                    self.not_empty_fields_add = copy(self.required_fields_add)
+            else:
+                self.not_empty_fields_add = copy(self.not_empty_fields)
+
+        if self.not_empty_fields_edit is None:
+            if self.not_empty_fields is None:
+                if self.required_fields_edit is None:
+                    self.not_empty_fields_edit = viewkeys(self.default_params_edit)
+                else:
+                    self.not_empty_fields_edit = copy(self.required_fields_edit)
+            else:
+                self.not_empty_fields_edit = copy(self.not_empty_fields)
+
+        self.not_empty_fields_add, self.not_empty_related_fields_add = \
+            self._divide_common_and_related_fields(self.not_empty_fields_add)
+        self.not_empty_fields_edit, self.not_empty_related_fields_edit = \
+            self._divide_common_and_related_fields(self.not_empty_fields_edit)
 
     def check_on_add_success(self, response, initial_obj_count, _locals):
         self.assert_no_form_errors(response)

@@ -342,6 +342,21 @@ Django test tools. Django >= 1.8
      - Список multiselect полей на форме редактирования
      - multiselect_fields_edit = ('field1', 'field2')
      - 
+   * - not_empty_fields
+     - None
+     - Обязательные для заполнения поля
+     - not_empty_fields = ('field1', ('field2', 'field3'))
+     - Заполнены только обязательные поля. Одно из обязательных полей (выполняется для всех) не заполнено.
+   * - not_empty_fields_add
+     - not_empty_fields или required_fields_add или default_params_add.keys()
+     - Обязательные для заполнения поля на форме создания
+     - not_empty_fields_add = ('field1', ('field2', 'field3'))
+     - 
+   * - not_empty_fields_edit
+     - not_empty_fields или required_fields_edit или default_params_edit.keys()
+     - Обязательные для заполнения поля на форме редактирования
+     - not_empty_fields_edit = ('field1', ('field2', 'field3'))
+     - 
    * - only_if_value
      - None
      - Поля, доступные для в зависимости от значения в другом поле
@@ -364,18 +379,18 @@ Django test tools. Django >= 1.8
      - 
    * - required_fields
      - None
-     - Обязательные для заполнения поля.
-     - required_fields = ('field1', 'field2')
-     - Заполнены только обязательные поля. Одно из обязательных полей (выполняется для всех) не заполнено. Одно из обязательных полей (выполняется для всех) отсутствует
+     - Поля, которые должны присутствовать в запросе.
+     - required_fields = ('field1', ('field2', 'field3'))
+     - Заполнены только обязательные поля. Одно из обязательных полей (выполняется для всех) отсутствует
    * - required_fields_add
      - required_fields или default_params_add.keys()
      - Обязательные для заполнения поля на форме создания
-     - required_fields_add = ('field1', 'field2')
+     - required_fields_add = ('field1', ('field2', 'field3'))
      - 
    * - required_fields_edit
      - required_fields или default_params_edit.keys()
      - Обязательные для заполнения поля на форме редактирования
-     - required_fields_edit = ('field1', 'field2')
+     - required_fields_edit = ('field1', ('field2', 'field3'))
      - 
    * - required_if
      - None

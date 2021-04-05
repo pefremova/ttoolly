@@ -116,8 +116,8 @@ class AddPositiveCases(object):
         for field in viewkeys(prepared_depends_fields):
             self.set_empty_value_for_field(params, field)
 
-        self.fill_all_fields(list(only_independent_fields) + self.required_fields_add +
-                             self._get_required_from_related(self.required_related_fields_add),
+        self.fill_all_fields(list(only_independent_fields) + self.not_empty_fields_add +
+                             self._get_required_from_related(self.not_empty_related_fields_add),
                              params)
         only_if_value_fields = [field for field, values in viewitems(self.only_if_value or {}) if
                                 all((params.get(k, None) == v for k, v in viewitems(values)))]
@@ -177,8 +177,8 @@ class AddPositiveCases(object):
         """
         self.prepare_for_add()
         params = self.deepcopy(self.default_params_add)
-        required_fields = self.required_fields_add + \
-            self._get_required_from_related(self.required_related_fields_add)
+        required_fields = self.not_empty_fields_add + \
+            self._get_required_from_related(self.not_empty_related_fields_add)
 
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
@@ -200,7 +200,7 @@ class AddPositiveCases(object):
             self.errors_append()
 
         """если хотя бы одно поле из группы заполнено, объект создается"""
-        for group in self.required_related_fields_add:
+        for group in self.not_empty_related_fields_add:
             for field in group:
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
@@ -399,8 +399,7 @@ class AddPositiveCases(object):
                 self.clean_depend_fields_add(params, el_field)
                 value = params.get(field, None)
                 n = 0
-                existing_filters = Q(**{f + ('__in' if self.is_multiselect_field(f) else '')
-                                     : params[f] for f in fields_for_change[:fields_for_change.index(field)]})
+                existing_filters = Q(**{f + ('__in' if self.is_multiselect_field(f) else ''): params[f] for f in fields_for_change[:fields_for_change.index(field)]})
                 for el in self.unique_fields_add:
                     if field in el:
                         existing_filters |= Q(**{f + ('__in' if self.is_multiselect_field(f) else ''): getattr(existing_obj, f).all() if
@@ -562,7 +561,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                self.fill_with_related(params, field, max_length_params[field])
+                self.fill_with_related(params, field, max_value_params[field])
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
@@ -1217,7 +1216,7 @@ class AddPositiveCases(object):
                 values = ((1, None),)
                 if comparsion == '>=':
                     values += ((0, None),)
-            if end_field not in self.required_fields_add and end_field + '_0' not in self.required_fields_add:
+            if end_field not in self.not_empty_fields_add and end_field + '_0' not in self.not_empty_fields_add:
                 values += ((None, None),)
 
             for date_diff, time_diff in values:
@@ -1438,14 +1437,14 @@ class AddPositiveCases(object):
         """
         if not set(sum([list(d.keys()) for l in self.required_if_value.values()
                         for d in (l if isinstance(l, (list, tuple)) else [l])], [])
-                   ).difference(self.required_fields_add):
+                   ).difference(self.not_empty_fields_add):
             self.skipTest("Нет полей для проверки")
         for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
             for value in values:
-                for k in set(value.keys()).difference(self.required_fields_add):
+                for k in set(value.keys()).difference(self.not_empty_fields_add):
                     self.prepare_for_add()
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
@@ -1478,7 +1477,7 @@ class AddNegativeCases(object):
         """
         message_type = 'empty_required'
         """обязательные поля должны быть заполнены"""
-        for field in [f for f in self.required_fields_add if 'FORMS' not in f]:
+        for field in [f for f in self.not_empty_fields_add if 'FORMS' not in f]:
             sp = transaction.savepoint()
             try:
                 self.prepare_for_add()
@@ -1496,7 +1495,7 @@ class AddNegativeCases(object):
                 self.errors_append(text='For empty field "%s"' % field)
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
-        for group in self.required_related_fields_add:
+        for group in self.not_empty_related_fields_add:
             sp = transaction.savepoint()
             self.prepare_for_add()
             params = self.deepcopy(self.default_params_add)
@@ -2512,8 +2511,8 @@ class EditPositiveCases(object):
             viewkeys(prepared_depends_fields)).difference(viewkeys(self.only_if_value or {}))
         for field in viewkeys(prepared_depends_fields):
             self.set_empty_value_for_field(params, field)
-        self.fill_all_fields(list(only_independent_fields) + self.required_fields_edit +
-                             self._get_required_from_related(self.required_related_fields_edit), params)
+        self.fill_all_fields(list(only_independent_fields) + self.not_empty_fields_edit +
+                             self._get_required_from_related(self.not_empty_related_fields_edit), params)
         only_if_value_fields = [field for field, values in viewitems(self.only_if_value or {}) if
                                 all((params.get(k, None) == v for k, v in viewitems(values)))]
         self.fill_all_fields(only_if_value_fields, params)
@@ -2570,7 +2569,8 @@ class EditPositiveCases(object):
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
         self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
-        required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
+        required_fields = self.not_empty_fields_edit + \
+            self._get_required_from_related(self.not_empty_related_fields_edit)
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
             self.set_empty_value_for_field(params, field)
@@ -2588,7 +2588,7 @@ class EditPositiveCases(object):
             mail.outbox = []
 
         """если хотя бы одно поле из группы заполнено, объект редактируется"""
-        for group in self.required_related_fields_edit:
+        for group in self.not_empty_related_fields_edit:
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
                 self.update_params(params)
@@ -3618,7 +3618,7 @@ class EditPositiveCases(object):
                 values = ((1, None),)
                 if comparsion == '>=':
                     values += ((0, None),)
-            if end_field not in self.required_fields_edit and end_field + '_0' not in self.required_fields_edit:
+            if end_field not in self.not_empty_fields_edit and end_field + '_0' not in self.not_empty_fields_edit:
                 values += ((None, None),)
 
             for date_diff, time_diff in values:
@@ -3823,14 +3823,14 @@ class EditPositiveCases(object):
         """
         if not set(sum([list(d.keys()) for l in self.required_if_value.values()
                         for d in (l if isinstance(l, (list, tuple)) else [l])], [])
-                   ).difference(self.required_fields_edit):
+                   ).difference(self.not_empty_fields_edit):
             self.skipTest("Нет полей для проверки")
         for field, values in self.required_if_value.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
             for value in values:
-                for k in set(value.keys()).difference(self.required_fields_edit):
+                for k in set(value.keys()).difference(self.not_empty_fields_edit):
                     obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
@@ -3860,7 +3860,7 @@ class EditNegativeCases(object):
         Try edit object: empty required fields
         """
         message_type = 'empty_required'
-        for field in [f for f in self.required_fields_edit if 'FORMS' not in f]:
+        for field in [f for f in self.not_empty_fields_edit if 'FORMS' not in f]:
             sp = transaction.savepoint()
             obj_for_edit = self.get_obj_for_edit()
             try:
@@ -3878,7 +3878,7 @@ class EditNegativeCases(object):
                 self.errors_append(text='For empty field "%s"' % field)
 
         """обязательно хотя бы одно поле из группы (все пустые)"""
-        for group in self.required_related_fields_edit:
+        for group in self.not_empty_related_fields_edit:
             sp = transaction.savepoint()
             obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
