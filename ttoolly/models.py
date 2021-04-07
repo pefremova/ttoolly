@@ -1958,10 +1958,16 @@ class FormCommonMixIn(object):
             else:
                 self.not_empty_fields_edit = copy(self.not_empty_fields)
 
-        self.not_empty_fields_add, self.not_empty_related_fields_add = \
-            self._divide_common_and_related_fields(self.not_empty_fields_add)
-        self.not_empty_fields_edit, self.not_empty_related_fields_edit = \
-            self._divide_common_and_related_fields(self.not_empty_fields_edit)
+        if self.not_empty_fields_add == self.required_fields_add:
+            self.not_empty_related_fields_add = copy(self.required_related_fields_add)
+        else:
+            self.not_empty_fields_add, self.not_empty_related_fields_add = \
+                self._divide_common_and_related_fields(self.not_empty_fields_add)
+        if self.not_empty_fields_edit == self.required_fields_edit:
+            self.not_empty_related_fields_edit = copy(self.required_related_fields_edit)
+        else:
+            self.not_empty_fields_edit, self.not_empty_related_fields_edit = \
+                self._divide_common_and_related_fields(self.not_empty_fields_edit)
 
     def check_on_add_success(self, response, initial_obj_count, _locals):
         self.assert_no_form_errors(response)
