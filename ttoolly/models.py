@@ -1227,7 +1227,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             params_value = int(params_value) if (params_value and
                                                  isinstance(params_value, (str, bytes)) and
                                                  params_value.isdigit()) else params_value
-        elif value.__class__.__name__ in ('ManyRelatedManager', 'GenericRelatedObjectManager'):
+        elif value.__class__.__name__ in ('RelatedManager', 'ManyRelatedManager', 'GenericRelatedObjectManager'):
             value = [force_text(v) for v in value.values_list('pk', flat=True)]
             value.sort()
             value_iterator = getattr(params_value, '__iter__', None)
