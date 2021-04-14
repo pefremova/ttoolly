@@ -337,6 +337,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     all_unique = None
     choice_fields_values = None
     custom_error_messages = None
+    custom_wrong_values = None
     errors = []
     files = []
     longMessage = False
@@ -367,6 +368,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             self.unique_with_case = ()
         if self.custom_error_messages is None:
             self.custom_error_messages = {}
+        if self.custom_wrong_values is None:
+            self.custom_wrong_values = {}
         super(GlobalTestMixIn, self).__init__(*args, **kwargs)
 
     def __call__(self, *args, **kwargs):

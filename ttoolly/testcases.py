@@ -1625,7 +1625,7 @@ class AddNegativeCases(object):
         """
         message_type = 'wrong_value'
         for field in set(tuple(self.choice_fields_add) + tuple(self.choice_fields_add_with_value_in_error)):
-            for value in ('qwe', '12345678', 'йцу'):
+            for value in self.custom_wrong_values.get(field, ('qwe', '12345678', 'йцу')):
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -1651,7 +1651,7 @@ class AddNegativeCases(object):
         """
         message_type = 'wrong_value'
         for field in self.multiselect_fields_add:
-            for value in ('12345678',):
+            for value in self.custom_wrong_values.get(field, ('qwe', '12345678', 'йцу')):
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -1751,7 +1751,7 @@ class AddNegativeCases(object):
         """
         for field in [f for f in self.digital_fields_add]:
             message_type = 'wrong_value_int' if field in self.int_fields_add else 'wrong_value_digital'
-            for value in ('q', 'й', 'NaN', 'inf', '-inf', '²'):
+            for value in self.custom_wrong_values.get(field, ('q', 'й', 'NaN', 'inf', '-inf', '²')):
                 sp = transaction.savepoint()
                 try:
                     self.prepare_for_add()
@@ -1777,7 +1777,7 @@ class AddNegativeCases(object):
         """
         message_type = 'wrong_value_email'
         for field in [f for f in self.email_fields_add]:
-            for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
+            for value in self.custom_wrong_values.get(field, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')):
                 sp = transaction.savepoint()
                 try:
                     self.prepare_for_add()
@@ -4036,7 +4036,7 @@ class EditNegativeCases(object):
         """
         message_type = 'wrong_value'
         for field in set(tuple(self.choice_fields_edit) + tuple(self.choice_fields_edit_with_value_in_error)):
-            for value in ('qwe', '12345678', 'йцу'):
+            for value in self.custom_wrong_values.get(field, ('qwe', '12345678', 'йцу')):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
@@ -4064,7 +4064,7 @@ class EditNegativeCases(object):
         """
         message_type = 'wrong_value'
         for field in self.multiselect_fields_edit:
-            for value in ('12345678',):
+            for value in self.custom_wrong_values.get(field, ('qwe', '12345678', 'йцу')):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
@@ -4161,7 +4161,7 @@ class EditNegativeCases(object):
         """
         for field in self.digital_fields_edit:
             message_type = 'wrong_value_int' if field in self.int_fields_edit else 'wrong_value_digital'
-            for value in ('q', 'й', 'NaN', 'inf', '-inf', '²'):
+            for value in self.custom_wrong_values.get(field, ('q', 'й', 'NaN', 'inf', '-inf', '²')):
                 sp = transaction.savepoint()
                 try:
                     obj_for_edit = self.get_obj_for_edit()
@@ -4188,7 +4188,7 @@ class EditNegativeCases(object):
         """
         message_type = 'wrong_value_email'
         for field in self.email_fields_edit:
-            for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
+            for value in self.custom_wrong_values.get(field, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')):
                 sp = transaction.savepoint()
                 try:
                     obj_for_edit = self.get_obj_for_edit()
@@ -5510,7 +5510,7 @@ class ResetPasswordNegativeCases(object):
         """
         Try reset password with wrong email value
         """
-        for value in ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@'):
+        for value in self.custom_wrong_values.get(self.field_username, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')):
             params = self.deepcopy(self.request_password_params)
             self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
             params[self.field_username] = value
@@ -5613,7 +5613,7 @@ class ResetPasswordNegativeCases(object):
         Try reset password with wrong captcha value
         """
         for field in ('captcha_0', 'captcha_1'):
-            for value in (u'йцу', u'\r', u'\n', u' ', ':'):
+            for value in self.custom_wrong_values.get(field, (u'йцу', u'\r', u'\n', u' ', ':')):
                 self.clean_blacklist()
                 self.set_host_blacklist(host='127.0.0.1', count=self.request_reset_retries or 1)
                 user = self.get_obj_for_edit()
@@ -6036,7 +6036,7 @@ class LoginNegativeCases(object):
         login as user from blacklist with wrong captcha
         """
         for field in ('captcha_0', 'captcha_1'):
-            for value in (u'йцу', u'\r', u'\n', u' ', ':'):
+            for value in self.custom_wrong_values.get(field, (u'йцу', u'\r', u'\n', u' ', ':')):
                 self.client = self.client_class()
                 self.clean_blacklist()
                 self.set_host_blacklist(host='127.0.0.1', count=self.login_retries or 1)
