@@ -1010,7 +1010,7 @@ def get_random_svg_content(size=10, width=1, height=1):
     if size > 0:
         content += '<!-- %s -->' % ('a' * (size - 9))
     output.close()
-    return content
+    return content.encode()
 
 
 def get_random_url_value(length):
