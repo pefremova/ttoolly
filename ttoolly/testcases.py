@@ -4741,7 +4741,7 @@ class EditNegativeCases(object):
                         self.assert_errors(response, error_message)
                         self.check_on_edit_error(response, obj_for_edit, locals())
                     except Exception:
-                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
+                        self.errors_append(text='%s=%s\n%s' % (field, params[field], {test_field: params[test_field]}))
 
     @only_with_obj
     @only_with('required_if_value')
