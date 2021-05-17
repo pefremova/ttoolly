@@ -2297,7 +2297,7 @@ class FormCommonMixIn(object):
             return value + 1
         elif value < 1.0e+10:
             digits_count = len(force_text(value).split('.')[1])
-            return value + round(0.1 ** digits_count, digits_count)
+            return round(value + 0.1 ** digits_count, digits_count)
         else:
             value = value * 10
             if value == float('inf'):
@@ -2313,7 +2313,7 @@ class FormCommonMixIn(object):
             return value - 1
         elif value > -1.0e+10:
             digits_count = len(force_text(value).split('.')[1])
-            return value - round(0.1 ** digits_count, digits_count)
+            return round(value - 0.1 ** digits_count, digits_count)
         else:
             value = value * 10
             if value == float('-inf'):
