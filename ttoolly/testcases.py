@@ -399,7 +399,8 @@ class AddPositiveCases(object):
                 self.clean_depend_fields_add(params, el_field)
                 value = params.get(field, None)
                 n = 0
-                existing_filters = Q(**{f + ('__in' if self.is_multiselect_field(f) else ''): params[f] for f in fields_for_change[:fields_for_change.index(field)]})
+                existing_filters = Q(**{f + ('__in' if self.is_multiselect_field(f) else '')
+                                     : params[f] for f in fields_for_change[:fields_for_change.index(field)]})
                 for el in self.unique_fields_add:
                     if field in el:
                         existing_filters |= Q(**{f + ('__in' if self.is_multiselect_field(f) else ''): getattr(existing_obj, f).all() if
@@ -1188,6 +1189,35 @@ class AddPositiveCases(object):
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
+    def _test_add_object_some_digital_intervals_positive(self, start_field, end_field, comparsion):
+        values = (1,)
+        if comparsion == '>=':
+            values += (0,)
+        for delta in values:
+            self.prepare_for_add()
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url(self.url_add), params)
+            start_value = self.get_value_for_field(None, start_field)
+            self.fill_field(params, start_field, start_value)
+            self.fill_with_related(params, start_field, params[start_field])
+            end_value = start_value + delta
+            self.fill_field(params, end_field, end_value)
+            self.fill_with_related(params, end_field, params[end_field])
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+            try:
+                response = self.send_add_request(params)
+                self.check_on_add_success(response, initial_obj_count, locals())
+                new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
+                exclude = getattr(self, 'exclude_from_check_add', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except Exception:
+                self.errors_append(text="Interval %s: %s - %s: %s" %
+                                   (start_field, start_value, end_field, end_value))
+            finally:
+                mail.outbox = []
+
     @only_with_obj
     @only_with('intervals')
     def test_add_object_some_intervals_positive(self):
@@ -1195,6 +1225,9 @@ class AddPositiveCases(object):
         Some intervals checks
         """
         for start_field, end_field, comparsion in self.intervals:
+            if self.is_digital_field(start_field) and self.is_digital_field(end_field):
+                self._test_add_object_some_digital_intervals_positive(start_field, end_field, comparsion)
+                continue
             if self.is_datetime_field(start_field) and self.is_datetime_field(end_field):
                 values = ((0, 1),
                           (1, 0),
@@ -2261,6 +2294,34 @@ class AddNegativeCases(object):
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
+    def _test_add_object_some_digital_intervals_negative(self, start_field, end_field, comparsion):
+        values = (-1, )
+        if comparsion == '>':
+            values += (0, )
+        for delta in values:
+            self.prepare_for_add()
+            params = self.deepcopy(self.default_params_add)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url(self.url_add), params)
+            start_value = self.get_value_for_field(None, start_field)
+            self.fill_field(params, start_field, start_value)
+            self.fill_with_related(params, start_field, params[start_field])
+            end_value = start_value + delta
+            self.fill_field(params, end_field, end_value)
+            self.fill_with_related(params, end_field, params[end_field])
+            initial_obj_count = self.get_obj_manager.count()
+            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
+            try:
+                response = self.send_add_request(params)
+                self.check_on_add_error(response, initial_obj_count, locals())
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message('wrong_interval', end_field, locals=locals()))
+            except Exception:
+                self.errors_append(text="Interval %s: %s - %s: %s" %
+                                   (start_field, start_value, end_field, end_value))
+            finally:
+                mail.outbox = []
+
     @only_with_obj
     @only_with('intervals')
     def test_add_object_some_intervals_negative(self):
@@ -2268,6 +2329,9 @@ class AddNegativeCases(object):
         Wrong intervals checks
         """
         for start_field, end_field, comparsion in self.intervals:
+            if self.is_digital_field(start_field) and self.is_digital_field(end_field):
+                self._test_add_object_some_digital_intervals_negative(start_field, end_field, comparsion)
+                continue
             if self.is_datetime_field(start_field) and self.is_datetime_field(end_field):
                 values = ((0, -1),
                           (-1, 0),
@@ -3590,6 +3654,33 @@ class EditPositiveCases(object):
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
+    def _test_edit_object_some_digital_intervals_positive(self, start_field, end_field, comparsion):
+        values = (1, )
+        if comparsion == '>=':
+            values += (0,)
+        for delta in values:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+            start_value = self.get_value_for_field(None, start_field)
+            self.fill_field(params, start_field, start_value)
+            self.fill_with_related(params, start_field, params[start_field])
+            end_value = start_value + delta
+            self.fill_field(params, end_field, end_value)
+            self.fill_with_related(params, end_field, params[end_field])
+            try:
+                response = self.send_edit_request(obj_for_edit.pk, params)
+                self.check_on_edit_success(response, locals())
+                new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
+                exclude = getattr(self, 'exclude_from_check_edit', [])
+                self.assert_object_fields(new_object, params, exclude=exclude)
+            except Exception:
+                self.errors_append(text="Interval %s: %s - %s: %s" %
+                                   (start_field, start_value, end_field, end_value))
+            finally:
+                mail.outbox = []
+
     @only_with_obj
     @only_with('intervals')
     def test_edit_object_some_intervals_positive(self):
@@ -3597,6 +3688,9 @@ class EditPositiveCases(object):
         Some intervals checks
         """
         for start_field, end_field, comparsion in self.intervals:
+            if self.is_digital_field(start_field) and self.is_digital_field(end_field):
+                self._test_edit_object_some_digital_intervals_positive(start_field, end_field, comparsion)
+                continue
             if self.is_datetime_field(start_field) and self.is_datetime_field(end_field):
                 values = ((0, 1),
                           (1, 0),
@@ -4593,6 +4687,33 @@ class EditNegativeCases(object):
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
+    def _test_edit_object_some_digital_intervals_negative(self, start_field, end_field, comparsion):
+        values = (-1,)
+        if comparsion == '>':
+            values += (0,)
+        for delta in values:
+            obj_for_edit = self.get_obj_for_edit()
+            params = self.deepcopy(self.default_params_edit)
+            self.update_params(params)
+            self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
+            start_value = self.get_value_for_field(None, start_field)
+            self.fill_field(params, start_field, start_value)
+            self.fill_with_related(params, start_field, params[start_field])
+            end_value = start_value + delta
+            self.fill_field(params, end_field, end_value)
+            self.fill_with_related(params, end_field, params[end_field])
+            obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
+            try:
+                response = self.send_edit_request(obj_for_edit.pk, params)
+                self.assertEqual(self.get_all_form_errors(response),
+                                 self.get_error_message('wrong_interval', end_field, locals=locals()))
+                self.check_on_edit_error(response, obj_for_edit, locals())
+            except Exception:
+                self.errors_append(text="Interval %s: %s - %s: %s" %
+                                   (start_field, start_value, end_field, end_value))
+            finally:
+                mail.outbox = []
+
     @only_with_obj
     @only_with('intervals')
     def test_edit_object_some_intervals_negative(self):
@@ -4600,6 +4721,9 @@ class EditNegativeCases(object):
         Wrong intervals checks
         """
         for start_field, end_field, comparsion in self.intervals:
+            if self.is_digital_field(start_field) and self.is_digital_field(end_field):
+                self._test_edit_object_some_digital_intervals_negative(start_field, end_field, comparsion)
+                continue
             if self.is_datetime_field(start_field) and self.is_datetime_field(end_field):
                 values = ((0, -1),
                           (-1, 0),
