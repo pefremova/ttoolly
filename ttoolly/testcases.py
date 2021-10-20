@@ -2897,7 +2897,7 @@ class EditPositiveCases(object):
                     if field in el:
                         existing_filters |= Q(**{f + ('__in' if self.is_multiselect_field(f) else ''):
                                                  getattr(existing_obj, f).all() if hasattr(
-                                                     getattr(existing_obj, f)) else getattr(existing_obj, f)
+                                                     getattr(existing_obj, f), 'all') else getattr(existing_obj, f)
                                                  for f in el if f not in fields_for_change})
                 existing_objs = self.get_obj_manager.exclude(pk=obj_for_edit.pk).filter(existing_filters)
                 while n < 3 and (value in ('', None) or existing_objs.filter(**{field + ('__in' if self.is_multiselect_field(field) else ''): value}).exists()):
