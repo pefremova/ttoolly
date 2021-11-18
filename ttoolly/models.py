@@ -834,7 +834,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                             local_errors.append('[%s]: count ' % (field.encode('utf-8') if isinstance(field, str)
                                                                   else field) + force_text(e))
 
-                    for i, el in enumerate(value.all().order_by('pk')
+                    for i, el in enumerate(value.all().order_by(getattr(self, 'inline_objects_ordering', {}).get(field, 'pk'))
                                            if value.__class__.__name__ in ('RelatedManager', 'QuerySet',
                                                                            'ManyRelatedManager')
                                            else [value, ]):
