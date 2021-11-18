@@ -984,8 +984,6 @@ class AddPositiveCases(object):
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
                 f = self.get_random_file(field, width=width, height=height)
-                params = self.deepcopy(self.default_params_add)
-                self.update_params(params)
                 self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -2169,8 +2167,6 @@ class AddNegativeCases(object):
                     self.clean_depend_fields_add(params, field)
                     f = self.get_random_file(field, width=width, height=height)
                     filename = f[0].name if isinstance(f, (list, tuple)) else f.name
-                    params = self.deepcopy(self.default_params_add)
-                    self.update_params(params)
                     self.fill_with_related(params, field, f)
                     initial_obj_count = self.get_obj_manager.count()
                     old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -2655,8 +2651,8 @@ class EditPositiveCases(object):
         for group in self.not_empty_related_fields_edit:
             for field in group:
                 obj_for_edit = self.get_obj_for_edit()
-                self.update_params(params)
                 params = self.deepcopy(self.default_params_edit)
+                self.update_params(params)
                 for f in group:
                     self.set_empty_value_for_field(params, f)
                 self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
