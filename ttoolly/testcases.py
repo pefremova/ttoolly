@@ -1733,8 +1733,9 @@ class AddNegativeCases(object):
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
-                                                             (field, params[field]) for field
+                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s" (value in existing object "%s")' %
+                                                             (field, params[field], self.get_params_according_to_type(
+                                                                 self._get_field_value_by_name(existing_obj, field), '')[0]) for field
                                                              in el if field in viewkeys(params)))
 
         """values is in other case"""
@@ -1770,8 +1771,9 @@ class AddNegativeCases(object):
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
-                                                             (field, params[field]) for field
+                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s" (value in existing object "%s")' %
+                                                             (field, params[field], self.get_params_according_to_type(
+                                                                 self._get_field_value_by_name(existing_obj, field), '')[0]) for field
                                                              in el if field in viewkeys(params)))
 
     @only_with_obj
@@ -4204,8 +4206,9 @@ class EditNegativeCases(object):
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' %
-                                                             (field, params[field]) for field
+                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s" (value in existing object "%s")' %
+                                                             (field, params[field], self.get_params_according_to_type(
+                                                                 self._get_field_value_by_name(existing_obj, field), '')[0]) for field
                                                              in el if field in viewkeys(params)))
 
         """values is in other case"""
@@ -4240,8 +4243,10 @@ class EditNegativeCases(object):
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s"' % (field, params[field])
-                                                             for field in el if field in viewkeys(params)))
+                self.errors_append(text='For %s' % ', '.join('field "%s" with value "%s" (value in existing object "%s")' %
+                                                             (field, params[field], self.get_params_according_to_type(
+                                                                 self._get_field_value_by_name(existing_obj, field), '')[0]) for field
+                                                             in el if field in viewkeys(params)))
 
     @only_with_obj
     @only_with(('digital_fields_edit',))

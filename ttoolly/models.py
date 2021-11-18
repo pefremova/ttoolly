@@ -533,7 +533,10 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             self.fail(self._formatMessage(error_message, None))
 
     def assert_errors(self, response, error_message):
-        self.assertEqual(self.get_all_form_errors(response), error_message)
+        response_errors = self.get_all_form_errors(response)
+        if response_errors != error_message:
+            raise AssertionError('Errors from response:\n%s\n\nExpected errors:\n%s' %
+                                 (response_errors, error_message))
 
     def assert_form_equal(self, form_fields, etalon_fields, text=''):
         text = (text + ':\n') if text else ''
