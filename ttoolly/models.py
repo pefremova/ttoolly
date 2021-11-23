@@ -1169,7 +1169,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         if re.findall(r'[\w_]+\-\d+\-[\w_]+', field):
             model_name, index, field_name = field.split('-')
-            qs = getattr(obj, related_names_map.get(model_name, model_name)).all().order_by('pk')
+            qs = getattr(obj, related_names_map.get(model_name, model_name)).all().order_by(
+                getattr(self, 'inline_objects_ordering', {}).get(field, 'pk'))
             if qs.count() > int(index):
                 return getattr(qs[int(index)], field_name)
         else:
@@ -1318,7 +1319,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         if value.__class__.__name__ in ('ManyRelatedManager', 'RelatedManager',
                                         'GenericRelatedObjectManager'):
-            value = [v for v in value.values_list('pk', flat=True).order_by('pk')]
+            value = [v for v in value.values_list('pk', flat=True).order_by(
+                getattr(self, 'inline_objects_ordering', {}).get(field, 'pk'))]
         else:
             if 'File' in [m.__name__ for m in getattr(obj, field).__class__.__mro__] and not value:
                 value = None
