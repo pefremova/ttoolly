@@ -2924,11 +2924,14 @@ class FormCommonMixIn(object):
 
         getattr(self, 'clean_depend_fields' + test_type)(params, field)
 
-        for related_field, lead_params in viewitems(self.only_if_value or {}):
-            if field in viewkeys(lead_params) and lead_params != {
-                k: v for k, v in viewitems(params) if k in viewkeys(lead_params)
-            }:
-                self.set_empty_value_for_field(params, related_field)
+        for related_field, lead_params_list in viewitems(self.only_if_value or {}):
+            if not isinstance(lead_params_list, (tuple, list)):
+                lead_params_list = (lead_params_list,)
+            for lead_params in lead_params_list:
+                if field in viewkeys(lead_params) and lead_params != {
+                    k: v for k, v in viewitems(params) if k in viewkeys(lead_params)
+                }:
+                    self.set_empty_value_for_field(params, related_field)
 
         for related_field, lead_params_list in viewitems(self.required_if_value or {}):
             if not isinstance(lead_params_list, (tuple, list)):
@@ -2952,7 +2955,13 @@ class FormCommonMixIn(object):
                             params, rf, self.get_value_for_field(None, rf)
                         )
 
-        params.update((self.only_if_value or {}).get(field, {}))
+        only_if_values = (self.only_if_value or {}).get(field, {})
+
+        params.update(
+            choice(only_if_values)
+            if isinstance(only_if_values, (list, tuple))
+            else only_if_values
+        )
 
     def get_all_not_str_fields(self, additional=''):
         other_fields = []
