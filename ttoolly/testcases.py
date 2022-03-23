@@ -532,6 +532,10 @@ class AddPositiveCases(object):
                 existing_objs = self.get_obj_manager.filter(existing_filters)
                 while n < 3 and (
                     value in ('', None)
+                    or self.get_params_according_to_type(
+                        self._get_field_value_by_name(existing_obj, field), value
+                    )[0]
+                    == value
                     or existing_objs.filter(
                         **{
                             field
@@ -3797,6 +3801,11 @@ class EditPositiveCases(object):
                 )
                 while n < 3 and (
                     value in ('', None)
+                    or self.get_params_according_to_type(
+                        self._get_field_value_by_name(existing_obj, field),
+                        '',
+                    )[0]
+                    == value
                     or existing_objs.filter(
                         **{
                             field
