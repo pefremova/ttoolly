@@ -473,7 +473,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 return get_settings_value(others, value)
 
         for name in get_settings_for_move():
-            path = get_settings_value(name)
+            path = str(get_settings_value(name))
             if path.startswith(tempfile.gettempdir()):
                 filename, ext = os.path.splitext(os.path.basename(path))
                 if ext:
