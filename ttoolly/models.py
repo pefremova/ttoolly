@@ -34,7 +34,12 @@ from django.test.utils import override_settings
 from django.utils.encoding import force_text, force_bytes
 from django.utils.http import urlsafe_base64_encode
 from lxml.html import document_fromstring
-import psycopg2.extensions
+
+try:
+    import psycopg2.extensions
+except ImportError as e:
+    e.msg += '\nNeed to install psycopg2-binary or psycopg2'
+    raise
 
 from builtins import str
 from freezegun import freeze_time
@@ -88,6 +93,8 @@ from .utils.decorators import (
     only_with_files_params,
 )
 
+if DJANGO_VERSION < (1, 8):
+    raise Exception('Django version should be >= 1.8. Now %s' % str(DJANGO_VERSION))
 
 if sys.version[0] == '2':
     from functools32 import wraps

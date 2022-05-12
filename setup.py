@@ -10,8 +10,6 @@ def readme():
 
 
 install_requires = [
-    'django>=1.8',
-    'psycopg2-binary',
     'lxml',
     'chardet',
     'Pillow',
@@ -26,7 +24,7 @@ if sys.version[0] == '2':
 
 setup(
     name='ttoolly',
-    version='0.37.8',
+    version='0.37.9',
     description="Django test tools",
     long_description=readme(),
     author="Polina Efremova",
