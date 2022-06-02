@@ -2204,6 +2204,8 @@ class FormCommonMixIn(object):
     one_of_fields_add = None
     one_of_fields_edit = None
     only_if_value = None
+    only_if_value_add = None
+    only_if_value_edit = None
     required_fields = None
     required_fields_add = None
     required_fields_edit = None
@@ -2211,6 +2213,8 @@ class FormCommonMixIn(object):
     required_if_add = None
     required_if_edit = None
     required_if_value = None
+    required_if_value_add = None
+    required_if_value_edit = None
     status_code_error = 200
     status_code_not_exist = 404
     status_code_success_add = 200
@@ -2260,6 +2264,7 @@ class FormCommonMixIn(object):
         self._prepare_multiselect_fields()
         self._prepare_null()
         self._prepare_one_of_fields()
+        self._prepare_only_if_value()
         self.unique_fields_add = [
             el
             for el in viewkeys(self.all_unique)
@@ -2667,6 +2672,44 @@ class FormCommonMixIn(object):
         if self.required_if_edit is None:
             self.required_if_edit = self.deepcopy(self.required_if or {})
 
+        if self.required_if_value_add is None:
+            self.required_if_value_add = {}
+            for fields, values in viewitems(self.required_if_value or {}):
+                if not isinstance(values, (list, tuple)):
+                    values = (values,)
+                values = [
+                    v
+                    for v in values
+                    if not set(viewkeys(v)).difference(self.all_fields_add)
+                ]
+                if values:
+                    if not isinstance(fields, (tuple, list)):
+                        fields = (fields,)
+                    fields = tuple(set(fields).intersection(self.all_fields_add))
+                    if len(fields) == 1:
+                        fields = fields[0]
+                    if fields:
+                        self.required_if_value_add[fields] = values.copy()
+
+        if self.required_if_value_edit is None:
+            self.required_if_value_edit = {}
+            for fields, values in viewitems(self.required_if_value or {}):
+                if not isinstance(values, (list, tuple)):
+                    values = (values,)
+                values = [
+                    v
+                    for v in values
+                    if not set(viewkeys(v)).difference(self.all_fields_edit)
+                ]
+                if values:
+                    if not isinstance(fields, (tuple, list)):
+                        fields = (fields,)
+                    fields = tuple(set(fields).intersection(self.all_fields_edit))
+                    if len(fields) == 1:
+                        fields = fields[0]
+                    if fields:
+                        self.required_if_value_edit[fields] = values.copy()
+
     def _prepare_not_empty_fields(self):
         if self.not_empty_fields_add is None:
             if self.not_empty_fields is None:
@@ -2700,6 +2743,22 @@ class FormCommonMixIn(object):
                 self.not_empty_fields_edit,
                 self.not_empty_related_fields_edit,
             ) = self._divide_common_and_related_fields(self.not_empty_fields_edit)
+
+    def _prepare_only_if_value(self):
+        if self.only_if_value_add is None:
+            if self.only_if_value is not None:
+                self.only_if_value_add = {
+                    k: v
+                    for k, v in viewitems(self.only_if_value)
+                    if k in self.all_fields_add
+                }
+        if self.only_if_value_edit is None:
+            if self.only_if_value is not None:
+                self.only_if_value_edit = {
+                    k: v
+                    for k, v in viewitems(self.only_if_value)
+                    if k in self.all_fields_edit
+                }
 
     def check_on_add_success(self, response, initial_obj_count, _locals):
         self.assert_no_form_errors(response)
@@ -2896,7 +2955,15 @@ class FormCommonMixIn(object):
             params[field_name] = value
 
     def fill_required_if(self, params):
-        for depended_field, lead_params_list in viewitems(self.required_if_value or {}):
+        test_name = self.id()
+        test_type = ''
+        if 'test_add_' in test_name:
+            test_type = '_add'
+        elif 'test_edit_' in test_name:
+            test_type = '_edit'
+        for depended_field, lead_params_list in viewitems(
+            getattr(self, 'required_if_value' + test_type) or {}
+        ):
             if not isinstance(lead_params_list, (tuple, list)):
                 lead_params_list = (lead_params_list,)
             for lead_params in lead_params_list:
@@ -2931,7 +2998,9 @@ class FormCommonMixIn(object):
 
         getattr(self, 'clean_depend_fields' + test_type)(params, field)
 
-        for related_field, lead_params_list in viewitems(self.only_if_value or {}):
+        for related_field, lead_params_list in viewitems(
+            getattr(self, 'only_if_value' + test_type) or {}
+        ):
             if not isinstance(lead_params_list, (tuple, list)):
                 lead_params_list = (lead_params_list,)
             for lead_params in lead_params_list:
@@ -2940,7 +3009,9 @@ class FormCommonMixIn(object):
                 }:
                     self.set_empty_value_for_field(params, related_field)
 
-        for related_field, lead_params_list in viewitems(self.required_if_value or {}):
+        for related_field, lead_params_list in viewitems(
+            getattr(self, 'required_if_value' + test_type) or {}
+        ):
             if not isinstance(lead_params_list, (tuple, list)):
                 lead_params_list = (lead_params_list,)
             for lead_params in lead_params_list:
@@ -2962,7 +3033,9 @@ class FormCommonMixIn(object):
                             params, rf, self.get_value_for_field(None, rf)
                         )
 
-        only_if_values = (self.only_if_value or {}).get(field, {})
+        only_if_values = (getattr(self, 'only_if_value' + test_type) or {}).get(
+            field, {}
+        )
 
         params.update(
             choice(only_if_values)

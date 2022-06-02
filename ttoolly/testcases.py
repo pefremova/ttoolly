@@ -141,7 +141,7 @@ class AddPositiveCases(object):
         only_independent_fields = (
             set(self.all_fields_add)
             .difference(viewkeys(prepared_depends_fields))
-            .difference(viewkeys(self.only_if_value or {}))
+            .difference(viewkeys(self.only_if_value_add or {}))
         )
 
         for field in viewkeys(prepared_depends_fields):
@@ -155,7 +155,7 @@ class AddPositiveCases(object):
         )
         only_if_value_fields = [
             field
-            for field, values in viewitems(self.only_if_value or {})
+            for field, values in viewitems(self.only_if_value_add or {})
             if all((params.get(k, None) == v for k, v in viewitems(values)))
         ]
         self.fill_all_fields(only_if_value_fields, params)
@@ -359,12 +359,12 @@ class AddPositiveCases(object):
         for field, length in viewitems(fields_for_check):
             self.clean_depend_fields_add(max_length_params, field)
             max_length_params[field] = self.get_value_for_field(length, field)
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_add or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_add or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -707,12 +707,12 @@ class AddPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_add or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_add or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -806,12 +806,12 @@ class AddPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_add or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_add or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -977,12 +977,12 @@ class AddPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_add or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_add or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -1074,12 +1074,12 @@ class AddPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_add or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_add or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -1357,12 +1357,12 @@ class AddPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_add or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_add or {}).get(field, {}))
 
         test_params = {}
         fields_for_clean = []
@@ -1470,12 +1470,12 @@ class AddPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_add or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_add or {}).get(field, {}))
 
         try:
             self.prepare_for_add()
@@ -1741,12 +1741,12 @@ class AddPositiveCases(object):
             self.errors_append()
 
     @only_with_obj
-    @only_with('only_if_value')
+    @only_with('only_if_value_add')
     def test_add_object_related_filled_lead_with_value_positive(self):
         """
         Проверка полей, возможность заполнения которых зависит от значения в другом поле
         """
-        for field, values in self.only_if_value.items():
+        for field, values in self.only_if_value_add.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -1772,16 +1772,16 @@ class AddPositiveCases(object):
                     self.errors_append(text='%s=%s\n%s' % (field, params[field], value))
 
     @only_with_obj
-    @only_with('required_if_value')
+    @only_with('required_if_value_add')
     def test_add_object_required_related_filled_lead_with_value_positive(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле
         """
-        if self.required_if_value == self.only_if_value:
+        if self.required_if_value_add == self.only_if_value_add:
             self.skipTest(
                 "Проверка выполняется в тесте test_add_object_related_filled_lead_with_value_positive"
             )
-        for field, values in self.required_if_value.items():
+        for field, values in self.required_if_value_add.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -1808,13 +1808,13 @@ class AddPositiveCases(object):
                     self.errors_append(text='%s=%s\n%s' % (field, params[field], value))
 
     @only_with_obj
-    @only_with('required_if_value')
+    @only_with('required_if_value_add')
     def test_add_object_required_related_empty_lead_with_other_value_positive(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
         Поле, включающее обязательность, заполнено другим значением - связанное поле должно быть необязательным
         """
-        for fields, values in self.required_if_value.items():
+        for fields, values in self.required_if_value_add.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
             if not isinstance(fields, (list, tuple)):
@@ -1876,7 +1876,7 @@ class AddPositiveCases(object):
                             )
 
     @only_with_obj
-    @only_with('required_if_value')
+    @only_with('required_if_value_add')
     def test_add_object_required_related_filled_lead_empty_positive(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
@@ -1886,14 +1886,14 @@ class AddPositiveCases(object):
             sum(
                 [
                     list(d.keys())
-                    for l in self.required_if_value.values()
+                    for l in self.required_if_value_add.values()
                     for d in (l if isinstance(l, (list, tuple)) else [l])
                 ],
                 [],
             )
         ).difference(self.not_empty_fields_add):
             self.skipTest("Нет полей для проверки")
-        for field, values in self.required_if_value.items():
+        for field, values in self.required_if_value_add.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -3163,14 +3163,14 @@ class AddNegativeCases(object):
                     )
 
     @only_with_obj
-    @only_with('only_if_value')
+    @only_with('only_if_value_add')
     def test_add_object_related_filled_lead_with_other_value_negative(self):
         """
         Проверка полей, возможность заполнения которых зависит от значения в другом поле.
         Поле-инициатор заполнено другим значением
         """
         message_type = 'wrong_only_if_value'
-        for field, values in self.only_if_value.items():
+        for field, values in self.only_if_value_add.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -3227,14 +3227,14 @@ class AddNegativeCases(object):
                         )
 
     @only_with_obj
-    @only_with('required_if_value')
+    @only_with('required_if_value_add')
     def test_add_object_related_empty_lead_with_value_negative(self):
         """
         Проверка полей, возможность заполнения которых зависит от значения в другом поле.
         Поле-инициатор заполнено значением, зависимое поле не заполнено
         """
         message_type = 'empty_required'
-        for field, values in self.required_if_value.items():
+        for field, values in self.required_if_value_add.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -3334,7 +3334,7 @@ class EditPositiveCases(object):
         only_independent_fields = (
             set(self.all_fields_edit)
             .difference(viewkeys(prepared_depends_fields))
-            .difference(viewkeys(self.only_if_value or {}))
+            .difference(viewkeys(self.only_if_value_edit or {}))
         )
         for field in viewkeys(prepared_depends_fields):
             self.set_empty_value_for_field(params, field)
@@ -3346,7 +3346,7 @@ class EditPositiveCases(object):
         )
         only_if_value_fields = [
             field
-            for field, values in viewitems(self.only_if_value or {})
+            for field, values in viewitems(self.only_if_value_edit or {})
             if all((params.get(k, None) == v for k, v in viewitems(values)))
         ]
         self.fill_all_fields(only_if_value_fields, params)
@@ -3556,12 +3556,12 @@ class EditPositiveCases(object):
             max_length_params[field] = self.get_value_for_field(length, field)
             if self.is_file_field(field):
                 file_fields.append(field)
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_edit or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_edit or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -3971,12 +3971,12 @@ class EditPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_edit or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_edit or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -4070,12 +4070,12 @@ class EditPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_edit or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_edit or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -4243,12 +4243,12 @@ class EditPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_edit or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_edit or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -4349,12 +4349,12 @@ class EditPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_edit or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_edit or {}).get(field, {}))
 
         sp = transaction.savepoint()
         try:
@@ -4660,12 +4660,12 @@ class EditPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_edit or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_edit or {}).get(field, {}))
 
         test_params = {}
         fields_for_clean = []
@@ -4764,12 +4764,12 @@ class EditPositiveCases(object):
         only_if_values = {}
         need_one_by_one_check = []
         for field in fields_for_check:
-            for k, v in viewitems((self.only_if_value or {}).get(field, {})):
+            for k, v in viewitems((self.only_if_value_edit or {}).get(field, {})):
                 if only_if_values.get(k, v) != v:
                     need_one_by_one_check.append(field)
                     continue
             if field not in need_one_by_one_check:
-                only_if_values.update((self.only_if_value or {}).get(field, {}))
+                only_if_values.update((self.only_if_value_edit or {}).get(field, {}))
 
         try:
             obj_for_edit = self.get_obj_for_edit()
@@ -5038,12 +5038,12 @@ class EditPositiveCases(object):
             self.errors_append()
 
     @only_with_obj
-    @only_with('only_if_value')
+    @only_with('only_if_value_edit')
     def test_edit_object_related_filled_lead_with_value_positive(self):
         """
         Проверка полей, возможность заполнения которых зависит от значения в другом поле
         """
-        for field, values in self.only_if_value.items():
+        for field, values in self.only_if_value_edit.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -5069,16 +5069,16 @@ class EditPositiveCases(object):
                     self.errors_append(text='%s=%s\n%s' % (field, params[field], value))
 
     @only_with_obj
-    @only_with('required_if_value')
+    @only_with('required_if_value_edit')
     def test_edit_object_required_related_filled_lead_with_value_positive(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле
         """
-        if self.required_if_value == self.only_if_value:
+        if self.required_if_value_edit == self.only_if_value_edit:
             self.skipTest(
                 "Проверка выполняется в тесте test_add_object_related_filled_lead_with_value_positive"
             )
-        for field, values in self.required_if_value.items():
+        for field, values in self.required_if_value_edit.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -5106,13 +5106,13 @@ class EditPositiveCases(object):
                     self.errors_append(text='%s=%s\n%s' % (field, params[field], value))
 
     @only_with_obj
-    @only_with('required_if_value')
+    @only_with('required_if_value_edit')
     def test_edit_object_required_related_empty_lead_with_other_value_positive(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
         Поле, включающее обязательность, заполнено другим значением - связанное поле должно быть необязательным
         """
-        for field, values in self.required_if_value.items():
+        for field, values in self.required_if_value_edit.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -5161,7 +5161,7 @@ class EditPositiveCases(object):
                         )
 
     @only_with_obj
-    @only_with('required_if_value')
+    @only_with('required_if_value_edit')
     def test_edit_object_required_related_filled_lead_empty_positive(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
@@ -5171,14 +5171,14 @@ class EditPositiveCases(object):
             sum(
                 [
                     list(d.keys())
-                    for l in self.required_if_value.values()
+                    for l in self.required_if_value_edit.values()
                     for d in (l if isinstance(l, (list, tuple)) else [l])
                 ],
                 [],
             )
         ).difference(self.not_empty_fields_edit):
             self.skipTest("Нет полей для проверки")
-        for field, values in self.required_if_value.items():
+        for field, values in self.required_if_value_edit.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -6445,14 +6445,14 @@ class EditNegativeCases(object):
                     )
 
     @only_with_obj
-    @only_with('only_if_value')
+    @only_with('only_if_value_edit')
     def test_edit_object_related_filled_lead_with_other_value_negative(self):
         """
         Проверка полей, возможность заполнения которых зависит от значения в другом поле.
         Поле-инициатор заполнено другим значением
         """
         message_type = 'wrong_only_if_value'
-        for field, values in self.only_if_value.items():
+        for field, values in self.only_if_value_edit.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
@@ -6499,14 +6499,14 @@ class EditNegativeCases(object):
                         )
 
     @only_with_obj
-    @only_with('required_if_value')
+    @only_with('required_if_value_edit')
     def test_edit_object_related_empty_lead_with_value_negative(self):
         """
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле.
         Поле-инициатор заполнено значением, зависимое поле не заполнено
         """
         message_type = 'empty_required'
-        for field, values in self.required_if_value.items():
+        for field, values in self.required_if_value_edit.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
 
