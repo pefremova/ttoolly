@@ -1898,7 +1898,11 @@ class AddPositiveCases(object):
                 values = [values]
 
             for value in values:
-                for k in set(value.keys()).difference(self.not_empty_fields_add):
+                for k in (
+                    set(value.keys())
+                    .difference(self.not_empty_fields_add)
+                    .difference(((self.only_if or {}).get(field, ()),))
+                ):
                     self.prepare_for_add()
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
@@ -3182,19 +3186,28 @@ class AddNegativeCases(object):
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     additional_params = self.deepcopy(value)
 
-                    test_value = v
+                    test_value = value.copy()
                     n = 0
+
+                    def match_dict(d1, d2):
+                        return all([k in d2 and d2[k] == v for k, v in d1.items()])
+
                     try:
-                        while test_value == v and n < 5:
-                            test_value = self.get_value_for_field(None, test_field)
+                        while (
+                            any([match_dict(test_value, v) for v in values]) and n < 5
+                        ):
+                            test_value[test_field] = self.get_value_for_field(
+                                None, test_field
+                            )
                             n += 1
-                        if test_value == v:
+                        if any([match_dict(test_value, v) for v in values]):
                             raise Exception(
                                 'Не удалось сформировать тестовое значение для поля %s'
                                 % test_field
                             )
-
-                        self.fill_with_related(params, test_field, test_value)
+                        self.fill_with_related(
+                            params, test_field, test_value[test_field]
+                        )
                         params.update(
                             {
                                 k: v
@@ -5183,7 +5196,11 @@ class EditPositiveCases(object):
                 values = [values]
 
             for value in values:
-                for k in set(value.keys()).difference(self.not_empty_fields_edit):
+                for k in (
+                    set(value.keys())
+                    .difference(self.not_empty_fields_edit)
+                    .difference(((self.only_if or {}).get(field, ()),))
+                ):
                     obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
@@ -6462,18 +6479,28 @@ class EditNegativeCases(object):
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     additional_params = self.deepcopy(value)
-                    test_value = v
+                    test_value = value.copy()
                     n = 0
+
+                    def match_dict(d1, d2):
+                        return all([k in d2 and d2[k] == v for k, v in d1.items()])
+
                     try:
-                        while test_value == v and n < 5:
-                            test_value = self.get_value_for_field(None, test_field)
+                        while (
+                            any([match_dict(test_value, v) for v in values]) and n < 5
+                        ):
+                            test_value[test_field] = self.get_value_for_field(
+                                None, test_field
+                            )
                             n += 1
-                        if test_value == v:
+                        if any([match_dict(test_value, v) for v in values]):
                             raise Exception(
                                 'Не удалось сформировать тестовое значение для поля %s'
                                 % test_field
                             )
-                        self.fill_with_related(params, test_field, test_value)
+                        self.fill_with_related(
+                            params, test_field, test_value[test_field]
+                        )
                         params.update(
                             {
                                 k: v

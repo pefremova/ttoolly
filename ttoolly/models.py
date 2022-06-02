@@ -779,10 +779,14 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         except Exception:
             self.errors_append(errors, text='[attachments]')
 
-        if getattr(m, 'content_subtype', None) not in (
-            'html',
-            'text/html',
-        ) and re.match('<[\w]', m.body):
+        if (
+            getattr(m, 'content_subtype', None)
+            not in (
+                'html',
+                'text/html',
+            )
+            and re.match('<[\w]', m.body)
+        ):
             errors.append(
                 'Not html message type (%s), but contains html tags in body'
                 % getattr(m, 'content_subtype', None)
