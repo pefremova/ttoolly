@@ -2238,15 +2238,16 @@ class FormCommonMixIn(object):
         self.exclude_from_check_edit = getattr(
             self, 'exclude_from_check_edit', None
         ) or copy(self.exclude_from_check)
+
+        """set all fields attributes"""
+        self._prepare_all_form_fields_list()
+
         """set required fields attributes"""
         self._prepare_required_fields()
         self._prepare_not_empty_fields()
 
         self._prepare_disabled_fields()
         self._prepare_hidden_fields()
-
-        """set all fields attributes"""
-        self._prepare_all_form_fields_list()
 
         self._prepare_choice_fields()
         if self.with_captcha is None:
