@@ -1649,7 +1649,7 @@ class AddPositiveCases(object):
                         ),
                     ).date()
                 self.fill_field(params, start_field, start_value)
-                self.fill_with_related(params, start_field, params[start_value])
+                self.fill_with_related(params, start_field, start_value)
                 if date_diff is None:
                     end_value = None
                     self.set_empty_value_for_field(params, end_field)
@@ -1898,11 +1898,7 @@ class AddPositiveCases(object):
                 values = [values]
 
             for value in values:
-                for k in (
-                    set(value.keys())
-                    .difference(self.not_empty_fields_add)
-                    .difference(((self.only_if or {}).get(field, ()),))
-                ):
+                for k in set(value.keys()).difference(self.not_empty_fields_add):
                     self.prepare_for_add()
                     params = self.deepcopy(self.default_params_add)
                     self.update_params(params)
@@ -5196,11 +5192,7 @@ class EditPositiveCases(object):
                 values = [values]
 
             for value in values:
-                for k in (
-                    set(value.keys())
-                    .difference(self.not_empty_fields_edit)
-                    .difference(((self.only_if or {}).get(field, ()),))
-                ):
+                for k in set(value.keys()).difference(self.not_empty_fields_edit):
                     obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
