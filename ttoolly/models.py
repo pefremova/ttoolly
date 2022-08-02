@@ -2966,17 +2966,13 @@ class FormCommonMixIn(object):
             test_type = '_add'
         elif 'test_edit_' in test_name:
             test_type = '_edit'
-        for depended_field, lead_params_list in viewitems(
-            getattr(self, 'required_if_value' + test_type) or {}
-        ):
+        for depended_field, lead_params_list in viewitems(getattr(self, 'required_if_value' + test_type) or {}):
             if not isinstance(lead_params_list, (tuple, list)):
                 lead_params_list = (lead_params_list,)
             for lead_params in lead_params_list:
                 if all((params.get(k, None) == v for k, v in viewitems(lead_params))):
                     if isinstance(depended_field, tuple):
-                        depended_field = self._get_required_from_related(
-                            (depended_field,)
-                        )[0]
+                        depended_field = self._get_required_from_related((depended_field,))[0]
                     self.fill_with_related(
                         params,
                         depended_field,
