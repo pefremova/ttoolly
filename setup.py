@@ -24,7 +24,7 @@ if sys.version[0] == '2':
 
 setup(
     name='ttoolly',
-    version='0.37.13',
+    version='0.37.14',
     description="Django test tools",
     long_description=readme(),
     author="Polina Efremova",
