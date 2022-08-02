@@ -1671,7 +1671,6 @@ class AddPositiveCases(object):
                             self.fill_with_related(params, test_field, test_value)
 
                             params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
-                            params[field] = ''
                             self.set_empty_value_for_field(params, field)
 
                             new_object = None
@@ -1683,7 +1682,10 @@ class AddPositiveCases(object):
                             exclude = getattr(self, 'exclude_from_check_add', [])
                             self.assert_object_fields(new_object, params, exclude=exclude)
                         except Exception:
-                            self.errors_append(text='%s=%s\n%s' % (field, params.get(field, None), additional_params))
+                            self.errors_append(
+                                text='%s=%s\n%s'
+                                % (field, params.get(field, None), {k: params.get(k) for k in additional_params.keys()})
+                            )
 
     @only_with_obj
     @only_with('required_if_value_add')
@@ -2913,7 +2915,6 @@ class AddNegativeCases(object):
                 for k in value.keys():
                     self.clean_depend_fields_add(params, k)
                 params.update(value)
-                params[field] = ''
                 self.set_empty_value_for_field(params, field)
 
                 self.update_captcha_params(self.get_url(self.url_add), params)
@@ -2927,7 +2928,7 @@ class AddNegativeCases(object):
                     self.assert_errors(response, error_message)
                     self.check_on_add_error(response, initial_obj_count, locals())
                 except Exception:
-                    self.errors_append(text='%s=%s\n%s' % (field, params[field], value))
+                    self.errors_append(text='%s=%s\n%s' % (field, params.get(field), value))
 
 
 class EditPositiveCases(object):
@@ -4564,7 +4565,6 @@ class EditPositiveCases(object):
 
                         self.fill_with_related(params, test_field, test_value)
                         params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
-                        params[field] = ''
                         self.set_empty_value_for_field(params, field)
 
                         new_object = None
@@ -4574,7 +4574,10 @@ class EditPositiveCases(object):
                         exclude = getattr(self, 'exclude_from_check_edit', [])
                         self.assert_object_fields(new_object, params, exclude=exclude)
                     except Exception:
-                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
+                        self.errors_append(
+                            text='%s=%s\n%s'
+                            % (field, params.get(field), {k: params.get(k) for k in additional_params.keys()})
+                        )
 
     @only_with_obj
     @only_with('required_if_value_edit')
@@ -5736,7 +5739,6 @@ class EditNegativeCases(object):
                 for k in value.keys():
                     self.clean_depend_fields_edit(params, k)
                 params.update(value)
-                params[field] = ''
                 self.set_empty_value_for_field(params, field)
 
                 self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
@@ -5746,7 +5748,7 @@ class EditNegativeCases(object):
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
-                    self.errors_append(text='%s=%s\n%s' % (field, params[field], value))
+                    self.errors_append(text='%s=%s\n%s' % (field, params.get(field), value))
 
 
 class DeletePositiveCases(object):
