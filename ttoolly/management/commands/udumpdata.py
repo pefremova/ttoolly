@@ -3,14 +3,17 @@ from django.core.management.base import BaseCommand
 from django.core import serializers
 from django.apps import apps
 import sys
+
 get_model = apps.get_model
 
 
 class Command(BaseCommand):
 
-    help = ("Write to file the contents of the database as a fixture with "
-            "readable unicode text\n"
-            "Example: manage.py udumpdata accounts.User -f /path/to/file")
+    help = (
+        "Write to file the contents of the database as a fixture with "
+        "readable unicode text\n"
+        "Example: manage.py udumpdata accounts.User -f /path/to/file"
+    )
     args = 'appname.ModelName'
 
     def add_arguments(self, parser):
@@ -34,17 +37,16 @@ class Command(BaseCommand):
                 qs = qs.filter(pk__in=kwargs.get('pks'))
             objects_list.extend(qs)
 
-            if ('PolymorphicModelBase' in [b.__name__ for b in obj_model.__class__.__bases__] or
-                    obj_model.__class__.__name__ == 'PolymorphicModelBase'):
+            if (
+                'PolymorphicModelBase' in [b.__name__ for b in obj_model.__class__.__bases__]
+                or obj_model.__class__.__name__ == 'PolymorphicModelBase'
+            ):
                 polymorphic_model = obj_model.polymorphic_ctype.field.model
                 polymorphic_model = polymorphic_model if polymorphic_model != obj_model else obj_model
-                base_objects_qs = polymorphic_model.base_objects.filter(
-                    pk__in=qs.values_list('pk', flat=True))
+                base_objects_qs = polymorphic_model.base_objects.filter(pk__in=qs.values_list('pk', flat=True))
                 objects_list.extend(base_objects_qs)
 
-        text = serializers.serialize('json',
-                                     objects_list, indent=4, ensure_ascii=False,
-                                     use_natural_foreign_keys=True)
+        text = serializers.serialize('json', objects_list, indent=4, ensure_ascii=False, use_natural_foreign_keys=True)
 
         with open(path_to_file, 'ab') as f:
             f.write(text.encode('utf-8'))

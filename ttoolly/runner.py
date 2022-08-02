@@ -41,7 +41,6 @@ if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrun
     _XMLTestResult._report_testcase = _report_testcase
 
     class XMLInfoClass(_TestInfo):
-
         def __init__(self, test_result, test_method, *args, **kwargs):
             super().__init__(test_result, test_method, *args, **kwargs)
             tags = set(getattr(test_method, 'tags', set()))
@@ -51,10 +50,10 @@ if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrun
             self.tags = tags.union(test_fn_tags)
 
     class CustomXMLTestRunner(XMLTestRunner):
-
         def _make_result(self):
-            return self.resultclass(self.stream, self.descriptions, self.verbosity, self.elapsed_times,
-                                    infoclass=XMLInfoClass)
+            return self.resultclass(
+                self.stream, self.descriptions, self.verbosity, self.elapsed_times, infoclass=XMLInfoClass
+            )
 
 
 def get_runner():
@@ -83,7 +82,7 @@ def filter_suite_by_decorators(suite, verbosity=1):
             for decorator in reversed(getattr(fn, 'decorators', ())):
                 check = getattr(decorator, 'check', None)
                 if check:
-                    need_skip = not(check(el))
+                    need_skip = not (check(el))
                     if need_skip:
                         skip_text = decorator.skip_text
                         break
@@ -91,10 +90,12 @@ def filter_suite_by_decorators(suite, verbosity=1):
             new_suite.addTest(el)
         elif verbosity > 1:
             st = unittest.runner._WritelnDecorator(sys.stderr)
-            st.write('Skip {test_name}: {skip_text}\n'.format(test_name='.'.join([el.__class__.__module__,
-                                                                                  el.__class__.__name__,
-                                                                                  el._testMethodName]),
-                                                              skip_text=skip_text))
+            st.write(
+                'Skip {test_name}: {skip_text}\n'.format(
+                    test_name='.'.join([el.__class__.__module__, el.__class__.__name__, el._testMethodName]),
+                    skip_text=skip_text,
+                )
+            )
     return new_suite
 
 
@@ -124,11 +125,15 @@ class RegexpTestSuiteRunner(ParentRunner):
     def add_arguments(cls, parser):
         super(RegexpTestSuiteRunner, cls).add_arguments(parser)
         parser.add_argument(
-            '--tags', action='store', dest='tags_rule',
+            '--tags',
+            action='store',
+            dest='tags_rule',
             help='Tags boolean rule. Example: "low AND middle AND NOT high"',
         )
         parser.add_argument(
-            '--parallelism', dest='parallelism', default=None,
+            '--parallelism',
+            dest='parallelism',
+            default=None,
             help='Part of tests (if parallel by ci). For example 2/5 - second part of five. Will be ignored if parallel > 1',
         )
 
@@ -141,7 +146,9 @@ class RegexpTestSuiteRunner(ParentRunner):
                 return []
             length = len(suite._tests)
             chunk_len, additional = divmod(length, count)
-            return suite._tests[chunk_n * chunk_len:(chunk_n + 1) * chunk_len + (additional if chunk_n == count - 1 else 0)]
+            return suite._tests[
+                chunk_n * chunk_len : (chunk_n + 1) * chunk_len + (additional if chunk_n == count - 1 else 0)
+            ]
 
         return unittest.TestSuite(get_chunk(self.parallelism[1], self.parallelism[0] - 1))
 
@@ -187,7 +194,7 @@ class RegexpTestSuiteRunner(ParentRunner):
 
                 full_name = [module_name, el.__class__.__name__, el._testMethodName]
                 full_name = '.'.join(full_name)
-                if (full_re and re.findall(r'%s' % full_re, full_name)):
+                if full_re and re.findall(r'%s' % full_re, full_name):
                     my_suite.addTest(el)
         else:
             my_suite = full_suite
@@ -196,6 +203,7 @@ class RegexpTestSuiteRunner(ParentRunner):
 
         if self.tags_rule:
             from .for_runner import algebra
+
             parsed = algebra.parse(self.tags_rule).simplify()
             my_suite = filter_tests_by_tags_rule(my_suite, parsed)
 
@@ -234,9 +242,17 @@ class RegexpTestSuiteRunner(ParentRunner):
         if self.verbosity > 2 and (result.errors or result.failures):
             st = unittest.runner._WritelnDecorator(sys.stderr)
             st.write('\n' + '*' * 29 + ' Run failed ' + '*' * 29 + '\n\n')
-            st.write('python manage.py test %s' % ' '.join(
-                ['.'.join([test.__class__.__module__, test.__class__.__name__, test._testMethodName]) for test, _ in
-                 result.errors + result.failures if hasattr(test, '_testMethodName')]) + '\n\n')
+            st.write(
+                'python manage.py test %s'
+                % ' '.join(
+                    [
+                        '.'.join([test.__class__.__module__, test.__class__.__name__, test._testMethodName])
+                        for test, _ in result.errors + result.failures
+                        if hasattr(test, '_testMethodName')
+                    ]
+                )
+                + '\n\n'
+            )
             st.write('*' * 70 + '\n\n')
         return result
 

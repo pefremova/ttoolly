@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from django.core.management.base import BaseCommand
+
 try:
     from django.contrib.auth import get_user_model
 except ImportError:

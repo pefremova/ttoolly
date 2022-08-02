@@ -204,9 +204,7 @@ def get_all_field_names_from_model(model_name):
     return list(
         set(
             chain.from_iterable(
-                (field.name, field.attname)
-                if hasattr(field, 'attname')
-                else (field.name,)
+                (field.name, field.attname) if hasattr(field, 'attname') else (field.name,)
                 for field in model_name._meta.get_fields()
                 # For complete backwards compatibility, you may want to exclude
                 # GenericForeignKey from the results.
@@ -235,18 +233,13 @@ def get_all_form_errors(response):
                 for n, el in enumerate(errors):
                     _errors.update(
                         {
-                            '%s-%s-%s' % (form.prefix, n, k)
-                            if not k.startswith(form.prefix)
-                            else k: v
+                            '%s-%s-%s' % (form.prefix, n, k) if not k.startswith(form.prefix) else k: v
                             for k, v in viewitems(el)
                         }
                     )
             else:
                 _errors = {
-                    '%s-%s' % (form.prefix, k)
-                    if not k.startswith(form.prefix)
-                    else k: v
-                    for k, v in viewitems(errors)
+                    '%s-%s' % (form.prefix, k) if not k.startswith(form.prefix) else k: v for k, v in viewitems(errors)
                 }
             errors = _errors
 
@@ -263,9 +256,7 @@ def get_all_form_errors(response):
         formset_errors = {}
         non_form_errors = formset._non_form_errors
         if non_form_errors:
-            formset_errors.update(
-                {'-'.join([formset.prefix, NON_FIELD_ERRORS]): non_form_errors}
-            )
+            formset_errors.update({'-'.join([formset.prefix, NON_FIELD_ERRORS]): non_form_errors})
         for form in getattr(formset, 'forms', formset):
             if not form:
                 continue
@@ -302,37 +293,22 @@ def get_all_form_errors(response):
         for fs in response.context['form_set']:
             non_form_errors = fs._non_field_errors()
             if non_form_errors:
-                form_errors.update(
-                    {
-                        '-'.join(
-                            [re.sub(r'-(\d+)$', '', fs.prefix), NON_FIELD_ERRORS]
-                        ): non_form_errors
-                    }
-                )
+                form_errors.update({'-'.join([re.sub(r'-(\d+)$', '', fs.prefix), NON_FIELD_ERRORS]): non_form_errors})
             errors = fs._errors
             if errors:
-                form_errors.update(
-                    {
-                        '%s-%s' % (fs.prefix, key): value
-                        for key, value in viewitems(errors)
-                    }
-                )
+                form_errors.update({'%s-%s' % (fs.prefix, key): value for key, value in viewitems(errors)})
     except KeyError:
         pass
     try:
         for fs in response.context['inline_admin_formsets']:
             non_form_errors = fs.formset._non_form_errors
             if non_form_errors:
-                form_errors.update(
-                    {'-'.join([fs.formset.prefix, NON_FIELD_ERRORS]): non_form_errors}
-                )
+                form_errors.update({'-'.join([fs.formset.prefix, NON_FIELD_ERRORS]): non_form_errors})
             errors = fs.formset._errors
             if errors:
                 for n, el in enumerate(errors):
                     for key, value in viewitems(el):
-                        form_errors.update(
-                            {'%s-%d-%s' % (fs.formset.prefix, n, key): value}
-                        )
+                        form_errors.update({'%s-%d-%s' % (fs.formset.prefix, n, key): value})
             forms.extend(fs.formset.forms)
     except KeyError:
         pass
@@ -359,9 +335,7 @@ def get_all_urls(urllist, depth=0, prefix='', result=None):
     if result is None:
         result = []
     for entry in urllist:
-        url = prefix + getattr(entry, 'pattern', entry).regex.pattern.strip(
-            '^$'
-        ).replace('\\/', '/')
+        url = prefix + getattr(entry, 'pattern', entry).regex.pattern.strip('^$').replace('\\/', '/')
         if hasattr(entry, 'url_patterns'):
             get_all_urls(entry.url_patterns, depth + 1, prefix=url, result=result)
         else:
@@ -421,12 +395,7 @@ def get_error(tr_limit=None):
     etype, value, tb = sys.exc_info()
     result = ''
     if any([etype, value, tb]):
-        err = ''.join(
-            [
-                force_text(el)
-                for el in traceback.format_exception(etype, value, tb, limit=tr_limit)
-            ]
-        )
+        err = ''.join([force_text(el) for el in traceback.format_exception(etype, value, tb, limit=tr_limit)])
         result = unicode_to_readable(err)
     return result
 
@@ -506,9 +475,7 @@ def get_field_from_response(response, field_name):
         for fs in response.context['inline_admin_formsets']:
             fs_name = fs.formset.prefix
             for number, form in enumerate(fs.formset.forms):
-                _fields = {
-                    fs_name + '-%d-' % number + f: v for f, v in form.fields.items()
-                }
+                _fields = {fs_name + '-%d-' % number + f: v for f, v in form.fields.items()}
                 fields.update(_fields)
     except KeyError:
         pass
@@ -518,16 +485,11 @@ def get_field_from_response(response, field_name):
 
 def get_fields_list_from_response(response, only_success=True):
     if only_success and response.status_code != 200:
-        raise Exception(
-            'Response status code %s (expect 200 for getting fields list)'
-            % response.status_code
-        )
+        raise Exception('Response status code %s (expect 200 for getting fields list)' % response.status_code)
 
     def get_form_fields(form):
         fields = list(form.fields.keys())
-        visible_fields = set(fields).intersection(
-            [f.name for f in form.visible_fields()]
-        )
+        visible_fields = set(fields).intersection([f.name for f in form.visible_fields()])
         hidden_fields = [f.name for f in form.hidden_fields()]
         disabled_fields = [
             k
@@ -537,13 +499,9 @@ def get_fields_list_from_response(response, only_success=True):
         visible_fields = visible_fields.difference(disabled_fields)
         if form.prefix:
             fields = ['%s-%s' % (form.prefix, field) for field in fields]
-            visible_fields = [
-                '%s-%s' % (form.prefix, field) for field in visible_fields
-            ]
+            visible_fields = ['%s-%s' % (form.prefix, field) for field in visible_fields]
             hidden_fields = ['%s-%s' % (form.prefix, field) for field in hidden_fields]
-            disabled_fields = [
-                '%s-%s' % (form.prefix, field) for field in disabled_fields
-            ]
+            disabled_fields = ['%s-%s' % (form.prefix, field) for field in disabled_fields]
         return dict(
             fields=fields,
             visible_fields=visible_fields,
@@ -591,16 +549,13 @@ def get_fields_list_from_response(response, only_success=True):
                     _fields.append(ff)
 
         fields.extend(_fields)
-        _disabled_fields = list(
-            set(response.context['adminform'].readonly_fields).intersection(_fields)
-        )
+        _disabled_fields = list(set(response.context['adminform'].readonly_fields).intersection(_fields))
         _visible_fields = [f.name for f in form.visible_fields()]
         _disabled_fields.extend(
             [
                 k
                 for k, v in viewitems(form.fields)
-                if getattr(v, 'disabled', False)
-                or v.widget.attrs.get('readonly', False)
+                if getattr(v, 'disabled', False) or v.widget.attrs.get('readonly', False)
             ]
         )
         _visible_fields = set(_visible_fields).difference(_disabled_fields)
@@ -652,19 +607,14 @@ def get_fields_list_from_response(response, only_success=True):
             fs_name = fs.formset.prefix
             for number, form in enumerate(fs.formset.forms):
                 _fields = [fs_name + '-%d-' % number + f for f in viewkeys(form.fields)]
-                _visible_fields = [
-                    fs_name + '-%d-' % number + f.name for f in form.visible_fields()
-                ]
+                _visible_fields = [fs_name + '-%d-' % number + f.name for f in form.visible_fields()]
                 _disabled_fields = [
                     k
                     for k, v in viewitems(form.fields)
-                    if getattr(v, 'disabled', False)
-                    or v.widget.attrs.get('readonly', False)
+                    if getattr(v, 'disabled', False) or v.widget.attrs.get('readonly', False)
                 ]
                 _visible_fields = set(_visible_fields).difference(_disabled_fields)
-                _hidden_fields = [
-                    fs_name + '-%d-' % number + f.name for f in form.hidden_fields()
-                ]
+                _hidden_fields = [fs_name + '-%d-' % number + f.name for f in form.hidden_fields()]
                 fields.extend(_fields)
                 visible_fields.extend(set(_fields).intersection(_visible_fields))
                 disabled_fields.extend(_disabled_fields)
@@ -683,10 +633,7 @@ def get_fields_list_from_response(response, only_success=True):
 def get_real_fields_list_from_response(response, only_success=True):
     """Not use django response.context"""
     if only_success and response.status_code != 200:
-        raise Exception(
-            'Response status code %s (expect 200 for getting fields list)'
-            % response.status_code
-        )
+        raise Exception('Response status code %s (expect 200 for getting fields list)' % response.status_code)
 
     doc = document_fromstring(response.content.decode('utf-8'))
     fields = []
@@ -694,11 +641,7 @@ def get_real_fields_list_from_response(response, only_success=True):
     hidden_fields = []
     disabled_fields = []
     for field in doc.xpath('//form//*[@name and not(@type="submit")]'):
-        if (
-            field.attrib.get('type', '') == 'radio'
-            and field.name in visible_fields
-            and field.name in fields
-        ):
+        if field.attrib.get('type', '') == 'radio' and field.name in visible_fields and field.name in fields:
             continue
         else:
             field_name = {'captcha_1': 'captcha', 'captcha_0': 'captcha'}.get(
@@ -766,9 +709,7 @@ def get_randname(l=10, _type='a', length_of_chunk=10):
             text += letters_dict.get(t, t)
 
     count_of_chunks = l // length_of_chunk
-    n = ''.join(
-        [random.choice(text) for _ in xrange(length_of_chunk)]
-    ) * count_of_chunks + ''.join(
+    n = ''.join([random.choice(text) for _ in xrange(length_of_chunk)]) * count_of_chunks + ''.join(
         [random.choice(text) for _ in xrange(l % length_of_chunk)]
     )
     return n
@@ -784,29 +725,19 @@ def get_randname_from_file(filename, l=100):
     return result[:l]
 
 
-def get_random_date_value(
-    date_from=date.today().replace(month=1, day=1), date_to=date.today()
-):
+def get_random_date_value(date_from=date.today().replace(month=1, day=1), date_to=date.today()):
     return date.fromordinal(random.randint(date_from.toordinal(), date_to.toordinal()))
 
 
 def get_random_datetime_value(
-    datetime_from=datetime.combine(
-        datetime.today().replace(month=1, day=1), time(0, 0)
-    ),
+    datetime_from=datetime.combine(datetime.today().replace(month=1, day=1), time(0, 0)),
     datetime_to=date.today(),
 ):
-    return datetime.fromtimestamp(
-        random.randint(
-            mktime(datetime_from.timetuple()), mktime(datetime_to.timetuple())
-        )
-    )
+    return datetime.fromtimestamp(random.randint(mktime(datetime_from.timetuple()), mktime(datetime_to.timetuple())))
 
 
 def get_random_decimal(value_from, value_to, places=10):
-    return Decimal(uniform(float(value_from), float(value_to))).quantize(
-        Decimal('0.1') ** places
-    )
+    return Decimal(uniform(float(value_from), float(value_to))).quantize(Decimal('0.1') ** places)
 
 
 def get_random_domain_value(length):
@@ -823,12 +754,7 @@ def get_random_domain_value(length):
             get_randname(subdomain_length - 1, 'wd.-'),
         )
         while any([len(el) > 62 for el in subdomain.split('.')]):
-            subdomain = '.'.join(
-                [
-                    (el if len(el) <= 62 else el[:61] + '.' + el[62:])
-                    for el in subdomain.split('.')
-                ]
-            )
+            subdomain = '.'.join([(el if len(el) <= 62 else el[:61] + '.' + el[62:]) for el in subdomain.split('.')])
         subdomain = re.sub(r'\.[\.\-]', '.%s' % get_randname(1, 'w'), subdomain)
         subdomain = re.sub(r'\-\.', '%s.' % get_randname(1, 'w'), subdomain)
     if domain_length < 3:
@@ -848,9 +774,7 @@ def get_random_email_value(length):
     MAX_DOMAIN_LENGTH = 62
     min_length_without_name = 1 + 1 + 3  # @.\.ru
     max_length_without_name = MAX_DOMAIN_LENGTH + 1 + 3  # @ .ru
-    name_length = random.randint(
-        max(1, length - max_length_without_name), length - min_length_without_name
-    )
+    name_length = random.randint(max(1, length - max_length_without_name), length - min_length_without_name)
     domain_length = length - name_length - 1  # @ .ru
     symbols_for_generate = 'wd'
     symbols_with_escaping = ''
@@ -874,12 +798,8 @@ def get_value_for_obj_field(f, filename=None):
     if 'EmailField' in mro_names:
         length = random.randint(10, f.max_length)
         return get_random_email_value(length)
-    elif mro_names.intersection(['TextField', 'CharField']) and not (
-        getattr(f, '_choices', None) or f.choices
-    ):
-        length = random.randint(
-            0 if f.blank else 1, int(f.max_length) if f.max_length else 500
-        )
+    elif mro_names.intersection(['TextField', 'CharField']) and not (getattr(f, '_choices', None) or f.choices):
+        length = random.randint(0 if f.blank else 1, int(f.max_length) if f.max_length else 500)
         if filename:
             return get_randname_from_file(filename, length)
         else:
@@ -890,9 +810,9 @@ def get_value_for_obj_field(f, filename=None):
         return datetime.now()
     elif 'DateField' in mro_names:
         return date.today()
-    elif mro_names.intersection(
-        ['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']
-    ) and not (getattr(f, '_choices', None) or f.choices):
+    elif mro_names.intersection(['PositiveIntegerField', 'IntegerField', 'SmallIntegerField']) and not (
+        getattr(f, '_choices', None) or f.choices
+    ):
         return random.randint(0, 1000)
     elif mro_names.intersection(['ForeignKey', 'OneToOneField']):
         related_model = f.related_model
@@ -901,11 +821,7 @@ def get_value_for_obj_field(f, filename=None):
             return None
         objects = related_model._base_manager.all()
         if objects.count() > 0:
-            return (
-                objects[random.randint(0, objects.count() - 1)]
-                if objects.count() > 1
-                else objects[0]
-            )
+            return objects[random.randint(0, objects.count() - 1)] if objects.count() > 1 else objects[0]
         else:
             return generate_random_obj(related_model, filename=filename)
     elif 'BooleanField' in mro_names:
@@ -916,10 +832,7 @@ def get_value_for_obj_field(f, filename=None):
             if f.name in ('latitude', 'longitude')
             else (
                 10 ** (f.max_digits - f.decimal_places) - 1
-                if (
-                    getattr(f, 'max_digits', None)
-                    and getattr(f, 'decimal_places', None)
-                )
+                if (getattr(f, 'max_digits', None) and getattr(f, 'decimal_places', None))
                 else 1000
             )
         )
@@ -936,15 +849,9 @@ def get_value_for_obj_field(f, filename=None):
     elif 'ArrayField' in mro_names:
         if getattr(f, '_choices', None) or f.choices:
             choices = list(getattr(f, '_choices', None) or f.choices)
-            return [
-                random.choice(choices)[0]
-                for _ in xrange(random.randint(0 if f.blank else 1, len(choices)))
-            ]
+            return [random.choice(choices)[0] for _ in xrange(random.randint(0 if f.blank else 1, len(choices)))]
         elif 'IntegerArrayField' in mro_names:
-            return [
-                random.randint(0, 1000)
-                for _ in xrange(random.randint(0 if f.blank else 1, 10))
-            ]
+            return [random.randint(0, 1000) for _ in xrange(random.randint(0 if f.blank else 1, 10))]
     elif getattr(f, '_choices', None) or f.choices:
         return random.choice(list(getattr(f, '_choices', None) or f.choices))[0]
     elif mro_names.intersection(['FileField', 'ImageField']):
@@ -960,10 +867,7 @@ def get_value_for_obj_field(f, filename=None):
         name = get_randname(length, 'wrd ') + '.jpg'
         return ContentFile(content, name=name)
     elif mro_names.intersection(['JSONField']):
-        return {
-            get_randname(10, 'wd'): get_randname(10)
-            for i in xrange(random.randint(0, 5))
-        }
+        return {get_randname(10, 'wd'): get_randname(10) for i in xrange(random.randint(0, 5))}
     elif mro_names.intersection(['UUIDField']):
         return uuid4()
 
@@ -975,9 +879,7 @@ def get_random_contentfile(size=10, filename=None):
     return ContentFile(get_randname(size), filename)
 
 
-def get_random_file(
-    path=None, size=10, rewrite=False, return_opened=True, filename=None, **kwargs
-):
+def get_random_file(path=None, size=10, rewrite=False, return_opened=True, filename=None, **kwargs):
     if path:
         filename = os.path.basename(path)
         if os.path.exists(path):
@@ -993,16 +895,10 @@ def get_random_file(
         if extensions:
             filename = '.'.join([filename, random.choice(extensions)])
     size = convert_size_to_bytes(size)
-    if (
-        not getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True) and size != 10
-    ):  # not default value
+    if not getattr(settings, 'TEST_GENERATE_REAL_SIZE_FILE', True) and size != 10:  # not default value
         size_text = '_size_%d_' % size
         size = 10
-        filename = (
-            os.path.splitext(filename)[0][: -len(size_text)]
-            + size_text
-            + os.path.splitext(filename)[1]
-        )
+        filename = os.path.splitext(filename)[0][: -len(size_text)] + size_text + os.path.splitext(filename)[1]
 
     img_extensions = ('tiff', 'jpg', 'jpeg', 'png', 'gif', 'svg', 'bmp')
     if size > 0 and os.path.splitext(filename)[1].lower() == '.pdf':
@@ -1012,12 +908,7 @@ def get_random_file(
         or set(img_extensions).intersection(kwargs.get('extensions', ()))
     ):
         return get_random_image(
-            path=path,
-            size=size,
-            rewrite=rewrite,
-            return_opened=return_opened,
-            filename=filename,
-            **kwargs
+            path=path, size=size, rewrite=rewrite, return_opened=return_opened, filename=filename, **kwargs
         )
     else:
         content = get_randname(size)
@@ -1032,14 +923,7 @@ def get_random_file(
 
 
 def get_random_image(
-    path='',
-    size=10,
-    width=None,
-    height=None,
-    rewrite=False,
-    return_opened=True,
-    filename=None,
-    **kwargs
+    path='', size=10, width=None, height=None, rewrite=False, return_opened=True, filename=None, **kwargs
 ):
     """
     generate image file with size
@@ -1076,13 +960,9 @@ def get_random_image(
             _size = max(1, size - 800)
             width = min(_size, width)
             height = min(int(_size / width), height)
-        content = {
-            '.gif': get_random_gif_content,
-            '.svg': get_random_svg_content,
-            '.png': get_random_png_content,
-        }.get(os.path.splitext(filename)[1].lower(), get_random_jpg_content)(
-            size, width, height
-        )
+        content = {'.gif': get_random_gif_content, '.svg': get_random_svg_content, '.png': get_random_png_content,}.get(
+            os.path.splitext(filename)[1].lower(), get_random_jpg_content
+        )(size, width, height)
     if not path and return_opened:
         return ContentFile(content, filename)
     with open(path, 'ab') as f:
@@ -1119,10 +999,7 @@ def get_random_img_content(_format, size=10, width=1, height=1):
         "#%06x" % random.randint(0, 0xFFFFFF),
         "#%06x" % random.randint(0, 0xFFFFFF),
     )
-    if (
-        getattr(Image, 'PILLOW_VERSION', getattr(Image, 'VERSION', '2.')).split('.')[0]
-        == '1'
-    ):
+    if getattr(Image, 'PILLOW_VERSION', getattr(Image, 'VERSION', '2.')).split('.')[0] == '1':
         output = StringIO()
     else:
         output = io.BytesIO()
@@ -1138,28 +1015,11 @@ def get_random_img_content(_format, size=10, width=1, height=1):
 def get_random_inn(length):
     if length in (10, None):
         value = get_randname(9, 'd')
-        return value + str(
-            sum(int(el[0]) * el[1] for el in zip(value, (2, 4, 10, 3, 5, 9, 4, 6, 8)))
-            % 11
-            % 10
-        )
+        return value + str(sum(int(el[0]) * el[1] for el in zip(value, (2, 4, 10, 3, 5, 9, 4, 6, 8))) % 11 % 10)
     if length == 12:
         value = get_randname(10, 'd')
-        value = value + str(
-            sum(
-                int(el[0]) * el[1] for el in zip(value, (7, 2, 4, 10, 3, 5, 9, 4, 6, 8))
-            )
-            % 11
-            % 10
-        )
-        return value + str(
-            sum(
-                int(el[0]) * el[1]
-                for el in zip(value, (3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8))
-            )
-            % 11
-            % 10
-        )
+        value = value + str(sum(int(el[0]) * el[1] for el in zip(value, (7, 2, 4, 10, 3, 5, 9, 4, 6, 8))) % 11 % 10)
+        return value + str(sum(int(el[0]) * el[1] for el in zip(value, (3, 7, 2, 4, 10, 3, 5, 9, 4, 6, 8))) % 11 % 10)
     else:
         return get_randname(length, 'd')
 
@@ -1230,8 +1090,7 @@ def get_random_svg_content(size=10, width=1, height=1):
         'rect',
         width=force_text(width),
         height=force_text(height),
-        fill='rgb(%s, %s, %s)'
-        % (random.randint(1, 255), random.randint(1, 255), random.randint(1, 255)),
+        fill='rgb(%s, %s, %s)' % (random.randint(1, 255), random.randint(1, 255), random.randint(1, 255)),
     )
     output = StringIO()
     header = (
@@ -1284,9 +1143,7 @@ def get_url_for_negative(url, args=()):
         l.append(url[start:])
         while len(l_args) < len(l):
             l_args.append(l_args[-1])
-        return ''.join(
-            [force_text(item) for tup in zip(l, l_args) for item in tup][:-1]
-        )
+        return ''.join([force_text(item) for tup in zip(l, l_args) for item in tup][:-1])
 
     try:
         res = resolve(url)
@@ -1330,9 +1187,7 @@ def prepare_custom_file_for_tests(file_path, filename=''):
 
 def prepare_file_for_tests(model_name, field, filename='', verbosity=0):
 
-    mro_names = [
-        m.__name__ for m in model_name._meta.get_field(field).__class__.__mro__
-    ]
+    mro_names = [m.__name__ for m in model_name._meta.get_field(field).__class__.__mro__]
     for obj in model_name._base_manager.all():
         file_from_obj = getattr(obj, field, None)
         if file_from_obj:

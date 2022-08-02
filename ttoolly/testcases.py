@@ -43,10 +43,7 @@ class ListPositiveCases(object):
             value = value if value else ''
             try:
                 response = self.client.get(
-                    self.get_url(self.url_list),
-                    {field: value},
-                    follow=True,
-                    **self.additional_params
+                    self.get_url(self.url_list), {field: value}, follow=True, **self.additional_params
                 )
                 self.assert_status_code(response.status_code, 200)
             except Exception:
@@ -65,10 +62,7 @@ class ListNegativeCases(object):
             for value in ('qwe', '1', '0', 'йцу', '²'):
                 try:
                     response = self.client.get(
-                        self.get_url(self.url_list),
-                        {field: value},
-                        follow=True,
-                        **self.additional_params
+                        self.get_url(self.url_list), {field: value}, follow=True, **self.additional_params
                     )
                     self.assert_status_code(response.status_code, 200)
                 except Exception:
@@ -82,34 +76,24 @@ class AddPositiveCases(object):
         check that all and only need fields is visible at add page
         """
         self.prepare_for_add()
-        response = self.client.get(
-            self.get_url(self.url_add), follow=True, **self.additional_params
-        )
+        response = self.client.get(self.get_url(self.url_add), follow=True, **self.additional_params)
         form_fields = self.get_fields_list_from_response(response)
         try:
             """not set because of one field can be on form many times"""
             self.assert_form_equal(
                 form_fields['visible_fields'],
-                [
-                    el
-                    for el in self.all_fields_add
-                    if el not in (self.hidden_fields_add or ())
-                ],
+                [el for el in self.all_fields_add if el not in (self.hidden_fields_add or ())],
             )
         except Exception:
             self.errors_append(text='For visible fields')
         if self.disabled_fields_add is not None:
             try:
-                self.assert_form_equal(
-                    form_fields['disabled_fields'], self.disabled_fields_add
-                )
+                self.assert_form_equal(form_fields['disabled_fields'], self.disabled_fields_add)
             except Exception:
                 self.errors_append(text='For disabled fields')
         if self.hidden_fields_add is not None:
             try:
-                self.assert_form_equal(
-                    form_fields['hidden_fields'], self.hidden_fields_add
-                )
+                self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_add)
             except Exception:
                 self.errors_append(text='For hidden fields')
 
@@ -133,9 +117,7 @@ class AddPositiveCases(object):
         self.update_params(params)
         self.update_captcha_params(self.get_url(self.url_add), params)
         prepared_depends_fields = (
-            self.prepare_depend_from_one_of(self.one_of_fields_add)
-            if self.one_of_fields_add
-            else {}
+            self.prepare_depend_from_one_of(self.one_of_fields_add) if self.one_of_fields_add else {}
         )
 
         only_independent_fields = (
@@ -182,25 +164,17 @@ class AddPositiveCases(object):
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
-                only_independent_fields = set(self.all_fields_add).difference(
-                    viewkeys(self._depend_one_of_fields_add)
-                )
+                only_independent_fields = set(self.all_fields_add).difference(viewkeys(self._depend_one_of_fields_add))
 
-                fields_from_groups = set(
-                    viewkeys(self._depend_one_of_fields_add)
-                ).difference(self._depend_one_of_fields_add[field])
+                fields_from_groups = set(viewkeys(self._depend_one_of_fields_add)).difference(
+                    self._depend_one_of_fields_add[field]
+                )
                 for group in self.one_of_fields_add:
                     _field = choice(group)
-                    fields_from_groups = fields_from_groups.difference(
-                        self._depend_one_of_fields_add[_field]
-                    )
-                for f in set(viewkeys(self._depend_one_of_fields_add)).difference(
-                    fields_from_groups
-                ):
+                    fields_from_groups = fields_from_groups.difference(self._depend_one_of_fields_add[_field])
+                for f in set(viewkeys(self._depend_one_of_fields_add)).difference(fields_from_groups):
                     self.set_empty_value_for_field(params, f)
-                self.fill_all_fields(
-                    tuple(only_independent_fields) + tuple(fields_from_groups), params
-                )
+                self.fill_all_fields(tuple(only_independent_fields) + tuple(fields_from_groups), params)
                 self.clean_depend_fields_add(params, field)
                 self.fill_all_fields((field,), params)
 
@@ -214,9 +188,7 @@ class AddPositiveCases(object):
                     exclude = getattr(self, 'exclude_from_check_add', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
-                    self.errors_append(
-                        text='For filled %s from group %s' % (field, repr(group))
-                    )
+                    self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
 
     @only_with_obj
     def test_add_object_only_required_fields_positive(self):
@@ -225,9 +197,7 @@ class AddPositiveCases(object):
         """
         self.prepare_for_add()
         params = self.deepcopy(self.default_params_add)
-        required_fields = self.not_empty_fields_add + self._get_required_from_related(
-            self.not_empty_related_fields_add
-        )
+        required_fields = self.not_empty_fields_add + self._get_required_from_related(self.not_empty_related_fields_add)
 
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
@@ -266,19 +236,14 @@ class AddPositiveCases(object):
                     response = self.send_add_request(params)
                     self.check_on_add_success(response, initial_obj_count, locals())
                     new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-                    exclude = set(
-                        getattr(self, 'exclude_from_check_add', [])
-                    ).difference(
+                    exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
                         [
                             field,
                         ]
                     )
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
-                    self.errors_append(
-                        text='For filled field %s from group "%s"'
-                        % (field, force_text(group))
-                    )
+                    self.errors_append(text='For filled field %s from group "%s"' % (field, force_text(group)))
 
     @only_with_obj
     def test_add_object_without_not_required_fields_positive(self):
@@ -287,9 +252,7 @@ class AddPositiveCases(object):
         """
         self.prepare_for_add()
         params = self.deepcopy(self.default_params_add)
-        required_fields = self.required_fields_add + self._get_required_from_related(
-            self.required_related_fields_add
-        )
+        required_fields = self.required_fields_add + self._get_required_from_related(self.required_related_fields_add)
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
@@ -325,19 +288,14 @@ class AddPositiveCases(object):
                     response = self.send_add_request(params)
                     self.check_on_add_success(response, initial_obj_count, locals())
                     new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-                    exclude = set(
-                        getattr(self, 'exclude_from_check_add', [])
-                    ).difference(
+                    exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
                         [
                             field,
                         ]
                     )
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
-                    self.errors_append(
-                        text='For filled field %s from group "%s"'
-                        % (field, force_text(group))
-                    )
+                    self.errors_append(text='For filled field %s from group "%s"' % (field, force_text(group)))
 
     @only_with_obj
     def test_add_object_max_length_values_positive(self):
@@ -380,9 +338,7 @@ class AddPositiveCases(object):
             response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
-                list(max_length_params.keys())
-            )
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(list(max_length_params.keys()))
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
@@ -408,18 +364,14 @@ class AddPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(viewkeys(fields_for_check)).intersection(
-                viewkeys(self._depend_one_of_fields_add)
-            )
+            and not set(viewkeys(fields_for_check)).intersection(viewkeys(self._depend_one_of_fields_add))
             and not need_one_by_one_check
         ):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
 
-        for k in set(viewkeys(max_length_params)).intersection(
-            (k for el in viewkeys(self.all_unique) for k in el)
-        ):
+        for k in set(viewkeys(max_length_params)).intersection((k for el in viewkeys(self.all_unique) for k in el)):
             max_length_params[k] = self.get_value_for_field(fields_for_check[k], k)
 
         for field, length in viewitems(fields_for_check):
@@ -432,9 +384,7 @@ class AddPositiveCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                self.fill_with_related(
-                    params, field, self.get_value_for_field(length, field)
-                )
+                self.fill_with_related(params, field, self.get_value_for_field(length, field))
                 if self.is_file_field(field):
                     if self.is_file_list(field):
                         for f in params[field]:
@@ -489,9 +439,7 @@ class AddPositiveCases(object):
                                 el_field,
                             ]
                         else:
-                            other_group_fields = set(other_group).difference(
-                                set(el).difference((el_field,))
-                            )
+                            other_group_fields = set(other_group).difference(set(el).difference((el_field,)))
                     other_group_field = list(other_group_fields)[0]
                     fields_for_change.append(other_group_field)
                     already_in_check[other_group].append(other_group_field)
@@ -519,10 +467,7 @@ class AddPositiveCases(object):
                     if field in el:
                         existing_filters |= Q(
                             **{
-                                f
-                                + (
-                                    '__in' if self.is_multiselect_field(f) else ''
-                                ): getattr(existing_obj, f).all()
+                                f + ('__in' if self.is_multiselect_field(f) else ''): getattr(existing_obj, f).all()
                                 if hasattr(getattr(existing_obj, f), 'all')
                                 else getattr(existing_obj, f)
                                 for f in el
@@ -532,30 +477,19 @@ class AddPositiveCases(object):
                 existing_objs = self.get_obj_manager.filter(existing_filters)
                 while n < 3 and (
                     value in ('', None)
-                    or self.get_params_according_to_type(
-                        self._get_field_value_by_name(existing_obj, field), value
-                    )[0]
+                    or self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), value)[0]
                     == value
                     or existing_objs.filter(
-                        **{
-                            field
-                            + (
-                                '__in' if self.is_multiselect_field(field) else ''
-                            ): value
-                        }
+                        **{field + ('__in' if self.is_multiselect_field(field) else ''): value}
                     ).exists()
                 ):
                     n += 1
                     value = self.get_value_for_field(None, field)
                 if existing_objs.filter(
-                    **{
-                        field
-                        + ('__in' if self.is_multiselect_field(field) else ''): value
-                    }
+                    **{field + ('__in' if self.is_multiselect_field(field) else ''): value}
                 ).exists():
                     raise Exception(
-                        "Can't generate value for field \"%s\" that not exists. Now is \"%s\""
-                        % (field, value)
+                        "Can't generate value for field \"%s\" that not exists. Now is \"%s\"" % (field, value)
                     )
 
                 params[field] = value
@@ -563,13 +497,9 @@ class AddPositiveCases(object):
             self.fill_fields_from_obj(
                 params,
                 existing_obj,
-                set(
-                    [
-                        f
-                        for f in self.all_fields_add
-                        if f not in (self.hidden_fields_add or ())
-                    ]
-                ).difference(fields_for_change),
+                set([f for f in self.all_fields_add if f not in (self.hidden_fields_add or ())]).difference(
+                    fields_for_change
+                ),
             )
 
             initial_obj_count = self.get_obj_manager.count()
@@ -649,9 +579,7 @@ class AddPositiveCases(object):
                         self.get_obj_manager.filter(pk=existing_obj.pk).update(
                             **{el_field: getattr(value, existing_command)()}
                         )
-                        self.fill_with_related(
-                            params, el_field, getattr(params[el_field], new_command)()
-                        )
+                        self.fill_with_related(params, el_field, getattr(params[el_field], new_command)())
                 existing_obj = self.get_obj_manager.get(pk=existing_obj.pk)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -671,9 +599,7 @@ class AddPositiveCases(object):
                                 % (
                                     field,
                                     self.get_params_according_to_type(
-                                        self._get_field_value_by_name(
-                                            existing_obj, field
-                                        ),
+                                        self._get_field_value_by_name(existing_obj, field),
                                         '',
                                     )[0],
                                 )
@@ -728,20 +654,13 @@ class AddPositiveCases(object):
             response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(
                 text="For max values in all digital fields\n%s"
-                % '\n\n'.join(
-                    [
-                        '  %s with value %s' % (field, max_value_params[field])
-                        for field in fields_for_check
-                    ]
-                )
+                % '\n\n'.join(['  %s with value %s' % (field, max_value_params[field]) for field in fields_for_check])
             )
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много
@@ -749,9 +668,7 @@ class AddPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_add)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
             and not need_one_by_one_check
         ):
             return
@@ -782,9 +699,7 @@ class AddPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For field "%s" with value "%s"' % (field, value)
-                )
+                self.errors_append(text='For field "%s" with value "%s"' % (field, value))
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -828,20 +743,13 @@ class AddPositiveCases(object):
             response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(
                 text="For min values in all digital fields\n%s"
-                % '\n\n'.join(
-                    [
-                        '  %s with value %s' % (field, min_value_params[field])
-                        for field in fields_for_check
-                    ]
-                )
+                % '\n\n'.join(['  %s with value %s' % (field, min_value_params[field]) for field in fields_for_check])
             )
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много
@@ -849,9 +757,7 @@ class AddPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_add)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
             and not need_one_by_one_check
         ):
             return
@@ -883,9 +789,7 @@ class AddPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For field "%s" with value "%s"' % (field, value)
-                )
+                self.errors_append(text='For field "%s" with value "%s"' % (field, value))
 
     @only_with_obj
     @only_with('max_blocks')
@@ -950,9 +854,7 @@ class AddPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text="Max block count (%s) in %s" % (max_count, name)
-                )
+                self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
             finally:
                 mail.outbox = []
 
@@ -998,20 +900,13 @@ class AddPositiveCases(object):
             response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(
                 text='For max count files in all fields\n%s'
-                % '\n'.join(
-                    [
-                        '%s: %d' % (field, len(params[field]))
-                        for field in fields_for_check
-                    ]
-                )
+                % '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check])
             )
 
         """Дальнейшие отдельные проверки только если не прошла совместная и полей много
@@ -1019,9 +914,7 @@ class AddPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_add)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
             and not need_one_by_one_check
         ):
             return
@@ -1049,9 +942,7 @@ class AddPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For %s files in field %s' % (len(params[field]), field)
-                )
+                self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
 
     @only_with_obj
     @only_with('file_fields_params_add')
@@ -1096,9 +987,7 @@ class AddPositiveCases(object):
             response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
@@ -1109,17 +998,9 @@ class AddPositiveCases(object):
                         '%s: %s (%s)'
                         % (
                             field,
-                            convert_size_to_bytes(
-                                self.file_fields_params_add[field].get(
-                                    'one_max_size', '10M'
-                                )
-                            ),
+                            convert_size_to_bytes(self.file_fields_params_add[field].get('one_max_size', '10M')),
                             self.humanize_file_size(
-                                convert_size_to_bytes(
-                                    self.file_fields_params_add[field].get(
-                                        'one_max_size', '10M'
-                                    )
-                                )
+                                convert_size_to_bytes(self.file_fields_params_add[field].get('one_max_size', '10M'))
                             ),
                         )
                         for field in fields_for_check
@@ -1132,9 +1013,7 @@ class AddPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_add)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
             and not need_one_by_one_check
         ):
             return
@@ -1172,9 +1051,7 @@ class AddPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For file size %s (%s) in field %s' % (max_size, size, field)
-                )
+                self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             finally:
                 self.del_files()
 
@@ -1203,9 +1080,7 @@ class AddPositiveCases(object):
                 self.fill_with_related(
                     params,
                     field,
-                    self.get_random_file(
-                        field, size=one_size, count=field_dict['max_count']
-                    ),
+                    self.get_random_file(field, size=one_size, count=field_dict['max_count']),
                 )
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
@@ -1261,9 +1136,7 @@ class AddPositiveCases(object):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For field %s filename %s' % (field, filename)
-                    )
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
 
     @only_with_obj
     @only_with('file_fields_params_add')
@@ -1294,10 +1167,7 @@ class AddPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For image width %s, height %s in field %s'
-                    % (width, height, field)
-                )
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
     @only_with_obj
     @only_with('file_fields_params_add')
@@ -1328,10 +1198,7 @@ class AddPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For image width %s, height %s in field %s'
-                    % (width, height, field)
-                )
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
     @only_with_obj
     @only_with(('check_null', 'check_null_str_positive'))
@@ -1346,11 +1213,7 @@ class AddPositiveCases(object):
         ] + self.get_all_not_str_fields('add')
         other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
 
-        fields_for_check = [
-            k
-            for k in self.all_fields_add
-            if re.sub('\-\d+\-', '-0-', k) not in other_fields
-        ]
+        fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
 
@@ -1384,17 +1247,12 @@ class AddPositiveCases(object):
             response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(
                 new_object,
                 params,
                 exclude=exclude,
-                other_values={
-                    field: test_params[field].name.replace('\x00', '')
-                    for field in fields_for_check
-                },
+                other_values={field: test_params[field].name.replace('\x00', '') for field in fields_for_check},
             )
         except Exception:
             self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
@@ -1404,9 +1262,7 @@ class AddPositiveCases(object):
         """
         if (
             not self.errors
-            and not set([el[0] for el in fields_for_check]).intersection(
-                viewkeys(self._depend_one_of_fields_add)
-            )
+            and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_add))
             and not need_one_by_one_check
         ):
             return
@@ -1428,9 +1284,7 @@ class AddPositiveCases(object):
                 response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
-                    fields_for_check
-                )
+                exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
                 self.assert_object_fields(
                     new_object,
                     params,
@@ -1491,17 +1345,12 @@ class AddPositiveCases(object):
             response = self.send_add_request(params)
             self.check_on_add_success(response, initial_obj_count, locals())
             new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_add', [])).difference(fields_for_check)
             self.assert_object_fields(
                 new_object,
                 params,
                 exclude=exclude,
-                other_values={
-                    field: test_params[field].name.replace('\x00', '')
-                    for field in fields_for_check
-                },
+                other_values={field: test_params[field].name.replace('\x00', '') for field in fields_for_check},
             )
         except Exception:
             self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
@@ -1511,9 +1360,7 @@ class AddPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_add)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_add))
             and not need_one_by_one_check
         ):
             return
@@ -1553,9 +1400,7 @@ class AddPositiveCases(object):
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
-    def _test_add_object_some_digital_intervals_positive(
-        self, start_field, end_field, comparsion
-    ):
+    def _test_add_object_some_digital_intervals_positive(self, start_field, end_field, comparsion):
         values = (1,)
         if comparsion == '>=':
             values += (0,)
@@ -1579,10 +1424,7 @@ class AddPositiveCases(object):
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
-                self.errors_append(
-                    text="Interval %s: %s - %s: %s"
-                    % (start_field, start_value, end_field, end_value)
-                )
+                self.errors_append(text="Interval %s: %s - %s: %s" % (start_field, start_value, end_field, end_value))
             finally:
                 mail.outbox = []
 
@@ -1594,13 +1436,9 @@ class AddPositiveCases(object):
         """
         for start_field, end_field, comparsion in self.intervals:
             if self.is_digital_field(start_field) and self.is_digital_field(end_field):
-                self._test_add_object_some_digital_intervals_positive(
-                    start_field, end_field, comparsion
-                )
+                self._test_add_object_some_digital_intervals_positive(start_field, end_field, comparsion)
                 continue
-            if self.is_datetime_field(start_field) and self.is_datetime_field(
-                end_field
-            ):
+            if self.is_datetime_field(start_field) and self.is_datetime_field(end_field):
                 values = ((0, 1), (1, 0), (1, -1), (1, 1))
                 if comparsion == '>=':
                     values += ((0, 0),)
@@ -1616,10 +1454,7 @@ class AddPositiveCases(object):
                 values = ((1, None),)
                 if comparsion == '>=':
                     values += ((0, None),)
-            if (
-                end_field not in self.not_empty_fields_add
-                and end_field + '_0' not in self.not_empty_fields_add
-            ):
+            if end_field not in self.not_empty_fields_add and end_field + '_0' not in self.not_empty_fields_add:
                 values += ((None, None),)
 
             for date_diff, time_diff in values:
@@ -1673,8 +1508,7 @@ class AddPositiveCases(object):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
                     self.errors_append(
-                        text="Interval %s: %s - %s: %s"
-                        % (start_field, start_value, end_field, end_value)
+                        text="Interval %s: %s - %s: %s" % (start_field, start_value, end_field, end_value)
                     )
                 finally:
                     mail.outbox = []
@@ -1691,9 +1525,7 @@ class AddPositiveCases(object):
 
         required_if = self.get_all_required_if_fields(self.required_if_add)
 
-        for field in (
-            required_if['lead'] + required_if['dependent'] + required_if['related']
-        ):
+        for field in required_if['lead'] + required_if['dependent'] + required_if['related']:
             self.set_empty_value_for_field(params, field)
         self.update_captcha_params(self.get_url(self.url_add), params)
         new_object = None
@@ -1778,9 +1610,7 @@ class AddPositiveCases(object):
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле
         """
         if self.required_if_value_add == self.only_if_value_add:
-            self.skipTest(
-                "Проверка выполняется в тесте test_add_object_related_filled_lead_with_value_positive"
-            )
+            self.skipTest("Проверка выполняется в тесте test_add_object_related_filled_lead_with_value_positive")
         for field, values in self.required_if_value_add.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
@@ -1835,45 +1665,25 @@ class AddPositiveCases(object):
                                 test_value = self.get_value_for_field(None, test_field)
                                 n += 1
                             if test_value == v:
-                                raise Exception(
-                                    'Не удалось сформировать тестовое значение для поля %s'
-                                    % test_field
-                                )
+                                raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
                             for k in additional_params.keys():
                                 self.clean_depend_fields_add(params, k)
                             self.fill_with_related(params, test_field, test_value)
 
-                            params.update(
-                                {
-                                    k: v
-                                    for k, v in viewitems(additional_params)
-                                    if k != test_field
-                                }
-                            )
+                            params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
                             params[field] = ''
                             self.set_empty_value_for_field(params, field)
 
                             new_object = None
                             initial_obj_count = self.get_obj_manager.count()
-                            old_pks = list(
-                                self.get_obj_manager.values_list('pk', flat=True)
-                            )
+                            old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                             response = self.send_add_request(params)
-                            self.check_on_add_success(
-                                response, initial_obj_count, locals()
-                            )
-                            new_object = self.get_obj_manager.exclude(
-                                pk__in=old_pks
-                            ).last()
+                            self.check_on_add_success(response, initial_obj_count, locals())
+                            new_object = self.get_obj_manager.exclude(pk__in=old_pks).last()
                             exclude = getattr(self, 'exclude_from_check_add', [])
-                            self.assert_object_fields(
-                                new_object, params, exclude=exclude
-                            )
+                            self.assert_object_fields(new_object, params, exclude=exclude)
                         except Exception:
-                            self.errors_append(
-                                text='%s=%s\n%s'
-                                % (field, params.get(field, None), additional_params)
-                            )
+                            self.errors_append(text='%s=%s\n%s' % (field, params.get(field, None), additional_params))
 
     @only_with_obj
     @only_with('required_if_value_add')
@@ -1919,9 +1729,7 @@ class AddPositiveCases(object):
                         exclude = getattr(self, 'exclude_from_check_add', [])
                         self.assert_object_fields(new_object, params, exclude=exclude)
                     except Exception:
-                        self.errors_append(
-                            text='%s=%s\n%s' % (field, params[field], additional_params)
-                        )
+                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
 
 
 class AddNegativeCases(object):
@@ -1943,9 +1751,7 @@ class AddNegativeCases(object):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
             except Exception:
                 self.savepoint_rollback(sp)
@@ -1993,9 +1799,7 @@ class AddNegativeCases(object):
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
             except Exception:
                 self.savepoint_rollback(sp)
@@ -2023,9 +1827,7 @@ class AddNegativeCases(object):
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For params without group "%s"' % force_text(group)
-                )
+                self.errors_append(text='For params without group "%s"' % force_text(group))
 
     @only_with_obj
     @only_with('max_fields_length')
@@ -2034,13 +1836,9 @@ class AddNegativeCases(object):
         Create object: values length > maximum
         """
         message_type = 'max_length'
-        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(
-            getattr(self, 'date_fields', [])
-        )
+        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [
-            (k, v)
-            for k, v in viewitems(self.max_fields_length)
-            if k in self.all_fields_add and k not in other_fields
+            (k, v) for k, v in viewitems(self.max_fields_length) if k in self.all_fields_add and k not in other_fields
         ]:
             sp = transaction.savepoint()
             self.prepare_for_add()
@@ -2049,15 +1847,11 @@ class AddNegativeCases(object):
             self.update_captcha_params(self.get_url(self.url_add), params)
             self.clean_depend_fields_add(params, field)
             current_length = length + 1
-            self.fill_with_related(
-                params, field, self.get_value_for_field(current_length, field)
-            )
+            self.fill_with_related(params, field, self.get_value_for_field(current_length, field))
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
@@ -2067,9 +1861,7 @@ class AddNegativeCases(object):
                     % (
                         field,
                         current_length,
-                        params[field]
-                        if len(str(params[field])) <= 1000
-                        else str(params[field])[:1000] + '...',
+                        params[field] if len(str(params[field])) <= 1000 else str(params[field])[:1000] + '...',
                     )
                 )
 
@@ -2080,13 +1872,9 @@ class AddNegativeCases(object):
         Create object: values length < minimum
         """
         message_type = 'min_length'
-        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(
-            getattr(self, 'date_fields', [])
-        )
+        other_fields = list(getattr(self, 'digital_fields_add', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [
-            (k, v)
-            for k, v in viewitems(self.min_fields_length)
-            if k in self.all_fields_add and k not in other_fields
+            (k, v) for k, v in viewitems(self.min_fields_length) if k in self.all_fields_add and k not in other_fields
         ]:
             sp = transaction.savepoint()
             self.prepare_for_add()
@@ -2095,22 +1883,17 @@ class AddNegativeCases(object):
             self.update_captcha_params(self.get_url(self.url_add), params)
             self.clean_depend_fields_add(params, field)
             current_length = length - 1
-            self.fill_with_related(
-                params, field, self.get_value_for_field(current_length, field)
-            )
+            self.fill_with_related(params, field, self.get_value_for_field(current_length, field))
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
                 self.check_on_add_error(response, initial_obj_count, locals())
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(
-                    text='For field "%s" with length %d\n(value "%s")'
-                    % (field, current_length, params[field])
+                    text='For field "%s" with length %d\n(value "%s")' % (field, current_length, params[field])
                 )
 
     @only_with_obj
@@ -2119,13 +1902,8 @@ class AddNegativeCases(object):
         Try create object with choices, that not exists
         """
         message_type = 'wrong_value'
-        for field in set(
-            tuple(self.choice_fields_add)
-            + tuple(self.choice_fields_add_with_value_in_error)
-        ):
-            for value in self.custom_wrong_values.get(
-                field, ('qwe', '12345678', 'йцу')
-            ):
+        for field in set(tuple(self.choice_fields_add) + tuple(self.choice_fields_add_with_value_in_error)):
+            for value in self.custom_wrong_values.get(field, ('qwe', '12345678', 'йцу')):
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -2156,9 +1934,7 @@ class AddNegativeCases(object):
         """
         message_type = 'wrong_value'
         for field in self.multiselect_fields_add:
-            for value in self.custom_wrong_values.get(
-                field, ('qwe', '12345678', 'йцу')
-            ):
+            for value in self.custom_wrong_values.get(field, ('qwe', '12345678', 'йцу')):
                 self.prepare_for_add()
                 params = self.deepcopy(self.default_params_add)
                 self.update_params(params)
@@ -2204,9 +1980,7 @@ class AddNegativeCases(object):
                     continue
                 self.clean_depend_fields_add(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                self.fill_with_related(
-                    params, el_field, self.get_params_according_to_type(value, '')[0]
-                )
+                self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
             initial_obj_count = self.get_obj_manager.count()
             try:
                 response = self.send_add_request(params)
@@ -2228,9 +2002,9 @@ class AddNegativeCases(object):
                         % (
                             field,
                             params[field],
-                            self.get_params_according_to_type(
-                                self._get_field_value_by_name(existing_obj, field), ''
-                            )[0],
+                            self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), '')[
+                                0
+                            ],
                         )
                         for field in el
                         if field in viewkeys(params)
@@ -2247,11 +2021,7 @@ class AddNegativeCases(object):
             existing_obj = self.get_existing_obj_with_filled(el)
             params = self.deepcopy(self.default_params_add)
             if not any(
-                [
-                    isinstance(params[el_field], basestring)
-                    and el_field not in self.unique_with_case
-                    for el_field in el
-                ]
+                [isinstance(params[el_field], basestring) and el_field not in self.unique_with_case for el_field in el]
             ):
                 continue
             sp = transaction.savepoint()
@@ -2262,13 +2032,8 @@ class AddNegativeCases(object):
                     continue
                 self.clean_depend_fields_add(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                self.fill_with_related(
-                    params, el_field, self.get_params_according_to_type(value, '')[0]
-                )
-                if (
-                    not el_field in other_fields
-                    and not el_field in self.unique_with_case
-                ):
+                self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
+                if not el_field in other_fields and not el_field in self.unique_with_case:
                     params[el_field] = params[el_field].swapcase()
             initial_obj_count = self.get_obj_manager.count()
             try:
@@ -2290,9 +2055,9 @@ class AddNegativeCases(object):
                         % (
                             field,
                             params[field],
-                            self.get_params_according_to_type(
-                                self._get_field_value_by_name(existing_obj, field), ''
-                            )[0],
+                            self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), '')[
+                                0
+                            ],
                         )
                         for field in el
                         if field in viewkeys(params)
@@ -2306,14 +2071,8 @@ class AddNegativeCases(object):
         Try add obj with wrong values in digital fields
         """
         for field in [f for f in self.digital_fields_add]:
-            message_type = (
-                'wrong_value_int'
-                if field in self.int_fields_add
-                else 'wrong_value_digital'
-            )
-            for value in self.custom_wrong_values.get(
-                field, ('q', 'й', 'NaN', 'inf', '-inf', '²')
-            ):
+            message_type = 'wrong_value_int' if field in self.int_fields_add else 'wrong_value_digital'
+            for value in self.custom_wrong_values.get(field, ('q', 'й', 'NaN', 'inf', '-inf', '²')):
                 sp = transaction.savepoint()
                 try:
                     self.prepare_for_add()
@@ -2325,15 +2084,11 @@ class AddNegativeCases(object):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For value "%s" in field "%s"' % (value, field)
-                    )
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('email_fields_add',))
@@ -2343,9 +2098,7 @@ class AddNegativeCases(object):
         """
         message_type = 'wrong_value_email'
         for field in [f for f in self.email_fields_add]:
-            for value in self.custom_wrong_values.get(
-                field, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')
-            ):
+            for value in self.custom_wrong_values.get(field, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')):
                 sp = transaction.savepoint()
                 try:
                     self.prepare_for_add()
@@ -2357,15 +2110,11 @@ class AddNegativeCases(object):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For value "%s" in field "%s"' % (value, field)
-                    )
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2376,9 +2125,7 @@ class AddNegativeCases(object):
         message_type = 'max_length_digital'
         for field in [f for f in self.digital_fields_add]:
             max_value = min(self.get_digital_values_range(field)['max_values'])
-            for value in self.get_gt_max_list(
-                field, self.get_digital_values_range(field)['max_values']
-            ):
+            for value in self.get_gt_max_list(field, self.get_digital_values_range(field)['max_values']):
                 sp = transaction.savepoint()
                 try:
                     self.prepare_for_add()
@@ -2390,15 +2137,11 @@ class AddNegativeCases(object):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For value "%s" in field "%s"' % (value, field)
-                    )
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('digital_fields_add',))
@@ -2409,9 +2152,7 @@ class AddNegativeCases(object):
         message_type = 'min_length_digital'
         for field in [f for f in self.digital_fields_add]:
             min_value = max(self.get_digital_values_range(field)['min_values'])
-            for value in self.get_lt_min_list(
-                field, self.get_digital_values_range(field)['min_values']
-            ):
+            for value in self.get_lt_min_list(field, self.get_digital_values_range(field)['min_values']):
                 sp = transaction.savepoint()
                 try:
                     self.prepare_for_add()
@@ -2423,15 +2164,11 @@ class AddNegativeCases(object):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For value "%s" in field "%s"' % (value, field)
-                    )
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('disabled_fields_add',))
@@ -2448,17 +2185,13 @@ class AddNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                params[field] = params.get(field, None) or self.get_value_for_field(
-                    None, field
-                )
+                params[field] = params.get(field, None) or self.get_value_for_field(None, field)
                 initial_obj_count = self.get_obj_manager.count()
                 old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
                 response = self.send_add_request(params)
                 self.check_on_add_success(response, initial_obj_count, locals())
                 new_object = self.get_obj_manager.exclude(pk__in=old_pks)[0]
-                self.assertNotEqual(
-                    self.get_value_for_compare(new_object, field), params[field]
-                )
+                self.assertNotEqual(self.get_value_for_compare(new_object, field), params[field])
                 params[field] = ''
                 exclude = getattr(self, 'exclude_from_check_add', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
@@ -2475,13 +2208,9 @@ class AddNegativeCases(object):
         message_type = 'one_of'
         for group in self.one_of_fields_add:
             for filled_group in tuple(
-                set(
-                    [
-                        (el, additional_el)
-                        for i, el in enumerate(group)
-                        for additional_el in group[i + 1 :]
-                    ]
-                ).difference(set(self.one_of_fields_add).difference(group))
+                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1 :]]).difference(
+                    set(self.one_of_fields_add).difference(group)
+                )
             ) + (group,):
                 sp = transaction.savepoint()
                 try:
@@ -2493,15 +2222,12 @@ class AddNegativeCases(object):
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(
-                        message_type, group, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, group, locals=locals())
                     self.assert_errors(response, error_message)
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(
-                        text='For filled %s fields from group %s'
-                        % (force_text(filled_group), force_text(group))
+                        text='For filled %s fields from group %s' % (force_text(filled_group), force_text(group))
                     )
 
     @only_with_obj
@@ -2529,15 +2255,11 @@ class AddNegativeCases(object):
             try:
                 response = self.send_add_request(params)
                 self.check_on_add_error(response, initial_obj_count, locals())
-                error_message = self.get_error_message(
-                    message_type, name, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, name, locals=locals())
                 self.assert_errors(response, error_message)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text="Count great than max (%s) in block %s" % (gt_max_count, name)
-                )
+                self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
             finally:
                 mail.outbox = []
 
@@ -2587,9 +2309,7 @@ class AddNegativeCases(object):
                 )
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For %s files in field %s' % (current_count, field)
-                )
+                self.errors_append(text='For %s files in field %s' % (current_count, field))
 
     @only_with_obj
     @only_with('file_fields_params_add')
@@ -2657,9 +2377,7 @@ class AddNegativeCases(object):
                 self.update_params(params)
                 self.update_captcha_params(self.get_url(self.url_add), params)
                 self.clean_depend_fields_add(params, field)
-                f = self.get_random_file(
-                    field, size=one_size, count=field_dict['max_count']
-                )
+                f = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
                 self.fill_with_related(params, field, f)
                 initial_obj_count = self.get_obj_manager.count()
                 response = self.send_add_request(params)
@@ -2750,9 +2468,7 @@ class AddNegativeCases(object):
                     )
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For field %s filename %s' % (field, filename)
-                    )
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
 
     @only_with_obj
     @only_with('file_fields_params_add')
@@ -2793,10 +2509,7 @@ class AddNegativeCases(object):
                     )
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For image width %s, height %s in field %s'
-                        % (width, height, field)
-                    )
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
     @only_with_obj
     @only_with('file_fields_params_add')
@@ -2848,10 +2561,7 @@ class AddNegativeCases(object):
                     new_objects = self.get_obj_manager.exclude(pk__in=old_pks)
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For image width %s, height %s in field %s'
-                        % (width, height, field)
-                    )
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
     @only_with_obj
     @only_with(('check_null', 'check_null_str_negative'))
@@ -2867,11 +2577,7 @@ class AddNegativeCases(object):
         ] + self.get_all_not_str_fields('add')
         other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
 
-        fields_for_check = [
-            k
-            for k in self.all_fields_add
-            if re.sub('\-\d+\-', '-0-', k) not in other_fields
-        ]
+        fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
         test_params = {}
@@ -2956,9 +2662,7 @@ class AddNegativeCases(object):
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
-    def _test_add_object_some_digital_intervals_negative(
-        self, start_field, end_field, comparsion
-    ):
+    def _test_add_object_some_digital_intervals_negative(self, start_field, end_field, comparsion):
         values = (-1,)
         if comparsion == '>':
             values += (0,)
@@ -2980,15 +2684,10 @@ class AddNegativeCases(object):
                 self.check_on_add_error(response, initial_obj_count, locals())
                 self.assert_errors(
                     response,
-                    self.get_error_message(
-                        'wrong_interval', end_field, locals=locals()
-                    ),
+                    self.get_error_message('wrong_interval', end_field, locals=locals()),
                 )
             except Exception:
-                self.errors_append(
-                    text="Interval %s: %s - %s: %s"
-                    % (start_field, start_value, end_field, end_value)
-                )
+                self.errors_append(text="Interval %s: %s - %s: %s" % (start_field, start_value, end_field, end_value))
             finally:
                 mail.outbox = []
 
@@ -3000,13 +2699,9 @@ class AddNegativeCases(object):
         """
         for start_field, end_field, comparsion in self.intervals:
             if self.is_digital_field(start_field) and self.is_digital_field(end_field):
-                self._test_add_object_some_digital_intervals_negative(
-                    start_field, end_field, comparsion
-                )
+                self._test_add_object_some_digital_intervals_negative(start_field, end_field, comparsion)
                 continue
-            if self.is_datetime_field(start_field) and self.is_datetime_field(
-                end_field
-            ):
+            if self.is_datetime_field(start_field) and self.is_datetime_field(end_field):
                 values = ((0, -1), (-1, 0), (-1, 1), (-1, -1))
                 if comparsion == '>':
                     values += ((0, 0),)
@@ -3067,14 +2762,11 @@ class AddNegativeCases(object):
                     self.check_on_add_error(response, initial_obj_count, locals())
                     self.assert_errors(
                         response,
-                        self.get_error_message(
-                            'wrong_interval', end_field, locals=locals()
-                        ),
+                        self.get_error_message('wrong_interval', end_field, locals=locals()),
                     )
                 except Exception:
                     self.errors_append(
-                        text="Interval %s: %s - %s: %s"
-                        % (start_field, start_value, end_field, end_value)
+                        text="Interval %s: %s - %s: %s" % (start_field, start_value, end_field, end_value)
                     )
                 finally:
                     mail.outbox = []
@@ -3092,9 +2784,7 @@ class AddNegativeCases(object):
             """только одиночные поля"""
             for field in [
                 f
-                for f in (
-                    dependent if isinstance(dependent, (list, tuple)) else (dependent,)
-                )
+                for f in (dependent if isinstance(dependent, (list, tuple)) else (dependent,))
                 if not isinstance(f, (list, tuple))
             ]:
                 try:
@@ -3103,29 +2793,22 @@ class AddNegativeCases(object):
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_add), params)
                     self.fill_all_fields(
-                        (lead if isinstance(lead, (list, tuple)) else (lead,))
-                        + related,
+                        (lead if isinstance(lead, (list, tuple)) else (lead,)) + related,
                         params,
                     )
                     self.set_empty_value_for_field(params, field)
                     initial_obj_count = self.get_obj_manager.count()
                     response = self.send_add_request(params)
                     self.check_on_add_error(response, initial_obj_count, locals())
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                 except Exception:
-                    self.errors_append(
-                        text='For filled "%s", empty field "%s"' % (lead, field)
-                    )
+                    self.errors_append(text='For filled "%s", empty field "%s"' % (lead, field))
 
             """обязательно хотя бы одно поле из группы (все пустые)"""
             for group in [
                 f
-                for f in (
-                    dependent if isinstance(dependent, (list, tuple)) else (dependent,)
-                )
+                for f in (dependent if isinstance(dependent, (list, tuple)) else (dependent,))
                 if isinstance(f, (list, tuple))
             ]:
                 self.prepare_for_add()
@@ -3138,13 +2821,10 @@ class AddNegativeCases(object):
                 )
                 for field in group:
                     if re.match(
-                        '^(%s)-\d+-.+?'
-                        % ('|'.join(getattr(self, 'inline_params', {}).keys())),
+                        '^(%s)-\d+-.+?' % ('|'.join(getattr(self, 'inline_params', {}).keys())),
                         field,
                     ):
-                        self.fill_all_fields(
-                            ('%s-TOTAL_FORMS' % field.split('-')[0],), params
-                        )
+                        self.fill_all_fields(('%s-TOTAL_FORMS' % field.split('-')[0],), params)
                     self.set_empty_value_for_field(params, field)
                 initial_obj_count = self.get_obj_manager.count()
                 try:
@@ -3158,9 +2838,7 @@ class AddNegativeCases(object):
                     self.assert_errors(response, error_message)
                     self.check_on_add_error(response, initial_obj_count, locals())
                 except Exception:
-                    self.errors_append(
-                        text='For filled "%s", empty group "%s"' % (lead, group)
-                    )
+                    self.errors_append(text='For filled "%s", empty group "%s"' % (lead, group))
 
     @only_with_obj
     @only_with('only_if_value_add')
@@ -3189,40 +2867,21 @@ class AddNegativeCases(object):
                         return all([k in d2 and d2[k] == v for k, v in d1.items()])
 
                     try:
-                        while (
-                            any([match_dict(test_value, v) for v in values]) and n < 5
-                        ):
-                            test_value[test_field] = self.get_value_for_field(
-                                None, test_field
-                            )
+                        while any([match_dict(test_value, v) for v in values]) and n < 5:
+                            test_value[test_field] = self.get_value_for_field(None, test_field)
                             n += 1
                         if any([match_dict(test_value, v) for v in values]):
-                            raise Exception(
-                                'Не удалось сформировать тестовое значение для поля %s'
-                                % test_field
-                            )
-                        self.fill_with_related(
-                            params, test_field, test_value[test_field]
-                        )
-                        params.update(
-                            {
-                                k: v
-                                for k, v in viewitems(additional_params)
-                                if k != test_field
-                            }
-                        )
+                            raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
+                        self.fill_with_related(params, test_field, test_value[test_field])
+                        params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
                         params[field] = self.get_value_for_field(None, field)
 
                         new_object = None
                         initial_obj_count = self.get_obj_manager.count()
-                        old_pks = list(
-                            self.get_obj_manager.values_list('pk', flat=True)
-                        )
+                        old_pks = list(self.get_obj_manager.values_list('pk', flat=True))
 
                         response = self.send_add_request(params)
-                        error_message = self.get_error_message(
-                            message_type, field, locals=locals()
-                        )
+                        error_message = self.get_error_message(message_type, field, locals=locals())
                         self.assert_errors(response, error_message)
                         self.check_on_add_error(response, initial_obj_count, locals())
                     except Exception:
@@ -3264,9 +2923,7 @@ class AddNegativeCases(object):
 
                 try:
                     response = self.send_add_request(params)
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                     self.check_on_add_error(response, initial_obj_count, locals())
                 except Exception:
@@ -3281,36 +2938,26 @@ class EditPositiveCases(object):
         """
         obj_pk = self.get_obj_id_for_edit()
         response = self.client.get(
-            self.get_url_for_negative(self.url_edit, (obj_pk,)),
-            follow=True,
-            **self.additional_params
+            self.get_url_for_negative(self.url_edit, (obj_pk,)), follow=True, **self.additional_params
         )
         form_fields = self.get_fields_list_from_response(response)
         try:
             """not set because of one field can be on form many times"""
             self.assert_form_equal(
                 form_fields['visible_fields'],
-                [
-                    el
-                    for el in self.all_fields_edit
-                    if el not in (self.hidden_fields_edit or ())
-                ],
+                [el for el in self.all_fields_edit if el not in (self.hidden_fields_edit or ())],
             )
         except Exception:
             self.errors_append(text='For visible fields')
 
         if self.disabled_fields_edit is not None:
             try:
-                self.assert_form_equal(
-                    form_fields['disabled_fields'], self.disabled_fields_edit
-                )
+                self.assert_form_equal(form_fields['disabled_fields'], self.disabled_fields_edit)
             except Exception:
                 self.errors_append(text='For disabled fields')
         if self.hidden_fields_edit is not None:
             try:
-                self.assert_form_equal(
-                    form_fields['hidden_fields'], self.hidden_fields_edit
-                )
+                self.assert_form_equal(form_fields['hidden_fields'], self.hidden_fields_edit)
             except Exception:
                 self.errors_append(text='For hidden fields')
 
@@ -3332,13 +2979,9 @@ class EditPositiveCases(object):
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
         self.update_params(params)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
         prepared_depends_fields = (
-            self.prepare_depend_from_one_of(self.one_of_fields_edit)
-            if self.one_of_fields_edit
-            else {}
+            self.prepare_depend_from_one_of(self.one_of_fields_edit) if self.one_of_fields_edit else {}
         )
         only_independent_fields = (
             set(self.all_fields_edit)
@@ -3379,27 +3022,19 @@ class EditPositiveCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 only_independent_fields = set(self.all_fields_edit).difference(
                     viewkeys(self._depend_one_of_fields_edit)
                 )
-                fields_from_groups = set(
-                    viewkeys(self._depend_one_of_fields_edit)
-                ).difference(self._depend_one_of_fields_edit[field])
+                fields_from_groups = set(viewkeys(self._depend_one_of_fields_edit)).difference(
+                    self._depend_one_of_fields_edit[field]
+                )
                 for group in self.one_of_fields_edit:
                     _field = choice(group)
-                    fields_from_groups = fields_from_groups.difference(
-                        self._depend_one_of_fields_edit[_field]
-                    )
-                for f in set(viewkeys(self._depend_one_of_fields_edit)).difference(
-                    fields_from_groups
-                ):
+                    fields_from_groups = fields_from_groups.difference(self._depend_one_of_fields_edit[_field])
+                for f in set(viewkeys(self._depend_one_of_fields_edit)).difference(fields_from_groups):
                     self.set_empty_value_for_field(params, f)
-                self.fill_all_fields(
-                    tuple(only_independent_fields) + tuple(fields_from_groups), params
-                )
+                self.fill_all_fields(tuple(only_independent_fields) + tuple(fields_from_groups), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_all_fields((field,), params)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
@@ -3410,9 +3045,7 @@ class EditPositiveCases(object):
                     exclude = getattr(self, 'exclude_from_check_edit', [])
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
-                    self.errors_append(
-                        text='For filled %s from group %s' % (field, repr(group))
-                    )
+                    self.errors_append(text='For filled %s from group %s' % (field, repr(group)))
                 finally:
                     mail.outbox = []
 
@@ -3423,9 +3056,7 @@ class EditPositiveCases(object):
         """
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
         required_fields = self.not_empty_fields_edit + self._get_required_from_related(
             self.not_empty_related_fields_edit
         )
@@ -3453,27 +3084,20 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 for f in group:
                     self.set_empty_value_for_field(params, f)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.fill_all_fields((field,), params)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-                    exclude = set(
-                        getattr(self, 'exclude_from_check_edit', [])
-                    ).difference(
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
                         [
                             field,
                         ]
                     )
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
-                    self.errors_append(
-                        text='For filled field %s from group "%s"'
-                        % (field, force_text(group))
-                    )
+                    self.errors_append(text='For filled field %s from group "%s"' % (field, force_text(group)))
                 finally:
                     mail.outbox = []
 
@@ -3484,12 +3108,8 @@ class EditPositiveCases(object):
         """
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-        )
-        required_fields = self.required_fields_edit + self._get_required_from_related(
-            self.required_related_fields_edit
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
+        required_fields = self.required_fields_edit + self._get_required_from_related(self.required_related_fields_edit)
         self.update_params(params)
         for field in set(viewkeys(params)).difference(required_fields):
             self.pop_field_from_params(params, field)
@@ -3516,27 +3136,20 @@ class EditPositiveCases(object):
                 self.update_params(params)
                 for f in group:
                     self.pop_field_from_params(params, f)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.fill_all_fields((field,), params)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-                    exclude = set(
-                        getattr(self, 'exclude_from_check_edit', [])
-                    ).difference(
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
                         [
                             field,
                         ]
                     )
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
-                    self.errors_append(
-                        text='For filled field %s from group "%s"'
-                        % (field, force_text(group))
-                    )
+                    self.errors_append(text='For filled field %s from group "%s"' % (field, force_text(group)))
                 finally:
                     mail.outbox = []
 
@@ -3576,9 +3189,7 @@ class EditPositiveCases(object):
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
             params.update(max_length_params)
             self.fill_required_if(params)
@@ -3594,28 +3205,19 @@ class EditPositiveCases(object):
                 params.update(max_length_params)
                 for ff in file_fields:
                     self.set_empty_value_for_field(params, ff)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 _errors = []
-                other_values = {
-                    ff: self._get_field_value_by_name(obj_for_edit, ff)
-                    for ff in file_fields
-                }
+                other_values = {ff: self._get_field_value_by_name(obj_for_edit, ff) for ff in file_fields}
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-                    exclude = set(
-                        getattr(self, 'exclude_from_check_edit', [])
-                    ).difference(list(max_length_params.keys()))
-                    self.assert_object_fields(
-                        new_object, params, exclude=exclude, other_values=other_values
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
+                        list(max_length_params.keys())
                     )
+                    self.assert_object_fields(new_object, params, exclude=exclude, other_values=other_values)
                 except Exception:
-                    self.errors_append(
-                        _errors, text='Second save for check max file length'
-                    )
+                    self.errors_append(_errors, text='Second save for check max file length')
                 if _errors:
                     raise Exception(format_errors(_errors))
         except Exception:
@@ -3644,18 +3246,14 @@ class EditPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(viewkeys(fields_for_check)).intersection(
-                viewkeys(self._depend_one_of_fields_edit)
-            )
+            and not set(viewkeys(fields_for_check)).intersection(viewkeys(self._depend_one_of_fields_edit))
             and not need_one_by_one_check
         ):
             return
         if len(fields_for_check) == 1:
             self.formatted_assert_errors()
 
-        for k in set(viewkeys(max_length_params)).intersection(
-            (k for el in viewkeys(self.all_unique) for k in el)
-        ):
+        for k in set(viewkeys(max_length_params)).intersection((k for el in viewkeys(self.all_unique) for k in el)):
             max_length_params[k] = self.get_value_for_field(fields_for_check[k], k)
 
         for field, length in viewitems(fields_for_check):
@@ -3664,13 +3262,9 @@ class EditPositiveCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                self.fill_with_related(
-                    params, field, self.get_value_for_field(length, field)
-                )
+                self.fill_with_related(params, field, self.get_value_for_field(length, field))
                 if field in file_fields:
                     if self.is_file_list(field):
                         for f in params[field]:
@@ -3697,16 +3291,12 @@ class EditPositiveCases(object):
                         params,
                     )
                     _errors = []
-                    other_values = {
-                        field: self._get_field_value_by_name(obj_for_edit, field)
-                    }
+                    other_values = {field: self._get_field_value_by_name(obj_for_edit, field)}
                     try:
                         response = self.send_edit_request(obj_for_edit.pk, params)
                         self.check_on_edit_success(response, locals())
                         new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-                        exclude = set(
-                            getattr(self, 'exclude_from_check_edit', [])
-                        ).difference(
+                        exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
                             [
                                 field,
                             ]
@@ -3718,9 +3308,7 @@ class EditPositiveCases(object):
                             other_values=other_values,
                         )
                     except Exception:
-                        self.errors_append(
-                            _errors, text='Second save with file max length'
-                        )
+                        self.errors_append(_errors, text='Second save with file max length')
                     if _errors:
                         raise Exception(format_errors(_errors))
             except Exception:
@@ -3761,9 +3349,7 @@ class EditPositiveCases(object):
                                 el_field,
                             ]
                         else:
-                            other_group_fields = set(other_group).difference(
-                                set(el).difference((el_field,))
-                            )
+                            other_group_fields = set(other_group).difference(set(el).difference((el_field,)))
                     other_group_field = list(other_group_fields)[0]
                     fields_for_change.append(other_group_field)
                     already_in_check[other_group].append(other_group_field)
@@ -3772,14 +3358,10 @@ class EditPositiveCases(object):
         checks_list = checks_list or ((),)
         for fields_for_change in checks_list:
             obj_for_edit = self.get_obj_for_edit()
-            existing_obj = self.get_other_obj_with_filled(
-                fields_for_change, obj_for_edit
-            )
+            existing_obj = self.get_other_obj_with_filled(fields_for_change, obj_for_edit)
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
 
             for field in fields_for_change:
                 self.clean_depend_fields_edit(params, el_field)
@@ -3795,19 +3377,14 @@ class EditPositiveCases(object):
                     if field in el:
                         existing_filters |= Q(
                             **{
-                                f
-                                + (
-                                    '__in' if self.is_multiselect_field(f) else ''
-                                ): getattr(existing_obj, f).all()
+                                f + ('__in' if self.is_multiselect_field(f) else ''): getattr(existing_obj, f).all()
                                 if hasattr(getattr(existing_obj, f), 'all')
                                 else getattr(existing_obj, f)
                                 for f in el
                                 if f not in fields_for_change
                             }
                         )
-                existing_objs = self.get_obj_manager.exclude(pk=obj_for_edit.pk).filter(
-                    existing_filters
-                )
+                existing_objs = self.get_obj_manager.exclude(pk=obj_for_edit.pk).filter(existing_filters)
                 while n < 3 and (
                     value in ('', None)
                     or self.get_params_according_to_type(
@@ -3816,38 +3393,25 @@ class EditPositiveCases(object):
                     )[0]
                     == value
                     or existing_objs.filter(
-                        **{
-                            field
-                            + (
-                                '__in' if self.is_multiselect_field(field) else ''
-                            ): value
-                        }
+                        **{field + ('__in' if self.is_multiselect_field(field) else ''): value}
                     ).exists()
                 ):
                     n += 1
                     value = self.get_value_for_field(None, field)
                 if existing_objs.filter(
-                    **{
-                        field
-                        + ('__in' if self.is_multiselect_field(field) else ''): value
-                    }
+                    **{field + ('__in' if self.is_multiselect_field(field) else ''): value}
                 ).exists():
                     raise Exception(
-                        "Can't generate value for field \"%s\" that not exists. Now is \"%s\""
-                        % (field, value)
+                        "Can't generate value for field \"%s\" that not exists. Now is \"%s\"" % (field, value)
                     )
                 self.fill_with_related(params, field, value)
 
             self.fill_fields_from_obj(
                 params,
                 existing_obj,
-                set(
-                    [
-                        f
-                        for f in self.all_fields_edit
-                        if f not in (self.hidden_fields_edit or ())
-                    ]
-                ).difference(fields_for_change),
+                set([f for f in self.all_fields_edit if f not in (self.hidden_fields_edit or ())]).difference(
+                    fields_for_change
+                ),
             )
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
@@ -3903,9 +3467,7 @@ class EditPositiveCases(object):
                 existing_obj = self.get_other_obj_with_filled(el, obj_for_edit)
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 for el_field in el:
                     if el_field not in self.all_fields_edit:
                         """only if user can change this field"""
@@ -3943,9 +3505,7 @@ class EditPositiveCases(object):
                                 % (
                                     field,
                                     self.get_params_according_to_type(
-                                        self._get_field_value_by_name(
-                                            existing_obj, field
-                                        ),
+                                        self._get_field_value_by_name(existing_obj, field),
                                         '',
                                     )[0],
                                 )
@@ -3991,27 +3551,18 @@ class EditPositiveCases(object):
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(min_value_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(
                 text="For min values in all digital fields\n%s"
-                % '\n\n'.join(
-                    [
-                        '  %s with value %s' % (field, min_value_params[field])
-                        for field in fields_for_check
-                    ]
-                )
+                % '\n\n'.join(['  %s with value %s' % (field, min_value_params[field]) for field in fields_for_check])
             )
         finally:
             mail.outbox = []
@@ -4021,9 +3572,7 @@ class EditPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_edit)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
             and not need_one_by_one_check
         ):
             return
@@ -4037,9 +3586,7 @@ class EditPositiveCases(object):
             try:
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, value)
                 response = self.send_edit_request(obj_for_edit.pk, params)
@@ -4053,9 +3600,7 @@ class EditPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For field "%s" with value "%s"' % (field, value)
-                )
+                self.errors_append(text='For field "%s" with value "%s"' % (field, value))
             finally:
                 mail.outbox = []
 
@@ -4090,29 +3635,20 @@ class EditPositiveCases(object):
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
             self.fill_required_if(params)
             params.update(max_value_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(
                 text="For max values in all digital fields\n%s"
-                % '\n\n'.join(
-                    [
-                        '  %s with value %s' % (field, max_value_params[field])
-                        for field in fields_for_check
-                    ]
-                )
+                % '\n\n'.join(['  %s with value %s' % (field, max_value_params[field]) for field in fields_for_check])
             )
         finally:
             mail.outbox = []
@@ -4122,9 +3658,7 @@ class EditPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_edit)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
             and not need_one_by_one_check
         ):
             return
@@ -4138,9 +3672,7 @@ class EditPositiveCases(object):
             try:
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, value)
                 response = self.send_edit_request(obj_for_edit.pk, params)
@@ -4154,9 +3686,7 @@ class EditPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For field "%s" with value "%s"' % (field, value)
-                )
+                self.errors_append(text='For field "%s" with value "%s"' % (field, value))
             finally:
                 mail.outbox = []
 
@@ -4169,9 +3699,7 @@ class EditPositiveCases(object):
         obj_for_edit = self.get_obj_for_edit()
         params = self.deepcopy(self.default_params_edit)
         self.update_params(params)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
         for name, max_count in viewitems(self.max_blocks):
             self.fill_all_block_fields(
                 name,
@@ -4205,9 +3733,7 @@ class EditPositiveCases(object):
             obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             self.fill_all_block_fields(
                 name,
                 max_count,
@@ -4223,9 +3749,7 @@ class EditPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text="Max block count (%s) in %s" % (max_count, name)
-                )
+                self.errors_append(text="Max block count (%s) in %s" % (max_count, name))
             finally:
                 mail.outbox = []
 
@@ -4263,29 +3787,20 @@ class EditPositiveCases(object):
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
             self.fill_required_if(params)
             params.update(max_count_params)
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
             self.errors_append(
                 text='For max count files in all fields\n%s'
-                % '\n'.join(
-                    [
-                        '%s: %d' % (field, len(params[field]))
-                        for field in fields_for_check
-                    ]
-                )
+                % '\n'.join(['%s: %d' % (field, len(params[field])) for field in fields_for_check])
             )
         finally:
             mail.outbox = []
@@ -4295,9 +3810,7 @@ class EditPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_edit)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
             and not need_one_by_one_check
         ):
             return
@@ -4310,9 +3823,7 @@ class EditPositiveCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, max_count_params[field])
                 for f in params[field]:
@@ -4328,9 +3839,7 @@ class EditPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For %s files in field %s' % (len(params[field]), field)
-                )
+                self.errors_append(text='For %s files in field %s' % (len(params[field]), field))
             finally:
                 mail.outbox = []
 
@@ -4369,9 +3878,7 @@ class EditPositiveCases(object):
         try:
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
             self.fill_required_if(params)
             self.clean_depend_fields_edit(params, field)
@@ -4380,9 +3887,7 @@ class EditPositiveCases(object):
 
             self.check_on_edit_success(response, locals())
             new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
-                fields_for_check
-            )
+            exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(fields_for_check)
             self.assert_object_fields(new_object, params, exclude=exclude)
         except Exception:
             self.savepoint_rollback(sp)
@@ -4393,17 +3898,9 @@ class EditPositiveCases(object):
                         '%s: %s (%s)'
                         % (
                             field,
-                            convert_size_to_bytes(
-                                self.file_fields_params_edit[field].get(
-                                    'one_max_size', '10M'
-                                )
-                            ),
+                            convert_size_to_bytes(self.file_fields_params_edit[field].get('one_max_size', '10M')),
                             self.humanize_file_size(
-                                convert_size_to_bytes(
-                                    self.file_fields_params_edit[field].get(
-                                        'one_max_size', '10M'
-                                    )
-                                )
+                                convert_size_to_bytes(self.file_fields_params_edit[field].get('one_max_size', '10M'))
                             ),
                         )
                         for field in fields_for_check
@@ -4418,9 +3915,7 @@ class EditPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_edit)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
             and not need_one_by_one_check
         ):
             return
@@ -4437,9 +3932,7 @@ class EditPositiveCases(object):
                 max_size = self.humanize_file_size(size)
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, max_size_params[field])
                 if self.is_file_list(field):
@@ -4458,9 +3951,7 @@ class EditPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For file size %s (%s) in field %s' % (max_size, size, field)
-                )
+                self.errors_append(text='For file size %s (%s) in field %s' % (max_size, size, field))
             finally:
                 self.del_files()
                 mail.outbox = []
@@ -4488,13 +3979,9 @@ class EditPositiveCases(object):
                 one_size = size / field_dict['max_count']
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                f = self.get_random_file(
-                    field, size=one_size, count=field_dict['max_count']
-                )
+                f = self.get_random_file(field, size=one_size, count=field_dict['max_count'])
                 self.fill_with_related(params, field, f)
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.check_on_edit_success(response, locals())
@@ -4540,18 +4027,14 @@ class EditPositiveCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, f)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.check_on_edit_success(response, locals())
                     new_object = self.get_obj_manager.get(pk=obj_for_edit.pk)
-                    exclude = set(
-                        getattr(self, 'exclude_from_check_edit', [])
-                    ).difference(
+                    exclude = set(getattr(self, 'exclude_from_check_edit', [])).difference(
                         [
                             field,
                         ]
@@ -4559,9 +4042,7 @@ class EditPositiveCases(object):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception as e:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For field %s filename %s' % (field, filename)
-                    )
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
                 finally:
                     mail.outbox = []
 
@@ -4581,9 +4062,7 @@ class EditPositiveCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, width=width, height=height)
                 self.fill_with_related(params, field, f)
@@ -4598,10 +4077,7 @@ class EditPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For image width %s, height %s in field %s'
-                    % (width, height, field)
-                )
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
             finally:
                 mail.outbox = []
 
@@ -4621,9 +4097,7 @@ class EditPositiveCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 f = self.get_random_file(field, width=width, height=height)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, f)
@@ -4638,10 +4112,7 @@ class EditPositiveCases(object):
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For image width %s, height %s in field %s'
-                    % (width, height, field)
-                )
+                self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
             finally:
                 mail.outbox = []
 
@@ -4658,11 +4129,7 @@ class EditPositiveCases(object):
         ] + self.get_all_not_str_fields('edit')
         other_fields.extend(list(getattr(self, 'file_fields_params_edit', {}).keys()))
 
-        fields_for_check = [
-            k
-            for k in self.all_fields_edit
-            if re.sub('\-\d+\-', '-0-', k) not in other_fields
-        ]
+        fields_for_check = [k for k in self.all_fields_edit if re.sub('\-\d+\-', '-0-', k) not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
 
@@ -4686,9 +4153,7 @@ class EditPositiveCases(object):
             obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
             self.fill_required_if(params)
             self.clean_depend_fields_edit(params, field)
@@ -4710,9 +4175,7 @@ class EditPositiveCases(object):
         """
         if (
             not self.errors
-            and not set([el[0] for el in fields_for_check]).intersection(
-                viewkeys(self._depend_one_of_fields_edit)
-            )
+            and not set([el[0] for el in fields_for_check]).intersection(viewkeys(self._depend_one_of_fields_edit))
             and not need_one_by_one_check
         ):
             return
@@ -4726,9 +4189,7 @@ class EditPositiveCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, test_params[field])
                 response = self.send_edit_request(obj_for_edit.pk, params)
@@ -4784,9 +4245,7 @@ class EditPositiveCases(object):
             obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             params.update(only_if_values)
             self.fill_required_if(params)
             self.clean_depend_fields_edit(params, field)
@@ -4804,10 +4263,7 @@ class EditPositiveCases(object):
                 new_object,
                 params,
                 exclude=exclude,
-                other_values={
-                    field: test_params[field].name.replace('\x00', '')
-                    for field in fields_for_check
-                },
+                other_values={field: test_params[field].name.replace('\x00', '') for field in fields_for_check},
             )
         except Exception:
             self.errors_append(text='\\x00 value in fields %s' % fields_for_check)
@@ -4817,9 +4273,7 @@ class EditPositiveCases(object):
         """
         if (
             not self.errors
-            and not set(fields_for_check).intersection(
-                viewkeys(self._depend_one_of_fields_edit)
-            )
+            and not set(fields_for_check).intersection(viewkeys(self._depend_one_of_fields_edit))
             and not need_one_by_one_check
         ):
             return
@@ -4832,9 +4286,7 @@ class EditPositiveCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, test_params[field])
                 if self.is_file_list(field):
@@ -4854,17 +4306,12 @@ class EditPositiveCases(object):
                     new_object,
                     params,
                     exclude=exclude,
-                    other_values={
-                        field: test_params[field].name.replace('\x00', '')
-                        for field in fields_for_check
-                    },
+                    other_values={field: test_params[field].name.replace('\x00', '') for field in fields_for_check},
                 )
             except Exception:
                 self.errors_append(text='\\x00 value in field %s' % field)
 
-    def _test_edit_object_some_digital_intervals_positive(
-        self, start_field, end_field, comparsion
-    ):
+    def _test_edit_object_some_digital_intervals_positive(self, start_field, end_field, comparsion):
         values = (1,)
         if comparsion == '>=':
             values += (0,)
@@ -4872,9 +4319,7 @@ class EditPositiveCases(object):
             obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             start_value = self.get_value_for_field(None, start_field)
             self.fill_field(params, start_field, start_value)
             self.fill_with_related(params, start_field, params[start_field])
@@ -4888,10 +4333,7 @@ class EditPositiveCases(object):
                 exclude = getattr(self, 'exclude_from_check_edit', [])
                 self.assert_object_fields(new_object, params, exclude=exclude)
             except Exception:
-                self.errors_append(
-                    text="Interval %s: %s - %s: %s"
-                    % (start_field, start_value, end_field, end_value)
-                )
+                self.errors_append(text="Interval %s: %s - %s: %s" % (start_field, start_value, end_field, end_value))
             finally:
                 mail.outbox = []
 
@@ -4903,13 +4345,9 @@ class EditPositiveCases(object):
         """
         for start_field, end_field, comparsion in self.intervals:
             if self.is_digital_field(start_field) and self.is_digital_field(end_field):
-                self._test_edit_object_some_digital_intervals_positive(
-                    start_field, end_field, comparsion
-                )
+                self._test_edit_object_some_digital_intervals_positive(start_field, end_field, comparsion)
                 continue
-            if self.is_datetime_field(start_field) and self.is_datetime_field(
-                end_field
-            ):
+            if self.is_datetime_field(start_field) and self.is_datetime_field(end_field):
                 values = ((0, 1), (1, 0), (1, -1), (1, 1))
                 if comparsion == '>=':
                     values += ((0, 0),)
@@ -4925,19 +4363,14 @@ class EditPositiveCases(object):
                 values = ((1, None),)
                 if comparsion == '>=':
                     values += ((0, None),)
-            if (
-                end_field not in self.not_empty_fields_edit
-                and end_field + '_0' not in self.not_empty_fields_edit
-            ):
+            if end_field not in self.not_empty_fields_edit and end_field + '_0' not in self.not_empty_fields_edit:
                 values += ((None, None),)
 
             for date_diff, time_diff in values:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 start_value = self.get_value_for_field(None, start_field)
                 if self.is_datetime_field(start_field):
                     start_value = datetime.strptime(
@@ -4982,8 +4415,7 @@ class EditPositiveCases(object):
                     self.assert_object_fields(new_object, params, exclude=exclude)
                 except Exception:
                     self.errors_append(
-                        text="Interval %s: %s - %s: %s"
-                        % (start_field, start_value, end_field, end_value)
+                        text="Interval %s: %s - %s: %s" % (start_field, start_value, end_field, end_value)
                     )
                 finally:
                     mail.outbox = []
@@ -4999,13 +4431,9 @@ class EditPositiveCases(object):
         self.update_params(params)
 
         required_if = self.get_all_required_if_fields(self.required_if_edit)
-        for field in (
-            required_if['lead'] + required_if['dependent'] + required_if['related']
-        ):
+        for field in required_if['lead'] + required_if['dependent'] + required_if['related']:
             self.set_empty_value_for_field(params, field)
-        self.update_captcha_params(
-            self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-        )
+        self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
             self.check_on_edit_success(response, locals())
@@ -5033,9 +4461,7 @@ class EditPositiveCases(object):
             self.set_empty_value_for_field(params, field)
         self.fill_all_fields(required_if['dependent'] + required_if['related'], params)
 
-        self.update_captcha_params(
-            self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-        )
+        self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
         new_object = None
         try:
             response = self.send_edit_request(obj_for_edit.pk, params)
@@ -5064,9 +4490,7 @@ class EditPositiveCases(object):
                 params.update(value)
                 params[field] = self.get_value_for_field(None, field)
 
-                self.update_captcha_params(
-                    self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 new_object = None
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
@@ -5084,9 +4508,7 @@ class EditPositiveCases(object):
         Проверка полей, обязательность заполнения которых зависит от значения в другом поле
         """
         if self.required_if_value_edit == self.only_if_value_edit:
-            self.skipTest(
-                "Проверка выполняется в тесте test_add_object_related_filled_lead_with_value_positive"
-            )
+            self.skipTest("Проверка выполняется в тесте test_add_object_related_filled_lead_with_value_positive")
         for field, values in self.required_if_value_edit.items():
             if not isinstance(values, (list, tuple)):
                 values = [values]
@@ -5101,9 +4523,7 @@ class EditPositiveCases(object):
                 params.update(value)
                 params[field] = self.get_value_for_field(None, field)
 
-                self.update_captcha_params(
-                    self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 new_object = None
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
@@ -5131,9 +4551,7 @@ class EditPositiveCases(object):
                     obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
-                    self.update_captcha_params(
-                        self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                    )
+                    self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     test_value = v
 
                     n = 0
@@ -5142,19 +4560,10 @@ class EditPositiveCases(object):
                             test_value = self.get_value_for_field(None, test_field)
                             n += 1
                         if test_value == v:
-                            raise Exception(
-                                'Не удалось сформировать тестовое значение для поля %s'
-                                % test_field
-                            )
+                            raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
 
                         self.fill_with_related(params, test_field, test_value)
-                        params.update(
-                            {
-                                k: v
-                                for k, v in viewitems(additional_params)
-                                if k != test_field
-                            }
-                        )
+                        params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
                         params[field] = ''
                         self.set_empty_value_for_field(params, field)
 
@@ -5165,9 +4574,7 @@ class EditPositiveCases(object):
                         exclude = getattr(self, 'exclude_from_check_edit', [])
                         self.assert_object_fields(new_object, params, exclude=exclude)
                     except Exception:
-                        self.errors_append(
-                            text='%s=%s\n%s' % (field, params[field], additional_params)
-                        )
+                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
 
     @only_with_obj
     @only_with('required_if_value_edit')
@@ -5202,9 +4609,7 @@ class EditPositiveCases(object):
                     params.update(additional_params)
                     params[field] = self.get_value_for_field(None, field)
 
-                    self.update_captcha_params(
-                        self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                    )
+                    self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     new_object = None
                     try:
                         response = self.send_edit_request(obj_for_edit.pk, params)
@@ -5213,9 +4618,7 @@ class EditPositiveCases(object):
                         exclude = getattr(self, 'exclude_from_check_edit', [])
                         self.assert_object_fields(new_object, params, exclude=exclude)
                     except Exception:
-                        self.errors_append(
-                            text='%s=%s\n%s' % (field, params[field], additional_params)
-                        )
+                        self.errors_append(text='%s=%s\n%s' % (field, params[field], additional_params))
 
 
 class EditNegativeCases(object):
@@ -5231,15 +4634,11 @@ class EditNegativeCases(object):
             try:
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.set_empty_value_for_field(params, field)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5253,9 +4652,7 @@ class EditNegativeCases(object):
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
             for field in group:
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.set_empty_value_for_field(params, field)
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
@@ -5278,25 +4675,17 @@ class EditNegativeCases(object):
         Try edit object: required fields are not exists in params
         """
         message_type = 'without_required'
-        for field in [
-            f
-            for f in self.required_fields_edit
-            if 'FORMS' not in f and not re.findall(r'.+?\-\d+\-.+?', f)
-        ]:
+        for field in [f for f in self.required_fields_edit if 'FORMS' not in f and not re.findall(r'.+?\-\d+\-.+?', f)]:
             sp = transaction.savepoint()
             try:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.pop_field_from_params(params, field)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5311,9 +4700,7 @@ class EditNegativeCases(object):
             self.update_params(params)
             for field in group:
                 self.pop_field_from_params(params, field)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
@@ -5327,9 +4714,7 @@ class EditNegativeCases(object):
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For params without group "%s"' % force_text(group)
-                )
+                self.errors_append(text='For params without group "%s"' % force_text(group))
 
     @only_with_obj
     def test_edit_not_exists_object_negative(self):
@@ -5340,13 +4725,9 @@ class EditNegativeCases(object):
             sp = transaction.savepoint()
             try:
                 response = self.client.get(
-                    self.get_url_for_negative(self.url_edit, (value,)),
-                    follow=True,
-                    **self.additional_params
+                    self.get_url_for_negative(self.url_edit, (value,)), follow=True, **self.additional_params
                 )
-                self.assert_status_code(
-                    response.status_code, self.status_code_not_exist
-                )
+                self.assert_status_code(response.status_code, self.status_code_not_exist)
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(
@@ -5362,9 +4743,7 @@ class EditNegativeCases(object):
             sp = transaction.savepoint()
             try:
                 response = self.send_edit_request(value, params)
-                self.assert_status_code(
-                    response.status_code, self.status_code_not_exist
-                )
+                self.assert_status_code(response.status_code, self.status_code_not_exist)
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(
@@ -5382,13 +4761,9 @@ class EditNegativeCases(object):
         Try edit object: values length > maximum
         """
         message_type = 'max_length'
-        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(
-            getattr(self, 'date_fields', [])
-        )
+        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [
-            (k, v)
-            for k, v in viewitems(self.max_fields_length)
-            if k in self.all_fields_edit and k not in other_fields
+            (k, v) for k, v in viewitems(self.max_fields_length) if k in self.all_fields_edit and k not in other_fields
         ]:
             current_length = length + 1
             sp = transaction.savepoint()
@@ -5396,18 +4771,12 @@ class EditNegativeCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                self.fill_with_related(
-                    params, field, self.get_value_for_field(current_length, field)
-                )
+                self.fill_with_related(params, field, self.get_value_for_field(current_length, field))
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
@@ -5417,9 +4786,7 @@ class EditNegativeCases(object):
                     % (
                         field,
                         current_length,
-                        params[field]
-                        if len(str(params[field])) <= 1000
-                        else str(params[field])[:1000] + '...',
+                        params[field] if len(str(params[field])) <= 1000 else str(params[field])[:1000] + '...',
                     )
                 )
 
@@ -5430,13 +4797,9 @@ class EditNegativeCases(object):
         Try edit object: values length < minimum
         """
         message_type = 'min_length'
-        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(
-            getattr(self, 'date_fields', [])
-        )
+        other_fields = list(getattr(self, 'digital_fields_edit', [])) + list(getattr(self, 'date_fields', []))
         for field, length in [
-            (k, v)
-            for k, v in viewitems(self.min_fields_length)
-            if k in self.all_fields_edit and k not in other_fields
+            (k, v) for k, v in viewitems(self.min_fields_length) if k in self.all_fields_edit and k not in other_fields
         ]:
             current_length = length - 1
             sp = transaction.savepoint()
@@ -5444,25 +4807,18 @@ class EditNegativeCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
-                self.fill_with_related(
-                    params, field, self.get_value_for_field(current_length, field)
-                )
+                self.fill_with_related(params, field, self.get_value_for_field(current_length, field))
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
                 self.errors_append(
-                    text='For field "%s" with length %d\n(value "%s")'
-                    % (field, current_length, params[field])
+                    text='For field "%s" with length %d\n(value "%s")' % (field, current_length, params[field])
                 )
 
     @only_with_obj
@@ -5471,18 +4827,11 @@ class EditNegativeCases(object):
         Try edit object: choice values to choices, that not exists
         """
         message_type = 'wrong_value'
-        for field in set(
-            tuple(self.choice_fields_edit)
-            + tuple(self.choice_fields_edit_with_value_in_error)
-        ):
-            for value in self.custom_wrong_values.get(
-                field, ('qwe', '12345678', 'йцу')
-            ):
+        for field in set(tuple(self.choice_fields_edit) + tuple(self.choice_fields_edit_with_value_in_error)):
+            for value in self.custom_wrong_values.get(field, ('qwe', '12345678', 'йцу')):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.update_params(params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(params, field, value)
@@ -5492,9 +4841,7 @@ class EditNegativeCases(object):
                     _locals = {'field': field}
                     if field in self.choice_fields_edit_with_value_in_error:
                         _locals['value'] = value
-                    error_message = self.get_error_message(
-                        message_type, field, locals=_locals
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=_locals)
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -5508,14 +4855,10 @@ class EditNegativeCases(object):
         """
         message_type = 'wrong_value'
         for field in self.multiselect_fields_edit:
-            for value in self.custom_wrong_values.get(
-                field, ('qwe', '12345678', 'йцу')
-            ):
+            for value in self.custom_wrong_values.get(field, ('qwe', '12345678', 'йцу')):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.update_params(params)
                 self.clean_depend_fields_edit(params, field)
                 self.fill_with_related(
@@ -5529,9 +4872,7 @@ class EditNegativeCases(object):
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     _locals = {'field': field, 'value': value}
-                    error_message = self.get_error_message(
-                        message_type, field, locals=_locals
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=_locals)
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -5552,18 +4893,14 @@ class EditNegativeCases(object):
             sp = transaction.savepoint()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             for el_field in el:
                 if el_field not in self.all_fields_edit:
                     """only if user can change this field"""
                     continue
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                self.fill_with_related(
-                    params, el_field, self.get_params_according_to_type(value, '')[0]
-                )
+                self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
 
             try:
@@ -5584,9 +4921,9 @@ class EditNegativeCases(object):
                         % (
                             field,
                             params[field],
-                            self.get_params_according_to_type(
-                                self._get_field_value_by_name(existing_obj, field), ''
-                            )[0],
+                            self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), '')[
+                                0
+                            ],
                         )
                         for field in el
                         if field in viewkeys(params)
@@ -5603,31 +4940,20 @@ class EditNegativeCases(object):
             existing_obj = self.get_other_obj_with_filled(el, obj_for_edit)
             params = self.deepcopy(self.default_params_edit)
             if not any(
-                [
-                    isinstance(params[el_field], basestring)
-                    and el_field not in self.unique_with_case
-                    for el_field in el
-                ]
+                [isinstance(params[el_field], basestring) and el_field not in self.unique_with_case for el_field in el]
             ):
                 continue
             sp = transaction.savepoint()
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             for el_field in el:
                 if el_field not in self.all_fields_edit:
                     """only if user can change this field"""
                     continue
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
-                self.fill_with_related(
-                    params, el_field, self.get_params_according_to_type(value, '')[0]
-                )
-                if (
-                    not el_field in other_fields
-                    and not el_field in self.unique_with_case
-                ):
+                self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
+                if not el_field in other_fields and not el_field in self.unique_with_case:
                     params[el_field] = params[el_field].swapcase()
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
@@ -5648,9 +4974,9 @@ class EditNegativeCases(object):
                         % (
                             field,
                             params[field],
-                            self.get_params_according_to_type(
-                                self._get_field_value_by_name(existing_obj, field), ''
-                            )[0],
+                            self.get_params_according_to_type(self._get_field_value_by_name(existing_obj, field), '')[
+                                0
+                            ],
                         )
                         for field in el
                         if field in viewkeys(params)
@@ -5664,14 +4990,8 @@ class EditNegativeCases(object):
         Try edit object: wrong values in digital fields
         """
         for field in self.digital_fields_edit:
-            message_type = (
-                'wrong_value_int'
-                if field in self.int_fields_edit
-                else 'wrong_value_digital'
-            )
-            for value in self.custom_wrong_values.get(
-                field, ('q', 'й', 'NaN', 'inf', '-inf', '²')
-            ):
+            message_type = 'wrong_value_int' if field in self.int_fields_edit else 'wrong_value_digital'
+            for value in self.custom_wrong_values.get(field, ('q', 'й', 'NaN', 'inf', '-inf', '²')):
                 sp = transaction.savepoint()
                 try:
                     obj_for_edit = self.get_obj_for_edit()
@@ -5685,16 +5005,12 @@ class EditNegativeCases(object):
                     self.fill_with_related(params, field, value)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assertEqual(self.get_all_form_errors(response), error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For value "%s" in field "%s"' % (value, field)
-                    )
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('email_fields_edit',))
@@ -5704,9 +5020,7 @@ class EditNegativeCases(object):
         """
         message_type = 'wrong_value_email'
         for field in self.email_fields_edit:
-            for value in self.custom_wrong_values.get(
-                field, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')
-            ):
+            for value in self.custom_wrong_values.get(field, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')):
                 sp = transaction.savepoint()
                 try:
                     obj_for_edit = self.get_obj_for_edit()
@@ -5720,16 +5034,12 @@ class EditNegativeCases(object):
                     self.fill_with_related(params, field, value)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For value "%s" in field "%s"' % (value, field)
-                    )
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -5740,9 +5050,7 @@ class EditNegativeCases(object):
         message_type = 'max_length_digital'
         for field in [f for f in self.digital_fields_edit]:
             max_value = min(self.get_digital_values_range(field)['max_values'])
-            for value in self.get_gt_max_list(
-                field, self.get_digital_values_range(field)['max_values']
-            ):
+            for value in self.get_gt_max_list(field, self.get_digital_values_range(field)['max_values']):
                 sp = transaction.savepoint()
                 try:
                     obj_for_edit = self.get_obj_for_edit()
@@ -5756,16 +5064,12 @@ class EditNegativeCases(object):
                     self.fill_with_related(params, field, value)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For value "%s" in field "%s"' % (value, field)
-                    )
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('digital_fields_edit',))
@@ -5776,9 +5080,7 @@ class EditNegativeCases(object):
         message_type = 'min_length_digital'
         for field in [f for f in self.digital_fields_edit]:
             min_value = max(self.get_digital_values_range(field)['min_values'])
-            for value in self.get_lt_min_list(
-                field, self.get_digital_values_range(field)['min_values']
-            ):
+            for value in self.get_lt_min_list(field, self.get_digital_values_range(field)['min_values']):
                 sp = transaction.savepoint()
                 try:
                     obj_for_edit = self.get_obj_for_edit()
@@ -5792,16 +5094,12 @@ class EditNegativeCases(object):
                     self.fill_with_related(params, field, value)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For value "%s" in field "%s"' % (value, field)
-                    )
+                    self.errors_append(text='For value "%s" in field "%s"' % (value, field))
 
     @only_with_obj
     @only_with(('disabled_fields_edit',))
@@ -5815,14 +5113,10 @@ class EditNegativeCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 value = params.get(field, None)
-                old_value = self.get_params_according_to_type(
-                    self._get_field_value_by_name(obj_for_edit, field), ''
-                )[0]
+                old_value = self.get_params_according_to_type(self._get_field_value_by_name(obj_for_edit, field), '')[0]
                 n = 0
                 while n < 3 and (value in ('', None, []) or value == old_value):
                     n += 1
@@ -5851,13 +5145,9 @@ class EditNegativeCases(object):
         message_type = 'one_of'
         for group in self.one_of_fields_edit:
             for filled_group in tuple(
-                set(
-                    [
-                        (el, additional_el)
-                        for i, el in enumerate(group)
-                        for additional_el in group[i + 1 :]
-                    ]
-                ).difference(set(self.one_of_fields_edit).difference(group))
+                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1 :]]).difference(
+                    set(self.one_of_fields_edit).difference(group)
+                )
             ) + (group,):
                 sp = transaction.savepoint()
                 try:
@@ -5871,16 +5161,13 @@ class EditNegativeCases(object):
                     )
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(
-                        message_type, group, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, group, locals=locals())
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(
-                        text='For filled %s fields from group %s'
-                        % (force_text(filled_group), force_text(group))
+                        text='For filled %s fields from group %s' % (force_text(filled_group), force_text(group))
                     )
 
     @only_with_obj
@@ -5894,9 +5181,7 @@ class EditNegativeCases(object):
             obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
             gt_max_count = max_count + 1
             self.fill_all_block_fields(
                 name,
@@ -5908,16 +5193,12 @@ class EditNegativeCases(object):
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:
                 response = self.send_edit_request(obj_for_edit.pk, params)
-                error_message = self.get_error_message(
-                    message_type, name, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, name, locals=locals())
                 self.assert_errors(response, error_message)
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text="Count great than max (%s) in block %s" % (gt_max_count, name)
-                )
+                self.errors_append(text="Count great than max (%s) in block %s" % (gt_max_count, name))
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -5928,9 +5209,7 @@ class EditNegativeCases(object):
         """
         message_type = 'max_count_file'
         fields_for_check = [
-            field
-            for field, field_dict in viewitems(self.file_fields_params_edit)
-            if field_dict.get('max_count', 1) > 1
+            field for field, field_dict in viewitems(self.file_fields_params_edit) if field_dict.get('max_count', 1) > 1
         ]
         for field in fields_for_check:
             sp = transaction.savepoint()
@@ -5941,9 +5220,7 @@ class EditNegativeCases(object):
                 current_count = max_count + 1
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 filename = '.'.join(
                     [
@@ -5966,9 +5243,7 @@ class EditNegativeCases(object):
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
                 self.savepoint_rollback(sp)
-                self.errors_append(
-                    text='For %s files in field %s' % (current_count, field)
-                )
+                self.errors_append(text='For %s files in field %s' % (current_count, field))
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -5995,9 +5270,7 @@ class EditNegativeCases(object):
                 human_current_size = self.humanize_file_size(current_size)
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, size=current_size)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
@@ -6044,14 +5317,10 @@ class EditNegativeCases(object):
                 human_current_size = self.humanize_file_size(current_size)
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 params[field] = []
-                f = self.get_random_file(
-                    field, count=field_dict['max_count'], size=one_size
-                )
+                f = self.get_random_file(field, count=field_dict['max_count'], size=one_size)
                 self.fill_with_related(params, field, f)
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 response = self.send_edit_request(obj_for_edit.pk, params)
@@ -6088,9 +5357,7 @@ class EditNegativeCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, size=0)
                 filename = f[0].name if isinstance(f, (list, tuple)) else f.name
@@ -6129,9 +5396,7 @@ class EditNegativeCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url_for_negative(self.url_edit, (obj_for_edit.pk,)), params)
                 self.clean_depend_fields_edit(params, field)
                 f = self.get_random_file(field, filename=filename)
                 self.fill_with_related(params, field, f)
@@ -6145,9 +5410,7 @@ class EditNegativeCases(object):
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For field %s filename %s' % (field, filename)
-                    )
+                    self.errors_append(text='For field %s filename %s' % (field, filename))
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -6190,10 +5453,7 @@ class EditNegativeCases(object):
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For image width %s, height %s in field %s'
-                        % (width, height, field)
-                    )
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
     @only_with_obj
     @only_with('file_fields_params_edit')
@@ -6246,14 +5506,9 @@ class EditNegativeCases(object):
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.savepoint_rollback(sp)
-                    self.errors_append(
-                        text='For image width %s, height %s in field %s'
-                        % (width, height, field)
-                    )
+                    self.errors_append(text='For image width %s, height %s in field %s' % (width, height, field))
 
-    def _test_edit_object_some_digital_intervals_negative(
-        self, start_field, end_field, comparsion
-    ):
+    def _test_edit_object_some_digital_intervals_negative(self, start_field, end_field, comparsion):
         values = (-1,)
         if comparsion == '>':
             values += (0,)
@@ -6261,9 +5516,7 @@ class EditNegativeCases(object):
             obj_for_edit = self.get_obj_for_edit()
             params = self.deepcopy(self.default_params_edit)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-            )
+            self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
             start_value = self.get_value_for_field(None, start_field)
             self.fill_field(params, start_field, start_value)
             self.fill_with_related(params, start_field, params[start_field])
@@ -6275,16 +5528,11 @@ class EditNegativeCases(object):
                 response = self.send_edit_request(obj_for_edit.pk, params)
                 self.assert_errors(
                     response,
-                    self.get_error_message(
-                        'wrong_interval', end_field, locals=locals()
-                    ),
+                    self.get_error_message('wrong_interval', end_field, locals=locals()),
                 )
                 self.check_on_edit_error(response, obj_for_edit, locals())
             except Exception:
-                self.errors_append(
-                    text="Interval %s: %s - %s: %s"
-                    % (start_field, start_value, end_field, end_value)
-                )
+                self.errors_append(text="Interval %s: %s - %s: %s" % (start_field, start_value, end_field, end_value))
             finally:
                 mail.outbox = []
 
@@ -6296,13 +5544,9 @@ class EditNegativeCases(object):
         """
         for start_field, end_field, comparsion in self.intervals:
             if self.is_digital_field(start_field) and self.is_digital_field(end_field):
-                self._test_edit_object_some_digital_intervals_negative(
-                    start_field, end_field, comparsion
-                )
+                self._test_edit_object_some_digital_intervals_negative(start_field, end_field, comparsion)
                 continue
-            if self.is_datetime_field(start_field) and self.is_datetime_field(
-                end_field
-            ):
+            if self.is_datetime_field(start_field) and self.is_datetime_field(end_field):
                 values = ((0, -1), (-1, 0), (-1, 1), (-1, -1))
                 if comparsion == '>':
                     values += ((0, 0),)
@@ -6323,9 +5567,7 @@ class EditNegativeCases(object):
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 start_value = self.get_value_for_field(None, start_field)
                 if self.is_datetime_field(start_field):
                     start_value = datetime.strptime(
@@ -6363,15 +5605,12 @@ class EditNegativeCases(object):
                     response = self.send_edit_request(obj_for_edit.pk, params)
                     self.assert_errors(
                         response,
-                        self.get_error_message(
-                            'wrong_interval', end_field, locals=locals()
-                        ),
+                        self.get_error_message('wrong_interval', end_field, locals=locals()),
                     )
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
                     self.errors_append(
-                        text="Interval %s: %s - %s: %s"
-                        % (start_field, start_value, end_field, end_value)
+                        text="Interval %s: %s - %s: %s" % (start_field, start_value, end_field, end_value)
                     )
                 finally:
                     mail.outbox = []
@@ -6390,50 +5629,37 @@ class EditNegativeCases(object):
             """only simple fields"""
             for field in [
                 f
-                for f in (
-                    dependent if isinstance(dependent, (list, tuple)) else (dependent,)
-                )
+                for f in (dependent if isinstance(dependent, (list, tuple)) else (dependent,))
                 if not isinstance(f, (list, tuple))
             ]:
                 try:
                     obj_for_edit = self.get_obj_for_edit()
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
-                    self.update_captcha_params(
-                        self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                    )
+                    self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                     self.fill_all_fields(
-                        (lead if isinstance(lead, (list, tuple)) else (lead,))
-                        + related,
+                        (lead if isinstance(lead, (list, tuple)) else (lead,)) + related,
                         params,
                     )
                     self.set_empty_value_for_field(params, field)
                     obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
-                    self.errors_append(
-                        text='For filled "%s", empty field "%s"' % (lead, field)
-                    )
+                    self.errors_append(text='For filled "%s", empty field "%s"' % (lead, field))
 
             """group fields (all are empty)"""
             for group in [
                 f
-                for f in (
-                    dependent if isinstance(dependent, (list, tuple)) else (dependent,)
-                )
+                for f in (dependent if isinstance(dependent, (list, tuple)) else (dependent,))
                 if isinstance(f, (list, tuple))
             ]:
                 obj_for_edit = self.get_obj_for_edit()
                 params = self.deepcopy(self.default_params_edit)
                 self.update_params(params)
-                self.update_captcha_params(
-                    self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 self.fill_all_fields(
                     (lead if isinstance(lead, (list, tuple)) else (lead,)) + related,
                     params,
@@ -6443,15 +5669,11 @@ class EditNegativeCases(object):
                 obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
-                    self.errors_append(
-                        text='For filled "%s", empty group "%s"' % (lead, group)
-                    )
+                    self.errors_append(text='For filled "%s", empty group "%s"' % (lead, group))
 
     @only_with_obj
     @only_with('only_if_value_edit')
@@ -6478,44 +5700,22 @@ class EditNegativeCases(object):
                         return all([k in d2 and d2[k] == v for k, v in d1.items()])
 
                     try:
-                        while (
-                            any([match_dict(test_value, v) for v in values]) and n < 5
-                        ):
-                            test_value[test_field] = self.get_value_for_field(
-                                None, test_field
-                            )
+                        while any([match_dict(test_value, v) for v in values]) and n < 5:
+                            test_value[test_field] = self.get_value_for_field(None, test_field)
                             n += 1
                         if any([match_dict(test_value, v) for v in values]):
-                            raise Exception(
-                                'Не удалось сформировать тестовое значение для поля %s'
-                                % test_field
-                            )
-                        self.fill_with_related(
-                            params, test_field, test_value[test_field]
-                        )
-                        params.update(
-                            {
-                                k: v
-                                for k, v in viewitems(additional_params)
-                                if k != test_field
-                            }
-                        )
+                            raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
+                        self.fill_with_related(params, test_field, test_value[test_field])
+                        params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
                         params[field] = self.get_value_for_field(None, field)
 
-                        self.update_captcha_params(
-                            self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                        )
+                        self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                         response = self.send_edit_request(obj_for_edit.pk, params)
-                        error_message = self.get_error_message(
-                            message_type, field, locals=locals()
-                        )
+                        error_message = self.get_error_message(message_type, field, locals=locals())
                         self.assert_errors(response, error_message)
                         self.check_on_edit_error(response, obj_for_edit, locals())
                     except Exception:
-                        self.errors_append(
-                            text='%s=%s\n%s'
-                            % (field, params[field], {test_field: params[test_field]})
-                        )
+                        self.errors_append(text='%s=%s\n%s' % (field, params[field], {test_field: params[test_field]}))
 
     @only_with_obj
     @only_with('required_if_value_edit')
@@ -6539,14 +5739,10 @@ class EditNegativeCases(object):
                 params[field] = ''
                 self.set_empty_value_for_field(params, field)
 
-                self.update_captcha_params(
-                    self.get_url(self.url_edit, (obj_for_edit.pk,)), params
-                )
+                self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
                 try:
                     response = self.send_edit_request(obj_for_edit.pk, params)
-                    error_message = self.get_error_message(
-                        message_type, field, locals=locals()
-                    )
+                    error_message = self.get_error_message(message_type, field, locals=locals())
                     self.assert_errors(response, error_message)
                     self.check_on_edit_error(response, obj_for_edit, locals())
                 except Exception:
@@ -6568,8 +5764,7 @@ class DeletePositiveCases(object):
         self.assertEqual(
             self.get_obj_manager.count(),
             initial_obj_count - 1,
-            'Objects count after delete = %s (expect %s)'
-            % (self.get_obj_manager.count(), initial_obj_count - 1),
+            'Objects count after delete = %s (expect %s)' % (self.get_obj_manager.count(), initial_obj_count - 1),
         )
 
     @only_with_obj
@@ -6593,9 +5788,7 @@ class DeletePositiveCases(object):
                     'Успешно удалены %d %s.'
                     % (
                         len(obj_ids),
-                        self.obj._meta.verbose_name
-                        if len(obj_ids) == 1
-                        else self.obj._meta.verbose_name_plural,
+                        self.obj._meta.verbose_name if len(obj_ids) == 1 else self.obj._meta.verbose_name_plural,
                     )
                 ],
             )
@@ -6619,9 +5812,7 @@ class DeleteNegativeCases(object):
             sp = transaction.savepoint()
             try:
                 response = self.send_delete_request(value)
-                self.assert_status_code(
-                    response.status_code, self.status_code_not_exist
-                )
+                self.assert_status_code(response.status_code, self.status_code_not_exist)
                 if self.status_code_not_exist == 200:
                     """for Django 1.11 admin"""
                     self.assertEqual(
@@ -6690,14 +5881,7 @@ class RemovePositiveCases(object):
                 'Objects count after remove (should not be changed) = %s (expect %s)'
                 % (self.get_obj_manager.count(), initial_obj_count),
             )
-            self.assertTrue(
-                all(
-                    [
-                        self.get_is_removed(obj)
-                        for obj in self.get_obj_manager.filter(pk__in=obj_ids)
-                    ]
-                )
-            )
+            self.assertTrue(all([self.get_is_removed(obj) for obj in self.get_obj_manager.filter(pk__in=obj_ids)]))
         except Exception:
             self.errors_append()
 
@@ -6726,13 +5910,7 @@ class RemovePositiveCases(object):
                 'Objects count after recovery (should not be changed) = %s (expect %s)'
                 % (self.get_obj_manager.count(), initial_obj_count),
             )
-            self.assertFalse(
-                any(
-                    self.get_obj_manager.filter(pk__in=obj_ids).values_list(
-                        'is_removed', flat=True
-                    )
-                )
-            )
+            self.assertFalse(any(self.get_obj_manager.filter(pk__in=obj_ids).values_list('is_removed', flat=True)))
         except Exception:
             self.errors_append()
 
@@ -6768,9 +5946,7 @@ class RemoveNegativeCases(object):
             try:
                 response = self.send_recovery_request(value)
                 self.assertTrue(
-                    response.redirect_chain[0][0].endswith(
-                        self.get_url(self.url_trash_list)
-                    ),
+                    response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)),
                     'Redirect was %s' % response.redirect_chain[0][0],
                 )
                 self.assert_status_code(response.status_code, 200)
@@ -6791,14 +5967,8 @@ class RemoveNegativeCases(object):
         params = self.deepcopy(self.default_params_edit)
         try:
             url = self.get_url_for_negative(self.url_edit_in_trash, (obj_id,))
-            response = self.client.post(
-                url, params, follow=True, **self.additional_params
-            )
-            self.assertTrue(
-                response.redirect_chain[0][0].endswith(
-                    self.get_url(self.url_trash_list)
-                )
-            )
+            response = self.client.post(url, params, follow=True, **self.additional_params)
+            self.assertTrue(response.redirect_chain[0][0].endswith(self.get_url(self.url_trash_list)))
             self.assert_status_code(response.status_code, 200)
             error_message = 'Вы не можете изменять объекты в корзине.'
             self.assertEqual(self.get_all_form_messages(response), [error_message])
@@ -6838,9 +6008,7 @@ class RemoveNegativeCases(object):
             initial_obj_count = self.get_obj_manager.count()
             response = self.send_recovery_request(obj_for_test.pk)
             self.assertEqual(self.get_obj_manager.count(), initial_obj_count)
-            self.assertTrue(
-                self.get_is_removed(self.get_obj_manager.get(id=obj_for_test.pk))
-            )
+            self.assertTrue(self.get_is_removed(self.get_obj_manager.get(id=obj_for_test.pk)))
             self.assertEqual(
                 self.get_all_form_messages(response),
                 ['Произошла ошибка. Попробуйте позже.'],
@@ -6858,9 +6026,7 @@ class RemoveNegativeCases(object):
         try:
             response = self.send_delete_request(obj_for_test.pk)
             self.assertEqual(self.get_obj_manager.count(), initial_obj_count)
-            self.assertFalse(
-                self.get_is_removed(self.get_obj_manager.get(id=obj_for_test.pk))
-            )
+            self.assertFalse(self.get_is_removed(self.get_obj_manager.get(id=obj_for_test.pk)))
             self.assertEqual(
                 self.get_all_form_messages(response),
                 ['Произошла ошибка. Попробуйте позже.'],
@@ -6877,9 +6043,7 @@ class ChangePasswordPositiveCases(object):
         """
         user = self.get_obj_for_edit()
         response = self.client.get(
-            self.get_url_for_negative(self.url_change_password, (user.pk,)),
-            follow=True,
-            **self.additional_params
+            self.get_url_for_negative(self.url_change_password, (user.pk,)), follow=True, **self.additional_params
         )
         form_fields = self.get_fields_list_from_response(response)
         try:
@@ -6908,9 +6072,7 @@ class ChangePasswordPositiveCases(object):
             user = self.get_obj_for_edit()
             params = self.deepcopy(self.password_params)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
             params[self.field_password] = value
             params[self.field_password_repeat] = value
             try:
@@ -6918,9 +6080,7 @@ class ChangePasswordPositiveCases(object):
                 self.assert_no_form_errors(response)
                 self.check_positive(user, params)
             except Exception:
-                self.errors_append(
-                    text='New password "%s"' % params[self.field_password]
-                )
+                self.errors_append(text='New password "%s"' % params[self.field_password])
 
     @only_with_obj
     @only_with('password_min_length')
@@ -6931,12 +6091,8 @@ class ChangePasswordPositiveCases(object):
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
         self.update_params(params)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-        )
-        params[self.field_password] = self.get_value_for_field(
-            self.password_min_length, 'password'
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
+        params[self.field_password] = self.get_value_for_field(self.password_min_length, 'password')
         params[self.field_password_repeat] = params[self.field_password]
 
         try:
@@ -6955,12 +6111,8 @@ class ChangePasswordPositiveCases(object):
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
         self.update_params(params)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-        )
-        params[self.field_password] = self.get_value_for_field(
-            self.password_max_length, 'password'
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
+        params[self.field_password] = self.get_value_for_field(self.password_max_length, 'password')
         params[self.field_password_repeat] = params[self.field_password]
 
         try:
@@ -6978,26 +6130,18 @@ class ChangePasswordPositiveCases(object):
         """
         wrong_values = list(self.password_wrong_values or [])
         if self.password_min_length:
-            wrong_values.append(
-                self.get_value_for_field(self.password_min_length - 1, 'password')
-            )
+            wrong_values.append(self.get_value_for_field(self.password_min_length - 1, 'password'))
         if self.password_max_length:
-            wrong_values.append(
-                self.get_value_for_field(self.password_max_length + 1, 'password')
-            )
+            wrong_values.append(self.get_value_for_field(self.password_max_length + 1, 'password'))
         for old_password in wrong_values:
             user = self.get_obj_for_edit()
             user.set_password(old_password)
             user.save()
-            self.user_relogin(
-                self.get_login_name(user), old_password, **self.additional_params
-            )
+            self.user_relogin(self.get_login_name(user), old_password, **self.additional_params)
             user = self.get_obj_manager.get(pk=user.pk)
             params = self.deepcopy(self.password_params)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
             value = self.get_value_for_field(None, 'password')
             params.update(
                 {
@@ -7037,9 +6181,7 @@ class ChangePasswordNegativeCases(object):
                 user = self.get_obj_manager.get(pk=user.pk)
                 response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
             except Exception:
                 self.errors_append(text='Empty field "%s"' % field)
@@ -7066,9 +6208,7 @@ class ChangePasswordNegativeCases(object):
                 user = self.get_obj_manager.get(pk=user.pk)
                 response = self.send_change_password_request(user.pk, params)
                 self.check_negative(user, params, response)
-                error_message = self.get_error_message(
-                    message_type, field, locals=locals()
-                )
+                error_message = self.get_error_message(message_type, field, locals=locals())
                 self.assert_errors(response, error_message)
             except Exception:
                 self.errors_append(text='Without field "%s"' % field)
@@ -7081,9 +6221,7 @@ class ChangePasswordNegativeCases(object):
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
         self.update_params(params)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
         params.update(
             {
                 self.field_password: self.get_value_for_field(None, 'password'),
@@ -7096,14 +6234,11 @@ class ChangePasswordNegativeCases(object):
             self.check_negative(user, params, response)
             self.assert_errors(
                 response,
-                self.get_error_message(
-                    'wrong_password_repeat', self.field_password_repeat
-                ),
+                self.get_error_message('wrong_password_repeat', self.field_password_repeat),
             )
         except Exception:
             self.errors_append(
-                text='New passwords "%s", "%s"'
-                % (params[self.field_password], params[self.field_password_repeat])
+                text='New passwords "%s", "%s"' % (params[self.field_password], params[self.field_password_repeat])
             )
 
     @only_with_obj
@@ -7115,9 +6250,7 @@ class ChangePasswordNegativeCases(object):
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
         self.update_params(params)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
         length = self.password_min_length
         current_length = length - 1
         value = self.get_value_for_field(current_length, 'password')
@@ -7144,13 +6277,9 @@ class ChangePasswordNegativeCases(object):
         length = self.password_max_length
         params = self.deepcopy(self.password_params)
         self.update_params(params)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
         current_length = length + 1
-        params[self.field_password] = self.get_value_for_field(
-            current_length, 'password'
-        )
+        params[self.field_password] = self.get_value_for_field(current_length, 'password')
         params[self.field_password_repeat] = params[self.field_password]
         user = self.get_obj_manager.get(pk=user.pk)
         try:
@@ -7174,12 +6303,8 @@ class ChangePasswordNegativeCases(object):
             user = self.get_obj_for_edit()
             params = self.deepcopy(self.password_params)
             self.update_params(params)
-            self.update_captcha_params(
-                self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-            )
-            params.update(
-                {self.field_password: value, self.field_password_repeat: value}
-            )
+            self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
+            params.update({self.field_password: value, self.field_password_repeat: value})
             user = self.get_obj_manager.get(pk=user.pk)
             try:
                 response = self.send_change_password_request(user.pk, params)
@@ -7201,9 +6326,7 @@ class ChangePasswordNegativeCases(object):
         user = self.get_obj_for_edit()
         params = self.deepcopy(self.password_params)
         self.update_params(params)
-        self.update_captcha_params(
-            self.get_url_for_negative(self.url_change_password, (user.pk,)), params
-        )
+        self.update_captcha_params(self.get_url_for_negative(self.url_change_password, (user.pk,)), params)
         value = self.field_old_password + get_randname(1, 'w')
         params[self.field_old_password] = value
         user = self.get_obj_manager.get(pk=user.pk)
@@ -7234,9 +6357,7 @@ class ChangePasswordNegativeCases(object):
                 return value + get_randname(1, 'w')
 
         for field in self.password_similar_fields:
-            user_field_name = getattr(
-                self.get_field_by_name(self.obj, field), 'verbose_name', field
-            )
+            user_field_name = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field)
             for change_type in ('', 'swapcase', 'add_before', 'add_after'):
                 user = self.get_obj_for_edit()
                 value = self.get_value_for_field(self.password_min_length, field)
@@ -7265,8 +6386,7 @@ class ChangePasswordNegativeCases(object):
                     self.assert_errors(response, error_message)
                 except Exception:
                     self.errors_append(
-                        text='New password value "%s" is similar to user.%s = "%s"'
-                        % (password_value, field, value)
+                        text='New password value "%s" is similar to user.%s = "%s"' % (password_value, field, value)
                     )
 
 
@@ -7280,9 +6400,7 @@ class ResetPasswordPositiveCases(object):
         user.save()
         mail.outbox = []
         params = self.deepcopy(self.request_password_params)
-        self.update_captcha_params(
-            self.get_url(self.url_reset_password_request), params
-        )
+        self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = self.get_login_name(user)
         try:
             response = self.send_reset_password_request(params)
@@ -7303,9 +6421,7 @@ class ResetPasswordPositiveCases(object):
         for value in self.password_positive_values:
             user = self.get_obj_for_edit()
             params = self.deepcopy(self.password_params)
-            params.update(
-                {self.field_password: value, self.field_password_repeat: value}
-            )
+            params.update({self.field_password: value, self.field_password_repeat: value})
             codes = self.get_codes(user)
             try:
                 response = self.send_change_after_reset_password_request(codes, params)
@@ -7334,9 +6450,7 @@ class ResetPasswordPositiveCases(object):
             response = self.send_change_after_reset_password_request(codes, params)
             self.assert_no_form_errors(response)
             new_user = self.get_obj_manager.get(pk=user.pk)
-            self.assertFalse(
-                new_user.check_password(self.current_password), 'Password not changed'
-            )
+            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
             self.assertTrue(
                 new_user.check_password(params[self.field_password]),
                 'Password not changed to "%s"' % params[self.field_password],
@@ -7359,9 +6473,7 @@ class ResetPasswordPositiveCases(object):
             response = self.send_change_after_reset_password_request(codes, params)
             self.assert_no_form_errors(response)
             new_user = self.get_obj_manager.get(pk=user.pk)
-            self.assertFalse(
-                new_user.check_password(self.current_password), 'Password not changed'
-            )
+            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
             self.assertTrue(
                 new_user.check_password(params[self.field_password]),
                 'Password not changed to "%s"' % params[self.field_password],
@@ -7386,9 +6498,7 @@ class ResetPasswordPositiveCases(object):
                 response = self.send_change_after_reset_password_request(codes, params)
             self.assert_no_form_errors(response)
             new_user = self.get_obj_manager.get(pk=user.pk)
-            self.assertFalse(
-                new_user.check_password(self.current_password), 'Password not changed'
-            )
+            self.assertFalse(new_user.check_password(self.current_password), 'Password not changed')
             self.assertTrue(
                 new_user.check_password(params[self.field_password]),
                 'Password not changed to "%s"' % params[self.field_password],
@@ -7407,19 +6517,14 @@ class ResetPasswordPositiveCases(object):
         user = self.get_obj_manager.get(pk=user.pk)
         try:
             response = self.client.get(
-                self.get_url(self.url_reset_password, codes),
-                params,
-                follow=True,
-                **self.additional_params
+                self.get_url(self.url_reset_password, codes), params, follow=True, **self.additional_params
             )
             new_user = self.get_obj_manager.get(pk=user.pk)
             self.assert_objects_equal(new_user, user)
             form_fields = self.get_fields_list_from_response(response)
             try:
                 """not set because of one field can be on form many times"""
-                self.assert_form_equal(
-                    form_fields['visible_fields'], self.change_fields
-                )
+                self.assert_form_equal(form_fields['visible_fields'], self.change_fields)
             except Exception:
                 self.errors_append(text='For visible fields')
 
@@ -7443,9 +6548,7 @@ class ResetPasswordNegativeCases(object):
         """
         for field in self.request_fields:
             params = self.deepcopy(self.request_password_params)
-            self.update_captcha_params(
-                self.get_url(self.url_reset_password_request), params
-            )
+            self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
             self.set_empty_value_for_field(params, field)
             try:
                 response = self.send_reset_password_request(params)
@@ -7462,9 +6565,7 @@ class ResetPasswordNegativeCases(object):
         """
         for field in self.request_fields:
             params = self.deepcopy(self.request_password_params)
-            self.update_captcha_params(
-                self.get_url(self.url_reset_password_request), params
-            )
+            self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
             self.pop_field_from_params(params, field)
             try:
                 response = self.send_reset_password_request(params)
@@ -7480,13 +6581,9 @@ class ResetPasswordNegativeCases(object):
         """
         Try reset password with wrong email value
         """
-        for value in self.custom_wrong_values.get(
-            self.field_username, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')
-        ):
+        for value in self.custom_wrong_values.get(self.field_username, ('q', 'й', 'qwe@rty', 'qw@йц', '@qwe', 'qwe@')):
             params = self.deepcopy(self.request_password_params)
-            self.update_captcha_params(
-                self.get_url(self.url_reset_password_request), params
-            )
+            self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
             params[self.field_username] = value
             try:
                 response = self.send_reset_password_request(params)
@@ -7503,9 +6600,7 @@ class ResetPasswordNegativeCases(object):
         Try reset password. No captcha field: not max retries
         """
         params = self.deepcopy(self.request_password_params)
-        self.update_captcha_params(
-            self.get_url(self.url_reset_password_request), params
-        )
+        self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] += 'q'
         self.clean_blacklist()
         self.set_host_blacklist(host='127.0.0.1', count=self.request_reset_retries - 2)
@@ -7542,9 +6637,7 @@ class ResetPasswordNegativeCases(object):
         """
         username = get_random_email_value(10)
         params = self.deepcopy(self.request_password_params)
-        self.update_captcha_params(
-            self.get_url(self.url_reset_password_request), params
-        )
+        self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = username
         try:
             response = self.send_reset_password_request(params)
@@ -7581,9 +6674,7 @@ class ResetPasswordNegativeCases(object):
         user = self.get_obj_for_edit()
         self.set_user_inactive(user)
         params = self.deepcopy(self.request_password_params)
-        self.update_captcha_params(
-            self.get_url(self.url_reset_password_request), params
-        )
+        self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
         params[self.field_username] = self.get_login_name(user)
         try:
             response = self.send_reset_password_request(params)
@@ -7601,19 +6692,13 @@ class ResetPasswordNegativeCases(object):
         Try reset password with wrong captcha value
         """
         for field in ('captcha_0', 'captcha_1'):
-            for value in self.custom_wrong_values.get(
-                field, (u'йцу', u'\r', u'\n', u' ', ':')
-            ):
+            for value in self.custom_wrong_values.get(field, (u'йцу', u'\r', u'\n', u' ', ':')):
                 self.clean_blacklist()
-                self.set_host_blacklist(
-                    host='127.0.0.1', count=self.request_reset_retries or 1
-                )
+                self.set_host_blacklist(host='127.0.0.1', count=self.request_reset_retries or 1)
                 user = self.get_obj_for_edit()
                 mail.outbox = []
                 params = self.deepcopy(self.request_password_params)
-                self.update_captcha_params(
-                    self.get_url(self.url_reset_password_request), params
-                )
+                self.update_captcha_params(self.get_url(self.url_reset_password_request), params)
                 params[field] = value
                 params[self.field_username] = self.get_login_name(user)
                 try:
@@ -7640,9 +6725,7 @@ class ResetPasswordNegativeCases(object):
             response = self.send_change_after_reset_password_request(codes, params)
             self.assert_no_form_errors(response)
             value2 = self.get_value_for_field(None, 'password')
-            params.update(
-                {self.field_password: value2, self.field_password_repeat: value2}
-            )
+            params.update({self.field_password: value2, self.field_password_repeat: value2})
 
             response = self.send_change_after_reset_password_request(codes, params)
             self.assertFalse(
@@ -7719,14 +6802,11 @@ class ResetPasswordNegativeCases(object):
             self.assert_objects_equal(new_user, user)
             self.assert_errors(
                 response,
-                self.get_error_message(
-                    'wrong_password_repeat', self.field_password_repeat
-                ),
+                self.get_error_message('wrong_password_repeat', self.field_password_repeat),
             )
         except Exception:
             self.errors_append(
-                text='New passwords "%s", "%s"'
-                % (params[self.field_password], params[self.field_password_repeat])
+                text='New passwords "%s", "%s"' % (params[self.field_password], params[self.field_password_repeat])
             )
 
     @only_with('password_min_length')
@@ -7785,9 +6865,7 @@ class ResetPasswordNegativeCases(object):
         for value in self.password_wrong_values:
             user = self.get_obj_for_edit()
             params = self.deepcopy(self.password_params)
-            params.update(
-                {self.field_password: value, self.field_password_repeat: value}
-            )
+            params.update({self.field_password: value, self.field_password_repeat: value})
             codes = self.get_codes(user)
             user = self.get_obj_manager.get(pk=user.pk)
             try:
@@ -7831,9 +6909,7 @@ class ResetPasswordNegativeCases(object):
         with freeze_time(old_date):
             codes = self.get_codes(user)
         try:
-            response = self.send_change_after_reset_password_request(
-                codes, self.password_params
-            )
+            response = self.send_change_after_reset_password_request(codes, self.password_params)
             self.assert_status_code(response.status_code, 404)
         except Exception:
             self.errors_append()
@@ -7855,9 +6931,7 @@ class ResetPasswordNegativeCases(object):
                 return value + get_randname(1, 'w')
 
         for field in self.password_similar_fields:
-            user_field_name = getattr(
-                self.get_field_by_name(self.obj, field), 'verbose_name', field
-            )
+            user_field_name = getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field)
             for change_type in ('', 'swapcase', 'add_before', 'add_after'):
                 user = self.get_obj_for_edit()
                 value = self.get_value_for_field(self.password_min_length, field)
@@ -7875,9 +6949,7 @@ class ResetPasswordNegativeCases(object):
                 codes = self.get_codes(user)
                 user = self.get_obj_manager.get(pk=user.pk)
                 try:
-                    response = self.send_change_after_reset_password_request(
-                        codes, params
-                    )
+                    response = self.send_change_after_reset_password_request(codes, params)
                     new_user = self.get_obj_manager.get(pk=user.pk)
                     self.assert_objects_equal(new_user, user)
                     error_message = self.get_error_message(
@@ -7886,8 +6958,7 @@ class ResetPasswordNegativeCases(object):
                     self.assert_errors(response, error_message)
                 except Exception:
                     self.errors_append(
-                        text='New password value "%s" is similar to user.%s = "%s"'
-                        % (password_value, field, value)
+                        text='New password value "%s" is similar to user.%s = "%s"' % (password_value, field, value)
                     )
 
 
@@ -7923,9 +6994,7 @@ class LoginPositiveCases(object):
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
         try:
-            response = self.client.get(
-                self.get_url(self.url_login), follow=True, **self.additional_params
-            )
+            response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
             fields = self.get_fields_list_from_response(response)['all_fields']
             self.assertTrue('captcha' in fields)
             self.update_captcha_params(self.get_url(self.url_login), params)
@@ -7966,9 +7035,7 @@ class LoginPositiveCases(object):
         next_url = self.get_url(choice(self.urls_for_redirect))
         try:
             redirect_url = self.get_domain() + next_url
-            response = response = self.send_login_request(
-                params, {'next': redirect_url}
-            )
+            response = response = self.send_login_request(params, {'next': redirect_url})
             self.check_is_authenticated()
             self.assertRedirects(response, redirect_url)
             self.check_blacklist_on_positive()
@@ -7981,13 +7048,9 @@ class LoginPositiveCases(object):
         """
         params = self.deepcopy(self.default_params)
         self.add_csrf(params)
-        self.client.post(
-            self.get_url(self.url_login), params, follow=True, **self.additional_params
-        )
+        self.client.post(self.get_url(self.url_login), params, follow=True, **self.additional_params)
         try:
-            response = self.client.get(
-                self.get_url(self.url_login), follow=True, **self.additional_params
-            )
+            response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
             self.check_is_authenticated()
             self.check_blacklist_on_positive()
             self.check_response_on_positive(response)
@@ -8079,9 +7142,7 @@ class LoginNegativeCases(object):
         login as user from blacklist with wrong captcha
         """
         for field in ('captcha_0', 'captcha_1'):
-            for value in self.custom_wrong_values.get(
-                field, (u'йцу', u'\r', u'\n', u' ', ':')
-            ):
+            for value in self.custom_wrong_values.get(field, (u'йцу', u'\r', u'\n', u' ', ':')):
                 self.client = self.client_class()
                 self.clean_blacklist()
                 self.set_host_blacklist(host='127.0.0.1', count=self.login_retries or 1)
@@ -8099,9 +7160,7 @@ class LoginNegativeCases(object):
                     self.check_response_on_negative(response)
                     self.check_blacklist_on_negative(response)
                 except Exception:
-                    self.errors_append(
-                        text='For field %s value %s' % (field, repr(value))
-                    )
+                    self.errors_append(text='For field %s value %s' % (field, repr(value)))
 
     def test_login_inactive_user_negative(self):
         """
@@ -8202,14 +7261,10 @@ class LoginNegativeCases(object):
             urls_redirect_to = [
                 self.url_redirect_to,
             ]
-        expected_redirects = [
-            (self.get_domain() + self.get_url(url), 302) for url in urls_redirect_to
-        ]
+        expected_redirects = [(self.get_domain() + self.get_url(url), 302) for url in urls_redirect_to]
         try:
             redirect_url = 'http://google.com'
-            response = response = self.send_login_request(
-                params, {'next': redirect_url}
-            )
+            response = response = self.send_login_request(params, {'next': redirect_url})
             self.check_is_authenticated()
             self.check_blacklist_on_positive()
             self.assertEqual(response.redirect_chain, expected_redirects)

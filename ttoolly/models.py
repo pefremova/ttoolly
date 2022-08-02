@@ -167,10 +167,7 @@ def new_redis_settings():
         if isinstance(value, basestring) and value.startswith('redis://'):
             if TEST_USE_REAL_SETTINGS and _worker_id == 0:
                 return value
-            return '/'.join(
-                value.split('/')[:-1]
-                + [str(int(value.split('/')[-1]) + 10 * max(_worker_id, 1))]
-            )
+            return '/'.join(value.split('/')[:-1] + [str(int(value.split('/')[-1]) + 10 * max(_worker_id, 1))])
         elif isinstance(value, dict):
             new_values_d = {k: get_new_value(v) for k, v in viewitems(value)}
             new_values_d = {k: v for k, v in viewitems(new_values_d) if v}
@@ -299,9 +296,7 @@ class JsonResponseErrorsMixIn(object):
             try:
                 return json.loads(force_text(response.content))
             except Exception:
-                return super(JsonResponseErrorsMixIn, self).get_all_form_errors(
-                    response
-                )
+                return super(JsonResponseErrorsMixIn, self).get_all_form_errors(response)
         try:
             return json.loads(response.content)['errors']
         except Exception:
@@ -317,9 +312,7 @@ class MetaCheckFailures(type):
                 self.formatted_assert_errors()
 
             decorators = getattr(tmp, 'decorators', ())
-            if not 'check_errors' in [
-                getattr(d, '__name__', d.__class__.__name__) for d in decorators
-            ]:
+            if not 'check_errors' in [getattr(d, '__name__', d.__class__.__name__) for d in decorators]:
                 tmp.decorators = decorators + (check_errors,)
             return tmp
 
@@ -438,10 +431,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return "%s.%s" % (strclass(self.__class__), self._testMethodName)
 
     def _fixture_setup(self):
-        if (
-            getattr(settings, 'TEST_CASE_NAME', self.__class__.__name__)
-            != self.__class__.__name__
-        ):
+        if getattr(settings, 'TEST_CASE_NAME', self.__class__.__name__) != self.__class__.__name__:
             delattr(settings, 'TEST_CASE_NAME')
         super(GlobalTestMixIn, self)._fixture_setup()
 
@@ -515,16 +505,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         self._ttoolly_modified_settings = override_settings(**d)
         self._ttoolly_modified_settings.enable()
-        for k in [
-            k
-            for k in dir(self)
-            if not k.startswith(('_', 'test_'))
-            and k not in ('files', 'get_obj_manager')
-        ]:
+        for k in [k for k in dir(self) if not k.startswith(('_', 'test_')) and k not in ('files', 'get_obj_manager')]:
             v = getattr(self, k)
-            if isinstance(v, (list, dict)) and not isinstance(
-                getattr(type(self), k, None), property
-            ):
+            if isinstance(v, (list, dict)) and not isinstance(getattr(type(self), k, None), property):
                 setattr(self, k, self.deepcopy(v) if isinstance(v, dict) else copy(v))
 
     def assertEqual(self, *args, **kwargs):
@@ -551,61 +534,35 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             errors = []
             if d1[key] != d2[key]:
                 if isinstance(d1[key], dict) and isinstance(d2[key], dict):
-                    res = self._assert_dict_equal(
-                        d1[key], d2[key], parent_key + '[%s]' % key
-                    )
+                    res = self._assert_dict_equal(d1[key], d2[key], parent_key + '[%s]' % key)
                     if res:
-                        text.append(
-                            parent_key
-                            + '[%s]:\n  ' % key
-                            + '\n  '.join(res.splitlines())
-                        )
+                        text.append(parent_key + '[%s]:\n  ' % key + '\n  '.join(res.splitlines()))
                 elif isinstance(d1[key], list) and isinstance(d2[key], list):
                     try:
                         self.assert_list_equal(d1[key], d2[key])
                     except Exception:
                         self.errors_append(errors)
-                        text.append(
-                            '%s[%s]:\n%s'
-                            % (parent_key if parent_key else '', key, '\n'.join(errors))
-                        )
+                        text.append('%s[%s]:\n%s' % (parent_key if parent_key else '', key, '\n'.join(errors)))
                 else:
                     d1_value = (
                         d1[key]
                         if (
                             (isinstance(d1[key], str) and isinstance(d2[key], str))
-                            or (
-                                isinstance(d1[key], bytes)
-                                and isinstance(d2[key], bytes)
-                            )
+                            or (isinstance(d1[key], bytes) and isinstance(d2[key], bytes))
                         )
                         else repr(d1[key])
                     )
-                    d1_value = (
-                        d1_value
-                        if isinstance(d1_value, str)
-                        else d1_value.decode('utf-8')
-                    )
+                    d1_value = d1_value if isinstance(d1_value, str) else d1_value.decode('utf-8')
                     d2_value = (
                         d2[key]
                         if (
                             (isinstance(d1[key], str) and isinstance(d2[key], str))
-                            or (
-                                isinstance(d1[key], bytes)
-                                and isinstance(d2[key], bytes)
-                            )
+                            or (isinstance(d1[key], bytes) and isinstance(d2[key], bytes))
                         )
                         else repr(d2[key])
                     )
-                    d2_value = (
-                        d2_value
-                        if isinstance(d2_value, str)
-                        else d2_value.decode('utf-8')
-                    )
-                    text.append(
-                        '%s[%s]: %s != %s'
-                        % (parent_key if parent_key else '', key, d1_value, d2_value)
-                    )
+                    d2_value = d2_value if isinstance(d2_value, str) else d2_value.decode('utf-8')
+                    text.append('%s[%s]: %s != %s' % (parent_key if parent_key else '', key, d1_value, d2_value))
         res = '\n'.join(text)
 
         return res
@@ -624,32 +581,24 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def assert_errors(self, response, error_message):
         response_errors = self.get_all_form_errors(response)
         if response_errors != error_message:
-            raise AssertionError(
-                'Errors from response:\n%s\n\nExpected errors:\n%s'
-                % (response_errors, error_message)
-            )
+            raise AssertionError('Errors from response:\n%s\n\nExpected errors:\n%s' % (response_errors, error_message))
 
     def assert_form_equal(self, form_fields, etalon_fields, text=''):
         text = (text + ':\n') if text else ''
         errors = []
         not_present_fields = set(etalon_fields).difference(form_fields)
         if not_present_fields:
-            errors.append(
-                'Fields %s not at form' % force_text(list(not_present_fields))
-            )
+            errors.append('Fields %s not at form' % force_text(list(not_present_fields)))
         present_fields = set(form_fields).difference(etalon_fields)
         if present_fields:
-            errors.append(
-                "Fields %s not need at form" % force_text(list(present_fields))
-            )
+            errors.append("Fields %s not need at form" % force_text(list(present_fields)))
         count_dict_form = {k: form_fields.count(k) for k in form_fields}
         count_dict_etalon = {k: etalon_fields.count(k) for k in etalon_fields}
         for field, count_in_etalon in viewitems(count_dict_etalon):
             count_in_form = count_dict_form.get(field, None)
             if count_in_form and count_in_form != count_in_etalon:
                 errors.append(
-                    "Field %s present at form %s time(s) (should be %s)"
-                    % (repr(field), count_in_form, count_in_etalon)
+                    "Field %s present at form %s time(s) (should be %s)" % (repr(field), count_in_form, count_in_etalon)
                 )
 
         if errors:
@@ -670,9 +619,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def _assert_list_equal(self, list1, list2):
         errors = []
-        if all([isinstance(el, dict) for el in list1]) and all(
-            [isinstance(el, dict) for el in list2]
-        ):
+        if all([isinstance(el, dict) for el in list1]) and all([isinstance(el, dict) for el in list2]):
             i = -1
             for i, el in enumerate(list2):
                 if i >= len(list1):
@@ -684,9 +631,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             for j in xrange(i + 1, len(list1)):
                 errors.append('[line %d]: Not in second list' % j)
 
-        elif all([isinstance(el, list) for el in list1]) and all(
-            [isinstance(el, list) for el in list2]
-        ):
+        elif all([isinstance(el, list) for el in list1]) and all([isinstance(el, list) for el in list2]):
             i = -1
             for i, el in enumerate(list2):
                 if i >= len(list1):
@@ -724,9 +669,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         }
         default_params.update(params)
         errors = []
-        for field in set(viewkeys(default_params)).difference(
-            ('body', 'attachments', 'alternatives')
-        ):
+        for field in set(viewkeys(default_params)).difference(('body', 'attachments', 'alternatives')):
             try:
                 self.assertEqual(getattr(m, field), default_params[field])
             except Exception:
@@ -751,9 +694,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             )
             for n, alternative in enumerate(default_params['alternatives']):
                 m_alternative = m.alternatives[n]
-                if m_alternative[1] in ('html', 'text/html') and m.alternatives[n][
-                    1
-                ] in ('html', 'text/html'):
+                if m_alternative[1] in ('html', 'text/html') and m.alternatives[n][1] in ('html', 'text/html'):
                     self.assertHTMLEqual(m_alternative[0], alternative[0])
                 else:
                     self.assert_text_equal_by_symbol(m_alternative[0], alternative[0])
@@ -765,8 +706,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             self.assertEqual(
                 len(m.attachments),
                 len(default_params['attachments']),
-                '%s attachments in mail, expected %s'
-                % (len(m.attachments), len(default_params['attachments'])),
+                '%s attachments in mail, expected %s' % (len(m.attachments), len(default_params['attachments'])),
             )
             for n, attachment in enumerate(default_params['attachments']):
                 m_attachment = m.attachments[n]
@@ -779,23 +719,16 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         except Exception:
             self.errors_append(errors, text='[attachments]')
 
-        if (
-            getattr(m, 'content_subtype', None)
-            not in (
-                'html',
-                'text/html',
-            )
-            and re.match('<[\w]', m.body)
-        ):
+        if getattr(m, 'content_subtype', None) not in (
+            'html',
+            'text/html',
+        ) and re.match('<[\w]', m.body):
             errors.append(
-                'Not html message type (%s), but contains html tags in body'
-                % getattr(m, 'content_subtype', None)
+                'Not html message type (%s), but contains html tags in body' % getattr(m, 'content_subtype', None)
             )
 
         for n, alternative in enumerate(getattr(m, 'alternatives', [])):
-            if alternative[1] not in ('html', 'text/html') and re.match(
-                '<[\w]|/\w>', alternative[0]
-            ):
+            if alternative[1] not in ('html', 'text/html') and re.match('<[\w]|/\w>', alternative[0]):
                 errors.append(
                     '[alternatives][%d]: Not html message type (%s), but contains html tags in body'
                     % (n, alternative[1])
@@ -822,9 +755,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if form_errors:
             raise AssertionError('There are errors at form: ' + repr(form_errors))
 
-    def assert_objects_count_on_add(
-        self, is_positive, initial_obj_count=0, additional=1
-    ):
+    def assert_objects_count_on_add(self, is_positive, initial_obj_count=0, additional=1):
         if is_positive:
             self.assertEqual(
                 self.get_obj_manager.count(),
@@ -836,19 +767,14 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             self.assertEqual(
                 self.get_obj_manager.count(),
                 initial_obj_count,
-                'Objects count after wrong add = %s (expect %s)'
-                % (self.get_obj_manager.count(), initial_obj_count),
+                'Objects count after wrong add = %s (expect %s)' % (self.get_obj_manager.count(), initial_obj_count),
             )
 
-    def assert_objects_equal(
-        self, obj1, obj2, exclude=None, other_values=None, changed=None, msg=None
-    ):
+    def assert_objects_equal(self, obj1, obj2, exclude=None, other_values=None, changed=None, msg=None):
         other_values = other_values or {}
         changed = list(changed or [])
         exclude = list(set(exclude or []).union(changed))
-        if (getattr(self, 'obj', None) and isinstance(obj1, self.obj)) or not getattr(
-            self, 'obj', None
-        ):
+        if (getattr(self, 'obj', None) and isinstance(obj1, self.obj)) or not getattr(self, 'obj', None):
             exclude.extend(getattr(self, 'exclude_from_check', []))
         local_errors = []
 
@@ -881,9 +807,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if value1 == value2:
                 assert_text.append('[%s]: %r' % (field, value1))
         if assert_text:
-            local_errors.append(
-                'This values should be changed but not:\n' + '\n'.join(assert_text)
-            )
+            local_errors.append('This values should be changed but not:\n' + '\n'.join(assert_text))
 
         if local_errors:
             error_message = format_errors(local_errors)
@@ -905,13 +829,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if not exclude:
             exclude = []
         exclude = list(exclude)
-        if (getattr(self, 'obj', None) and isinstance(obj, self.obj)) or not getattr(
-            self, 'obj', None
-        ):
+        if (getattr(self, 'obj', None) and isinstance(obj, self.obj)) or not getattr(self, 'obj', None):
             exclude.extend(getattr(self, 'exclude_from_check', []))
-            other_values_for_check = self.deepcopy(
-                getattr(self, 'other_values_for_check', {})
-            )
+            other_values_for_check = self.deepcopy(getattr(self, 'other_values_for_check', {}))
             for k, v in viewitems(other_values_for_check):
                 other_values[k] = other_values.get(k, v)
         params.update(other_values)
@@ -944,21 +864,11 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
         form_to_field_map = self.get_related_names(obj)
-        field_to_form_map = {
-            v: k for k, v in iter(viewitems(form_to_field_map)) if v != k
-        }
-        form_related_names = [
-            field_to_form_map.get(name, name) for name in object_related_field_names
-        ]
+        field_to_form_map = {v: k for k, v in iter(viewitems(form_to_field_map)) if v != k}
+        form_related_names = [field_to_form_map.get(name, name) for name in object_related_field_names]
 
         fields_for_check = set(viewkeys(params)).intersection(object_fields)
-        fields_for_check.update(
-            [
-                k.split('-')[0]
-                for k in viewkeys(params)
-                if k.split('-')[0] in form_related_names
-            ]
-        )
+        fields_for_check.update([k.split('-')[0] for k in viewkeys(params) if k.split('-')[0] in form_related_names])
         fields_for_check = fields_for_check.difference(exclude)
 
         object_one_to_one_field_names = [
@@ -968,9 +878,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             or getattr(fields_map[name], 'field', None)
             and fields_map[name].field.__class__.__name__ == 'OneToOneField'
         ]
-        form_one_to_one_names = [
-            field_to_form_map.get(name, name) for name in object_one_to_one_field_names
-        ]
+        form_one_to_one_names = [field_to_form_map.get(name, name) for name in object_one_to_one_field_names]
         form_to_object_map = {
             field_to_form_map.get(name, name): fields_map[name].get_accessor_name()
             for name in object_related_field_names
@@ -987,9 +895,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 cls = fields_map[name_in_field]
                 obj_field_in_related_query = self.get_related_field_name(cls)
                 _model = getattr(cls, 'related_model', None) or cls.related.parent_model
-                value = _model._base_manager.filter(
-                    **{obj_field_in_related_query + '__pk': obj.pk}
-                )
+                value = _model._base_manager.filter(**{obj_field_in_related_query + '__pk': obj.pk})
                 if value:
                     value = value[0]
                 else:
@@ -1003,9 +909,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     hasattr(params.get(name_on_form, []), '__len__')
                     and (  # params value is list or not exists (inline form)
                         value.__class__.__name__ in ('RelatedManager', 'QuerySet')
-                        or set(
-                            [mr.__name__ for mr in value.__class__.__mro__]
-                        ).intersection(['Manager', 'Model', 'ModelBase'])
+                        or set([mr.__name__ for mr in value.__class__.__mro__]).intersection(
+                            ['Manager', 'Model', 'ModelBase']
+                        )
                     )
                 )
             ):
@@ -1024,23 +930,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                             self.assertEqual(value.all().count(), count_for_check)
                         except Exception as e:
                             local_errors.append(
-                                '[%s]: count '
-                                % (
-                                    field.encode('utf-8')
-                                    if isinstance(field, str)
-                                    else field
-                                )
+                                '[%s]: count ' % (field.encode('utf-8') if isinstance(field, str) else field)
                                 + force_text(e)
                             )
 
                     for i, el in enumerate(
-                        value.all().order_by(
-                            getattr(self, 'inline_objects_ordering', {}).get(
-                                field, 'pk'
-                            )
-                        )
-                        if value.__class__.__name__
-                        in ('RelatedManager', 'QuerySet', 'ManyRelatedManager')
+                        value.all().order_by(getattr(self, 'inline_objects_ordering', {}).get(field, 'pk'))
+                        if value.__class__.__name__ in ('RelatedManager', 'QuerySet', 'ManyRelatedManager')
                         else [
                             value,
                         ]
@@ -1059,10 +955,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                             and params.get(name_on_form, None)
                             and isinstance(params[name_on_form], (list, tuple))
                             and all(
-                                [
-                                    isinstance(value_el, FILE_TYPES + (ContentFile,))
-                                    for value_el in params[name_on_form]
-                                ]
+                                [isinstance(value_el, FILE_TYPES + (ContentFile,)) for value_el in params[name_on_form]]
                             )
                         ):
                             """Try check multiple file field.
@@ -1070,15 +963,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                             el_file_fields = [
                                 f.name
                                 for f in el._meta.fields
-                                if set(
-                                    [m.__name__ for m in f.__class__.__mro__]
-                                ).intersection(['FileField', 'ImageField'])
+                                if set([m.__name__ for m in f.__class__.__mro__]).intersection(
+                                    ['FileField', 'ImageField']
+                                )
                             ]
                             if len(el_file_fields) == 1:
                                 _params = {
-                                    el_file_fields[0]: params[name_on_form][i]
-                                    if len(params[name_on_form]) > i
-                                    else ''
+                                    el_file_fields[0]: params[name_on_form][i] if len(params[name_on_form]) > i else ''
                                 }
                         try:
                             self.assert_object_fields(el, _params)
@@ -1086,9 +977,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                             local_errors.append(
                                 '[%s][%d]:%s'
                                 % (
-                                    field.encode('utf-8')
-                                    if isinstance(field, str)
-                                    else field,
+                                    field.encode('utf-8') if isinstance(field, str) else field,
                                     i,
                                     '\n  '.join(force_text(e).splitlines()),
                                 )
@@ -1097,11 +986,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                     local_errors.append(
                         '[%s]: expected count %s, but value is None'
                         % (
-                            (
-                                field.encode('utf-8')
-                                if isinstance(field, str)
-                                else field
-                            ),
+                            (field.encode('utf-8') if isinstance(field, str) else field),
                             count_for_check,
                         )
                     )
@@ -1115,15 +1000,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 self._assert_object_field(value, params_value, field)
             except AssertionError:
                 if isinstance(value, basestring):
-                    value = (
-                        value if len(str(value)) <= 1000 else str(value)[:1000] + '...'
-                    )
+                    value = value if len(str(value)) <= 1000 else str(value)[:1000] + '...'
                 if isinstance(params_value, basestring):
-                    params_value = (
-                        params_value
-                        if len(str(params_value)) <= 1000
-                        else str(params_value)[:1000] + '...'
-                    )
+                    params_value = params_value if len(str(params_value)) <= 1000 else str(params_value)[:1000] + '...'
                 text = '[%s]: %s != %s' % (
                     force_text(field),
                     force_text(repr(value)),
@@ -1132,10 +1011,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 local_errors.append(text)
 
         if local_errors:
-            raise AssertionError(
-                "Values from object != expected values from dict:\n"
-                + "\n".join(local_errors)
-            )
+            raise AssertionError("Values from object != expected values from dict:\n" + "\n".join(local_errors))
 
     def assert_status_code(self, response_status_code, expected_status_code):
         self.assertEqual(
@@ -1150,10 +1026,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             try:
                 self.assertEqual(first, second)
             except AssertionError as e:
-                full_error_text = (
-                    '\n\nFull error message text:\n%s'
-                    % unicode_to_readable(force_text(e))
-                )
+                full_error_text = '\n\nFull error message text:\n%s' % unicode_to_readable(force_text(e))
         if first == second:
             return
         first_length = len(first)
@@ -1170,9 +1043,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 else repr(second[n : n + additional]),
                 '...' if (n + additional < second_length) else '',
             )
-            self.assertEqual(
-                first[n : n + 1], second[n : n + 1], text + full_error_text
-            )
+            self.assertEqual(first[n : n + 1], second[n : n + 1], text + full_error_text)
 
     def assert_xpath_count(self, response, path, count=1, status_code=200, msg=None):
         error_message = "Response status code %s != %s" % (
@@ -1182,10 +1053,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if msg:
             error_message = msg + ':\n' + error_message
         self.assertEqual(response.status_code, status_code, error_message)
-        if not (
-            'xml' in force_text(response.content)
-            and 'encoding' in force_text(response.content)
-        ):
+        if not ('xml' in force_text(response.content) and 'encoding' in force_text(response.content)):
             res = force_text(response.content)
         else:
             res = response.content
@@ -1274,9 +1142,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if field in viewkeys(messages_dict):
             field_dict = messages_dict[field]
             if message_type in ('max_length', 'max_length_file'):
-                error_message = field_dict.get(
-                    'max_length', field_dict.get('max_length_file', '')
-                )
+                error_message = field_dict.get('max_length', field_dict.get('max_length_file', ''))
             else:
                 error_message = field_dict.get(message_type, error_message)
 
@@ -1296,131 +1162,76 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             previous_locals['field'] = field
         if message_type == 'max_length' and self.is_file_field(field):
             message_type = 'max_length_file'
-        previous_locals['verbose_obj'] = (
-            self.obj._meta.verbose_name if getattr(self, 'obj', None) else 'Объект'
-        )
+        previous_locals['verbose_obj'] = self.obj._meta.verbose_name if getattr(self, 'obj', None) else 'Объект'
         if isinstance(previous_locals['verbose_obj'], bytes):
-            previous_locals['verbose_obj'] = previous_locals['verbose_obj'].decode(
-                'utf-8'
-            )
+            previous_locals['verbose_obj'] = previous_locals['verbose_obj'].decode('utf-8')
         previous_locals['verbose_field'] = (
             getattr(self.get_field_by_name(self.obj, field), 'verbose_name', field)
-            if (
-                getattr(self, 'obj', None)
-                and field in get_all_field_names_from_model(self.obj)
-            )
+            if (getattr(self, 'obj', None) and field in get_all_field_names_from_model(self.obj))
             else field
         )
         if isinstance(previous_locals['verbose_field'], bytes):
-            previous_locals['verbose_field'] = previous_locals['verbose_field'].decode(
-                'utf-8'
-            )
-        previous_locals['verbose_pk'] = (
-            self.obj._meta.pk.verbose_name if getattr(self, 'obj', None) else 'id'
-        )
+            previous_locals['verbose_field'] = previous_locals['verbose_field'].decode('utf-8')
+        previous_locals['verbose_pk'] = self.obj._meta.pk.verbose_name if getattr(self, 'obj', None) else 'id'
         if isinstance(previous_locals['verbose_pk'], bytes):
-            previous_locals['verbose_pk'] = previous_locals['verbose_pk'].decode(
-                'utf-8'
-            )
+            previous_locals['verbose_pk'] = previous_locals['verbose_pk'].decode('utf-8')
         ERROR_MESSAGES = {
             'required': 'Обязательное поле.',
             'max_length': 'Убедитесь, что это значение содержит не '
             + 'более {length} символов (сейчас {current_length}).'
-            if (
-                previous_locals.get('length', None) is None
-                or not isinstance(previous_locals.get('length'), int)
-            )
+            if (previous_locals.get('length', None) is None or not isinstance(previous_locals.get('length'), int))
             else 'Убедитесь, что это значение содержит не '
-            + 'более {length} символов (сейчас {current_length}).'.format(
-                **previous_locals
-            ),
+            + 'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
             'max_length_file': 'Убедитесь, что это имя файла содержит не '
             + 'более {length} символов (сейчас {current_length}).'
-            if (
-                previous_locals.get('length', None) is None
-                or not isinstance(previous_locals.get('length'), int)
-            )
+            if (previous_locals.get('length', None) is None or not isinstance(previous_locals.get('length'), int))
             else 'Убедитесь, что это имя файла содержит не '
-            + 'более {length} символов (сейчас {current_length}).'.format(
-                **previous_locals
-            ),
+            + 'более {length} символов (сейчас {current_length}).'.format(**previous_locals),
             'max_length_digital': 'Убедитесь, что это значение меньше либо равно {max_value}.'
             if (previous_locals.get('max_value', None) is None)
-            else 'Убедитесь, что это значение меньше либо равно {max_value}.'.format(
-                **previous_locals
-            ),
+            else 'Убедитесь, что это значение меньше либо равно {max_value}.'.format(**previous_locals),
             'min_length': 'Убедитесь, что это значение содержит не '
             + 'менее {length} символов (сейчас {current_length}).'
-            if (
-                previous_locals.get('length', None) is None
-                or not isinstance(previous_locals.get('length'), int)
-            )
+            if (previous_locals.get('length', None) is None or not isinstance(previous_locals.get('length'), int))
             else 'Убедитесь, что это значение содержит не '
-            + 'менее {length} символов (сейчас {current_length}).'.format(
-                **previous_locals
-            ),
+            + 'менее {length} символов (сейчас {current_length}).'.format(**previous_locals),
             'min_length_digital': 'Убедитесь, что это значение больше либо равно {min_value}.'
             if (previous_locals.get('min_value', None) is None)
-            else 'Убедитесь, что это значение больше либо равно {min_value}.'.format(
-                **previous_locals
-            ),
-            'wrong_value': 'Выберите корректный вариант. Вашего '
-            + 'варианта нет среди допустимых значений.'
+            else 'Убедитесь, что это значение больше либо равно {min_value}.'.format(**previous_locals),
+            'wrong_value': 'Выберите корректный вариант. Вашего ' + 'варианта нет среди допустимых значений.'
             if 'value' not in previous_locals.keys()
-            else 'Выберите корректный вариант. {value} '.format(**previous_locals)
-            + 'нет среди допустимых значений.',
+            else 'Выберите корректный вариант. {value} '.format(**previous_locals) + 'нет среди допустимых значений.',
             'wrong_value_int': 'Введите целое число.',
             'wrong_value_digital': 'Введите число.',
             'wrong_value_email': 'Введите правильный адрес электронной почты.',
-            'unique': '{verbose_obj} с таким {verbose_field} уже существует.'.format(
-                **previous_locals
-            ),
+            'unique': '{verbose_obj} с таким {verbose_field} уже существует.'.format(**previous_locals),
             'delete_not_exists': 'Произошла ошибка. Попробуйте позже.',
             'recovery_not_exists': 'Произошла ошибка. Попробуйте позже.',
             'empty_file': 'Отправленный файл пуст.',
             'max_count_file': 'Допускается загрузить не более {max_count} файлов.'
             if (previous_locals.get('max_count', None) is None)
-            else 'Допускается загрузить не более {max_count} файлов.'.format(
-                **previous_locals
-            ),
+            else 'Допускается загрузить не более {max_count} файлов.'.format(**previous_locals),
             'max_size_file': 'Размер файла {filename} больше {max_size}.'
-            if (
-                previous_locals.get('filename', None) is None
-                or previous_locals.get('max_size', None) is None
-            )
+            if (previous_locals.get('filename', None) is None or previous_locals.get('max_size', None) is None)
             else 'Размер файла {filename} больше {max_size}.'.format(**previous_locals),
             'wrong_extension': 'Некорректный формат файла {filename}.'
             if previous_locals.get('filename', None) is None
             else 'Некорректный формат файла {filename}.'.format(**previous_locals),
             'min_dimensions': 'Минимальный размер изображения {min_width}x{min_height}.'
-            if (
-                previous_locals.get('min_width', None) is None
-                or previous_locals.get('min_height', None)
-            )
-            else 'Минимальный размер изображения {min_width}x{min_height}.'.format(
-                **previous_locals
-            ),
+            if (previous_locals.get('min_width', None) is None or previous_locals.get('min_height', None))
+            else 'Минимальный размер изображения {min_width}x{min_height}.'.format(**previous_locals),
             'max_dimensions': 'Максимальный размер изображения {max_width}x{max_height}.'
-            if (
-                previous_locals.get('max_width', None) is None
-                or previous_locals.get('max_height', None)
-            )
-            else 'Максимальный размер изображения {max_width}x{max_height}.'.format(
-                **previous_locals
-            ),
+            if (previous_locals.get('max_width', None) is None or previous_locals.get('max_height', None))
+            else 'Максимальный размер изображения {max_width}x{max_height}.'.format(**previous_locals),
             'max_sum_size_file': 'Суммарный размер изображений не должен превышать {max_size}.'
             if previous_locals.get('max_size', None) is None
-            else 'Суммарный размер изображений не должен превышать {max_size}.'.format(
-                **previous_locals
-            ),
+            else 'Суммарный размер изображений не должен превышать {max_size}.'.format(**previous_locals),
             'one_of': 'Оставьте одно из значений в полях {group}.'
             if (previous_locals.get('group', None) is None)
             else 'Оставьте одно из значений в полях {group}.'.format(**previous_locals),
             'max_block_count': 'Пожалуйста, заполните не более {max_count} форм.'
             if previous_locals.get('max_count', None) is None
-            else 'Пожалуйста, заполните не более {max_count} форм.'.format(
-                **previous_locals
-            ),
+            else 'Пожалуйста, заполните не более {max_count} форм.'.format(**previous_locals),
             'wrong_login': 'Пожалуйста, введите корректные адрес электронной почты и пароль для аккаунта. '
             'Оба поля могут быть чувствительны к регистру.',
             'inactive_user': 'Эта учетная запись отключена.',
@@ -1432,9 +1243,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             ),
             'wrong_password_similar': 'Введённый пароль слишком похож на {user_field_name}.'
             if previous_locals.get('user_field_name', '') == ''
-            else 'Введённый пароль слишком похож на {user_field_name}.'.format(
-                **previous_locals
-            ),
+            else 'Введённый пароль слишком похож на {user_field_name}.'.format(**previous_locals),
             'with_null': 'Данные содержат запрещённый символ: ноль-байт.',
         }
 
@@ -1448,9 +1257,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
         if isinstance(field, (list, tuple)) and not custom_errors:
             for fi in field:
-                custom_errors = custom_errors or self.deepcopy(
-                    getattr(self, 'custom_error_messages', {}).get(fi, {})
-                )
+                custom_errors = custom_errors or self.deepcopy(getattr(self, 'custom_error_messages', {}).get(fi, {}))
                 if custom_errors:
                     break
 
@@ -1470,13 +1277,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             custom_errors[message_type] = custom_errors['min_length']
 
         if message_type in ('without_required', 'empty_required'):
-            if 'required' in viewkeys(custom_errors) and message_type not in viewkeys(
-                custom_errors
-            ):
+            if 'required' in viewkeys(custom_errors) and message_type not in viewkeys(custom_errors):
                 custom_errors[message_type] = custom_errors['required']
-            elif message_type not in viewkeys(
-                custom_errors
-            ) and message_type not in viewkeys(ERROR_MESSAGES):
+            elif message_type not in viewkeys(custom_errors) and message_type not in viewkeys(ERROR_MESSAGES):
                 message_type = 'required'
 
         ERROR_MESSAGES.update(custom_errors)
@@ -1489,22 +1292,14 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             )
 
         if not isinstance(error_message, dict):
-            error_field = self.get_error_field(
-                message_type, kwargs.get('error_field', field)
-            )
-            error_message = {
-                error_field: [error_message]
-                if not isinstance(error_message, list)
-                else error_message
-            }
+            error_field = self.get_error_field(message_type, kwargs.get('error_field', field))
+            error_message = {error_field: [error_message] if not isinstance(error_message, list) else error_message}
         else:
             error_message = self.deepcopy(error_message)
 
         for k, v in viewitems(error_message):
             error_message[k] = (
-                [el.format(**previous_locals) for el in v]
-                if isinstance(v, list)
-                else [v.format(**previous_locals)]
+                [el.format(**previous_locals) for el in v] if isinstance(v, list) else [v.format(**previous_locals)]
             )
         return error_message
 
@@ -1513,11 +1308,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             obj_related_objects = self.get_related_names(model)
             all_names = get_all_field_names_from_model(model)
             field_name = field.split('-')[0]
-            field_name = (
-                field_name
-                if field_name in all_names
-                else obj_related_objects.get(field_name, field_name)
-            )
+            field_name = field_name if field_name in all_names else obj_related_objects.get(field_name, field_name)
             related = model._meta.get_field(field_name)
             model = getattr(
                 related,
@@ -1598,28 +1389,18 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 )
                 value = value.strftime(format_str)
             elif isinstance(value, date):
-                format_str = getattr(
-                    settings, 'TEST_DATE_INPUT_FORMAT', settings.DATE_INPUT_FORMATS[0]
-                )
+                format_str = getattr(settings, 'TEST_DATE_INPUT_FORMAT', settings.DATE_INPUT_FORMATS[0])
                 value = value.strftime(format_str)
             elif isinstance(value, time):
-                format_str = getattr(
-                    settings, 'TEST_TIME_INPUT_FORMAT', settings.TIME_INPUT_FORMATS[0]
-                )
+                format_str = getattr(settings, 'TEST_TIME_INPUT_FORMAT', settings.TIME_INPUT_FORMATS[0])
                 value = value.strftime(format_str)
             return value, params_value
 
-        if isinstance(value, models.Model) and not isinstance(
-            params_value, models.Model
-        ):
+        if isinstance(value, models.Model) and not isinstance(params_value, models.Model):
             value = value.pk
             params_value = (
                 int(params_value)
-                if (
-                    params_value
-                    and isinstance(params_value, (str, bytes))
-                    and params_value.isdigit()
-                )
+                if (params_value and isinstance(params_value, (str, bytes)) and params_value.isdigit())
                 else params_value
             )
         elif value.__class__.__name__ in (
@@ -1634,36 +1415,24 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 params_value = [force_text(pv) for pv in value_iterator()]
                 params_value.sort()
         elif isinstance(value, (int, float)) and not isinstance(value, bool):
-            if isinstance(params_value, (int, float, basestring)) and not isinstance(
-                params_value, bool
-            ):
+            if isinstance(params_value, (int, float, basestring)) and not isinstance(params_value, bool):
                 value = force_text(value)
                 params_value = force_text(params_value)
         elif isinstance(value, Decimal) and not isinstance(value, bool):
-            if isinstance(
-                params_value, (int, Decimal, float, basestring)
-            ) and not isinstance(params_value, bool):
+            if isinstance(params_value, (int, Decimal, float, basestring)) and not isinstance(params_value, bool):
                 value = value
                 if isinstance(params_value, (int, float)):
                     params_value = repr(params_value)
-                params_value = (
-                    Decimal(params_value) if params_value != '' else params_value
-                )
+                params_value = Decimal(params_value) if params_value != '' else params_value
         elif set([m.__name__ for m in value.__class__.__mro__]).intersection(
             ['file', '_IOBase', 'FieldFile', 'ImageFieldFile']
         ) or isinstance(params_value, FILE_TYPES + (ContentFile,)):
             if value:
                 value = value if isinstance(value, basestring) else value.name
-                value = re.sub(
-                    r'_[a-zA-Z0-9]+(?=$|\.[\w\d]+$)', '', os.path.basename(value)
-                )
+                value = re.sub(r'_[a-zA-Z0-9]+(?=$|\.[\w\d]+$)', '', os.path.basename(value))
             else:
                 value = ''
-            params_value = (
-                params_value
-                if isinstance(params_value, basestring)
-                else params_value.name
-            )
+            params_value = params_value if isinstance(params_value, basestring) else params_value.name
             params_value = os.path.basename(params_value)
 
         if isinstance(value, UUID) and isinstance(params_value, (str, bytes)):
@@ -1716,11 +1485,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             ]
         )
 
-        if (
-            not (getattr(self, 'obj', None))
-            or isinstance(model, self.obj)
-            or model == self.obj
-        ):
+        if not (getattr(self, 'obj', None)) or isinstance(model, self.obj) or model == self.obj:
             obj_related_objects.update(getattr(self, 'related_names', {}))
         return obj_related_objects
 
@@ -1754,20 +1519,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 )
             ]
         else:
-            if (
-                'File' in [m.__name__ for m in getattr(obj, field).__class__.__mro__]
-                and not value
-            ):
+            if 'File' in [m.__name__ for m in getattr(obj, field).__class__.__mro__] and not value:
                 value = None
         return value
 
     def get_value_for_field(self, length, field_name):
         """for fill use name with -0-"""
-        field_name = (
-            re.sub('\-\d+\-', '-0-', field_name)
-            if isinstance(field_name, basestring)
-            else field_name
-        )
+        field_name = re.sub('\-\d+\-', '-0-', field_name) if isinstance(field_name, basestring) else field_name
         if self.is_email_field(field_name):
             length = (
                 length
@@ -1778,24 +1536,15 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 )
             )
             return get_random_email_value(length)
-        if self.is_choice_field(field_name) and getattr(
-            self, 'choice_fields_values', {}
-        ).get(field_name, ''):
+        if self.is_choice_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, ''):
             return choice(self.choice_fields_values[field_name])
         if self.is_digital_field(field_name):
             if getattr(self, 'obj', None):
                 try:
                     if 'ForeignKey' in [
-                        b.__name__
-                        for b in self.get_field_by_name(
-                            self.obj, field_name
-                        ).__class__.__mro__
+                        b.__name__ for b in self.get_field_by_name(self.obj, field_name).__class__.__mro__
                     ]:
-                        return choice(
-                            self.get_field_by_name(
-                                self.obj, field_name
-                            ).related_model._base_manager.all()
-                        ).pk
+                        return choice(self.get_field_by_name(self.obj, field_name).related_model._base_manager.all()).pk
                 except FieldDoesNotExist:
                     pass
             if 'get_digital_values_range' not in dir(self):
@@ -1803,13 +1552,9 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 return get_randname(length, 'd')
             values_range = self.get_digital_values_range(field_name)
             if self.is_int_field(field_name):
-                return randint(
-                    max(values_range['min_values']), min(values_range['max_values'])
-                )
+                return randint(max(values_range['min_values']), min(values_range['max_values']))
             else:
-                value = uniform(
-                    max(values_range['min_values']), min(values_range['max_values'])
-                )
+                value = uniform(max(values_range['min_values']), min(values_range['max_values']))
                 if getattr(self, 'max_decimal_places', {}).get(field_name, None):
                     value = round(value, self.max_decimal_places[field_name])
                 return value
@@ -1824,12 +1569,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                         + [
                             len(ext)
                             for ext in (
-                                getattr(self, 'file_fields_params_add', {})
-                                .get(field_name, {})
-                                .get('extensions', ())
-                                + getattr(self, 'file_fields_params_edit', {})
-                                .get(field_name, {})
-                                .get('extensions', ())
+                                getattr(self, 'file_fields_params_add', {}).get(field_name, {}).get('extensions', ())
+                                + getattr(self, 'file_fields_params_edit', {}).get(field_name, {}).get('extensions', ())
                             )
                         ]
                     )
@@ -1837,9 +1578,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 )
             value = self.get_random_file(field_name, length)
             return value
-        if self.is_multiselect_field(field_name) and getattr(
-            self, 'choice_fields_values', {}
-        ).get(field_name, []):
+        if self.is_multiselect_field(field_name) and getattr(self, 'choice_fields_values', {}).get(field_name, []):
             values = self.choice_fields_values[field_name]
             return list(set([choice(values) for _ in xrange(randint(1, len(values)))]))
         if self.is_date_field(field_name):
@@ -1894,40 +1633,26 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return get_url_for_negative(*args, **kwargs)
 
     def is_choice_field(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             (field in (getattr(self, 'choice_fields', ()) or ()))
             or (field in (getattr(self, 'choice_fields_add', ()) or ()))
             or (field in (getattr(self, 'choice_fields_edit', ()) or ()))
             or (field in (getattr(self, 'choice_fields_with_value_in_error', ()) or ()))
-            or (
-                field
-                in (getattr(self, 'choice_fields_add_with_value_in_error', ()) or ())
-            )
-            or (
-                field
-                in (getattr(self, 'choice_fields_edit_with_value_in_error', ()) or ())
-            )
+            or (field in (getattr(self, 'choice_fields_add_with_value_in_error', ()) or ()))
+            or (field in (getattr(self, 'choice_fields_edit_with_value_in_error', ()) or ()))
         )
 
     def is_date_field(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return field in getattr(self, 'date_fields', ())
 
     def is_datetime_field(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return field in getattr(self, 'datetime_fields', ())
 
     def is_digital_field(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             (field in (getattr(self, 'digital_fields', ()) or ()))
             or (field in (getattr(self, 'digital_fields_add', ()) or ()))
@@ -1935,9 +1660,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
     def is_email_field(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             'email' in field
             and [
@@ -1953,9 +1676,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
     def is_file_list(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         if not self.is_file_field(field):
             return False
         for param_name in (
@@ -1969,9 +1690,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return False
 
     def is_int_field(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             (field in (getattr(self, 'int_fields', ()) or ()))
             or (field in (getattr(self, 'int_fields_add', ()) or ()))
@@ -1979,9 +1698,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
     def is_file_field(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
 
         def check_by_params_name(name):
             params = getattr(self, name, None)
@@ -1992,12 +1709,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if (
                 isinstance(params.get(field, None), (list, tuple))
                 and params.get(field)
-                and all(
-                    [
-                        isinstance(el, FILE_TYPES + (ContentFile,))
-                        for el in params.get(field)
-                    ]
-                )
+                and all([isinstance(el, FILE_TYPES + (ContentFile,)) for el in params.get(field)])
             ):
                 return True
             return False
@@ -2005,19 +1717,14 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return field not in getattr(self, 'not_file', []) and (
             field in getattr(self, 'file_fields_params_add', {}).keys()
             or field in getattr(self, 'file_fields_params_edit', {}).keys()
-            or (
-                isinstance(field, basestring)
-                and re.findall(r'(^|[^a-zA-Z])(file)', field)
-            )
+            or (isinstance(field, basestring) and re.findall(r'(^|[^a-zA-Z])(file)', field))
             or check_by_params_name('default_params')
             or check_by_params_name('default_params_add')
             or check_by_params_name('default_params_edit')
         )
 
     def is_multiselect_field(self, field):
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             (field in (getattr(self, 'multiselect_fields', ()) or ()))
             or (field in (getattr(self, 'multiselect_fields_add', ()) or ()))
@@ -2039,12 +1746,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             params[field] = ''
 
     def update_params(self, params):
-        unique_keys = [
-            k
-            for el in viewkeys(self.all_unique)
-            for k in el
-            if not k.endswith(self.non_field_error_key)
-        ]
+        unique_keys = [k for el in viewkeys(self.all_unique) for k in el if not k.endswith(self.non_field_error_key)]
         for key in set(viewkeys(params)).intersection(unique_keys):
             default_value = params[key] or (
                 getattr(self, 'default_params', {})
@@ -2054,17 +1756,12 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             ).get(key, None)
             key_for_get_values = key
             if '-' in key:
-                key_for_get_values = '__'.join(
-                    [key.split('-')[0].replace('_set', ''), key.split('-')[-1]]
-                )
+                key_for_get_values = '__'.join([key.split('-')[0].replace('_set', ''), key.split('-')[-1]])
 
             existing_values = [force_text(default_value)]
             try:
                 existing_values = [
-                    force_text(el)
-                    for el in self.get_obj_manager.values_list(
-                        key_for_get_values, flat=True
-                    )
+                    force_text(el) for el in self.get_obj_manager.values_list(key_for_get_values, flat=True)
                 ]
                 # Нельзя использовать exists, т.к. будет падать для некоторых типов, например UUID
             except Exception:
@@ -2078,9 +1775,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                 while (
                     n < 3
                     and (
-                        force_text(params[key]).lower()
-                        if key not in self.unique_with_case
-                        else force_text(params[key])
+                        force_text(params[key]).lower() if key not in self.unique_with_case else force_text(params[key])
                     )
                     in existing_values
                 ):
@@ -2108,9 +1803,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
 class LoginMixIn(object):
     def user_login(self, username, password, **kwargs):
-        additional_params = kwargs.get(
-            'additional_params', getattr(self, 'additional_params', {})
-        )
+        additional_params = kwargs.get('additional_params', getattr(self, 'additional_params', {}))
         url_name = getattr(settings, 'LOGIN_URL_NAME', 'login')
         params = {
             'username': username,
@@ -2121,12 +1814,8 @@ class LoginMixIn(object):
         if csrf_cookie:
             params['csrfmiddlewaretoken'] = csrf_cookie.value
         else:
-            response = self.client.get(
-                reverse(url_name), follow=True, **additional_params
-            )
-            params['csrfmiddlewaretoken'] = response.cookies[
-                settings.CSRF_COOKIE_NAME
-            ].value
+            response = self.client.get(reverse(url_name), follow=True, **additional_params)
+            params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
         update_captcha_params = getattr(self, 'update_captcha_params', None)
         if update_captcha_params:
             update_captcha_params(reverse(url_name), params, force=True)
@@ -2135,9 +1824,7 @@ class LoginMixIn(object):
         return self.client.post(reverse(url_name), params, **additional_params)
 
     def user_logout(self, **kwargs):
-        additional_params = kwargs.get(
-            'additional_params', getattr(self, 'additional_params', {})
-        )
+        additional_params = kwargs.get('additional_params', getattr(self, 'additional_params', {}))
         url_name = getattr(settings, 'LOGOUT_URL_NAME', 'auth_logout')
         return self.client.get(reverse(url_name), **additional_params)
 
@@ -2236,12 +1923,8 @@ class FormCommonMixIn(object):
         if not self.default_params_edit:
             self.default_params_edit = self.deepcopy(self.default_params)
 
-        self.exclude_from_check_add = getattr(
-            self, 'exclude_from_check_add', None
-        ) or copy(self.exclude_from_check)
-        self.exclude_from_check_edit = getattr(
-            self, 'exclude_from_check_edit', None
-        ) or copy(self.exclude_from_check)
+        self.exclude_from_check_add = getattr(self, 'exclude_from_check_add', None) or copy(self.exclude_from_check)
+        self.exclude_from_check_edit = getattr(self, 'exclude_from_check_edit', None) or copy(self.exclude_from_check)
 
         """set all fields attributes"""
         self._prepare_all_form_fields_list()
@@ -2271,14 +1954,10 @@ class FormCommonMixIn(object):
         self._prepare_one_of_fields()
         self._prepare_only_if_value()
         self.unique_fields_add = [
-            el
-            for el in viewkeys(self.all_unique)
-            if any([field in self.all_fields_add for field in el])
+            el for el in viewkeys(self.all_unique) if any([field in self.all_fields_add for field in el])
         ]
         self.unique_fields_edit = [
-            el
-            for el in viewkeys(self.all_unique)
-            if any([field in self.all_fields_edit for field in el])
+            el for el in viewkeys(self.all_unique) if any([field in self.all_fields_edit for field in el])
         ]
 
         self._prepare_file_fields_params()
@@ -2314,9 +1993,7 @@ class FormCommonMixIn(object):
             el = b.pop(0)
             if el.endswith('_0'):
                 if len(b) > 1:
-                    if b[0] == el.replace('_0', '_1') and (
-                        len(b) <= 1 or not b[1].startswith(el.replace('_0', ''))
-                    ):
+                    if b[0] == el.replace('_0', '_1') and (len(b) <= 1 or not b[1].startswith(el.replace('_0', ''))):
                         result_all_fields.append(el.replace('_0', ''))
                         b.pop(0)
                         continue
@@ -2330,16 +2007,12 @@ class FormCommonMixIn(object):
     def _prepare_all_form_fields_list(self):
         if self.all_fields_add is None:
             if self.all_fields is None:
-                self.all_fields_add = self._get_all_fields_from_default_params(
-                    self.default_params_add
-                )
+                self.all_fields_add = self._get_all_fields_from_default_params(self.default_params_add)
             else:
                 self.all_fields_add = copy(self.all_fields)
         if self.all_fields_edit is None:
             if self.all_fields is None:
-                self.all_fields_edit = self._get_all_fields_from_default_params(
-                    self.default_params_edit
-                )
+                self.all_fields_edit = self._get_all_fields_from_default_params(self.default_params_edit)
             else:
                 self.all_fields_edit = copy(self.all_fields)
 
@@ -2351,63 +2024,33 @@ class FormCommonMixIn(object):
             set(self.choice_fields).intersection(self.all_fields_edit)
         )
 
-        self.choice_fields_add_with_value_in_error = (
-            self.choice_fields_add_with_value_in_error
-            or list(
-                set(self.choice_fields_with_value_in_error).intersection(
-                    self.all_fields_add
-                )
-            )
+        self.choice_fields_add_with_value_in_error = self.choice_fields_add_with_value_in_error or list(
+            set(self.choice_fields_with_value_in_error).intersection(self.all_fields_add)
         )
-        self.choice_fields_edit_with_value_in_error = (
-            self.choice_fields_edit_with_value_in_error
-            or list(
-                set(self.choice_fields_with_value_in_error).intersection(
-                    self.all_fields_edit
-                )
-            )
+        self.choice_fields_edit_with_value_in_error = self.choice_fields_edit_with_value_in_error or list(
+            set(self.choice_fields_with_value_in_error).intersection(self.all_fields_edit)
         )
 
     def _prepare_date_fields(self):
         if self.date_fields is None:
-            self.date_fields = [
-                k
-                for k in viewkeys(self.default_params_add)
-                if 'FORMS' not in k and 'date' in k
-            ]
-            self.date_fields.extend(
-                [k for k in self.all_fields_add if 'FORMS' not in k and 'date' in k]
-            )
-            self.date_fields.extend(
-                [
-                    k
-                    for k in viewkeys(self.default_params_edit)
-                    if 'FORMS' not in k and 'date' in k
-                ]
-            )
-            self.date_fields.extend(
-                [k for k in self.all_fields_edit if 'FORMS' not in k and 'date' in k]
-            )
+            self.date_fields = [k for k in viewkeys(self.default_params_add) if 'FORMS' not in k and 'date' in k]
+            self.date_fields.extend([k for k in self.all_fields_add if 'FORMS' not in k and 'date' in k])
+            self.date_fields.extend([k for k in viewkeys(self.default_params_edit) if 'FORMS' not in k and 'date' in k])
+            self.date_fields.extend([k for k in self.all_fields_edit if 'FORMS' not in k and 'date' in k])
             self.date_fields = set(self.date_fields)
-        self.date_fields = set(
-            tuple(self.date_fields) + tuple(self.datetime_fields or ())
-        )
+        self.date_fields = set(tuple(self.date_fields) + tuple(self.datetime_fields or ()))
 
     def _prepare_digital_fields(self):
         if self.digital_fields_add is None:
             if self.digital_fields is not None:
-                self.digital_fields_add = set(copy(self.digital_fields)).intersection(
-                    viewkeys(self.default_params_add)
-                )
+                self.digital_fields_add = set(copy(self.digital_fields)).intersection(viewkeys(self.default_params_add))
             else:
                 self.digital_fields_add = (
                     set(
                         [
                             k
                             for k, v in viewitems(self.default_params_add)
-                            if 'FORMS' not in k
-                            and isinstance(v, (float, int))
-                            and not isinstance(v, bool)
+                            if 'FORMS' not in k and isinstance(v, (float, int)) and not isinstance(v, bool)
                         ]
                     )
                     .difference(self.choice_fields_add)
@@ -2424,9 +2067,7 @@ class FormCommonMixIn(object):
                         [
                             k
                             for k, v in viewitems(self.default_params_edit)
-                            if 'FORMS' not in k
-                            and isinstance(v, (float, int))
-                            and not isinstance(v, bool)
+                            if 'FORMS' not in k and isinstance(v, (float, int)) and not isinstance(v, bool)
                         ]
                     )
                     .difference(self.choice_fields_edit)
@@ -2438,57 +2079,33 @@ class FormCommonMixIn(object):
                 self.int_fields_add = copy(self.int_fields)
             else:
                 self.int_fields_add = set(
-                    [
-                        k
-                        for k in self.digital_fields_add
-                        if isinstance(self.default_params_add[k], int)
-                    ]
+                    [k for k in self.digital_fields_add if isinstance(self.default_params_add[k], int)]
                 )
         if self.int_fields_edit is None:
             if self.int_fields is not None:
                 self.int_fields_edit = copy(self.int_fields)
             else:
                 self.int_fields_edit = set(
-                    [
-                        k
-                        for k in self.digital_fields_edit
-                        if isinstance(self.default_params_edit[k], int)
-                    ]
+                    [k for k in self.digital_fields_edit if isinstance(self.default_params_edit[k], int)]
                 )
 
-        self.digital_fields_add = set(
-            list(self.digital_fields_add) + list(self.int_fields_add)
-        )
-        self.digital_fields_edit = set(
-            list(self.digital_fields_edit) + list(self.int_fields_edit)
-        )
+        self.digital_fields_add = set(list(self.digital_fields_add) + list(self.int_fields_add))
+        self.digital_fields_edit = set(list(self.digital_fields_edit) + list(self.int_fields_edit))
 
     def _prepare_email_fields(self):
         if self.email_fields_add is None:
             if self.email_fields is not None:
-                self.email_fields_add = set(copy(self.email_fields)).intersection(
-                    viewkeys(self.default_params_add)
-                )
+                self.email_fields_add = set(copy(self.email_fields)).intersection(viewkeys(self.default_params_add))
             else:
                 self.email_fields_add = set(
-                    [
-                        k
-                        for k in viewkeys(self.default_params_add)
-                        if 'FORMS' not in k and 'email' in k
-                    ]
+                    [k for k in viewkeys(self.default_params_add) if 'FORMS' not in k and 'email' in k]
                 )
         if self.email_fields_edit is None:
             if self.email_fields is not None:
-                self.email_fields_edit = set(copy(self.email_fields)).intersection(
-                    viewkeys(self.default_params_edit)
-                )
+                self.email_fields_edit = set(copy(self.email_fields)).intersection(viewkeys(self.default_params_edit))
             else:
                 self.email_fields_edit = set(
-                    [
-                        k
-                        for k in viewkeys(self.default_params_edit)
-                        if 'FORMS' not in k and 'email' in k
-                    ]
+                    [k for k in viewkeys(self.default_params_edit) if 'FORMS' not in k and 'email' in k]
                 )
 
     def _prepare_intervals(self):
@@ -2503,9 +2120,9 @@ class FormCommonMixIn(object):
     def _prepare_multiselect_fields(self):
         if self.multiselect_fields_add is None:
             if self.multiselect_fields is not None:
-                self.multiselect_fields_add = set(
-                    copy(self.multiselect_fields)
-                ).intersection(viewkeys(self.default_params_add))
+                self.multiselect_fields_add = set(copy(self.multiselect_fields)).intersection(
+                    viewkeys(self.default_params_add)
+                )
             else:
                 self.multiselect_fields_add = set(
                     [
@@ -2516,9 +2133,9 @@ class FormCommonMixIn(object):
                 )
         if self.multiselect_fields_edit is None:
             if self.multiselect_fields is not None:
-                self.multiselect_fields_edit = set(
-                    copy(self.multiselect_fields)
-                ).intersection(viewkeys(self.default_params_edit))
+                self.multiselect_fields_edit = set(copy(self.multiselect_fields)).intersection(
+                    viewkeys(self.default_params_edit)
+                )
             else:
                 self.multiselect_fields_edit = set(
                     [
@@ -2630,25 +2247,17 @@ class FormCommonMixIn(object):
     def _prepare_one_of_fields(self):
         if self.one_of_fields_add is None and self.one_of_fields is not None:
             self.one_of_fields_add = [
-                gr
-                for gr in self.one_of_fields
-                if len(set(gr).intersection(self.all_fields_add)) == len(gr)
+                gr for gr in self.one_of_fields if len(set(gr).intersection(self.all_fields_add)) == len(gr)
             ]
         self._depend_one_of_fields_add = (
-            self.prepare_depend_from_one_of(self.one_of_fields_add)
-            if self.one_of_fields_add
-            else {}
+            self.prepare_depend_from_one_of(self.one_of_fields_add) if self.one_of_fields_add else {}
         )
         if self.one_of_fields_edit is None and self.one_of_fields is not None:
             self.one_of_fields_edit = [
-                gr
-                for gr in self.one_of_fields
-                if len(set(gr).intersection(self.all_fields_edit)) == len(gr)
+                gr for gr in self.one_of_fields if len(set(gr).intersection(self.all_fields_edit)) == len(gr)
             ]
         self._depend_one_of_fields_edit = (
-            self.prepare_depend_from_one_of(self.one_of_fields_edit)
-            if self.one_of_fields_edit
-            else {}
+            self.prepare_depend_from_one_of(self.one_of_fields_edit) if self.one_of_fields_edit else {}
         )
 
     def _prepare_required_fields(self):
@@ -2682,11 +2291,7 @@ class FormCommonMixIn(object):
             for fields, values in viewitems(self.required_if_value or {}):
                 if not isinstance(values, (list, tuple)):
                     values = (values,)
-                values = [
-                    v
-                    for v in values
-                    if not set(viewkeys(v)).difference(self.all_fields_add)
-                ]
+                values = [v for v in values if not set(viewkeys(v)).difference(self.all_fields_add)]
                 if values:
                     if not isinstance(fields, (tuple, list)):
                         fields = (fields,)
@@ -2701,11 +2306,7 @@ class FormCommonMixIn(object):
             for fields, values in viewitems(self.required_if_value or {}):
                 if not isinstance(values, (list, tuple)):
                     values = (values,)
-                values = [
-                    v
-                    for v in values
-                    if not set(viewkeys(v)).difference(self.all_fields_edit)
-                ]
+                values = [v for v in values if not set(viewkeys(v)).difference(self.all_fields_edit)]
                 if values:
                     if not isinstance(fields, (tuple, list)):
                         fields = (fields,)
@@ -2752,18 +2353,10 @@ class FormCommonMixIn(object):
     def _prepare_only_if_value(self):
         if self.only_if_value_add is None:
             if self.only_if_value is not None:
-                self.only_if_value_add = {
-                    k: v
-                    for k, v in viewitems(self.only_if_value)
-                    if k in self.all_fields_add
-                }
+                self.only_if_value_add = {k: v for k, v in viewitems(self.only_if_value) if k in self.all_fields_add}
         if self.only_if_value_edit is None:
             if self.only_if_value is not None:
-                self.only_if_value_edit = {
-                    k: v
-                    for k, v in viewitems(self.only_if_value)
-                    if k in self.all_fields_edit
-                }
+                self.only_if_value_edit = {k: v for k, v in viewitems(self.only_if_value) if k in self.all_fields_edit}
 
     def check_on_add_success(self, response, initial_obj_count, _locals):
         self.assert_no_form_errors(response)
@@ -2787,25 +2380,16 @@ class FormCommonMixIn(object):
         fields_for_change = fields_for_change or []
         fields_for_change = set(
             list(fields_for_change)
-            + [
-                v
-                for el in viewkeys(self.all_unique)
-                for v in el
-                if not v.endswith(self.non_field_error_key)
-            ]
+            + [v for el in viewkeys(self.all_unique) for v in el if not v.endswith(self.non_field_error_key)]
         )
         """get inline models dictionary"""
         inline_models_dict = {}
-        for field in [
-            ff for ff in fields_for_change if re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)
-        ]:
+        for field in [ff for ff in fields_for_change if re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)]:
             if field not in self.all_fields_edit:
                 """only if user can change this field"""
                 continue
             set_name = field.split('-')[0]
-            inline_models_dict[set_name] = inline_models_dict.get(set_name, ()) + (
-                field.split('-')[-1],
-            )
+            inline_models_dict[set_name] = inline_models_dict.get(set_name, ()) + (field.split('-')[-1],)
 
         additional = {}
         for key in viewkeys(inline_models_dict):
@@ -2813,9 +2397,7 @@ class FormCommonMixIn(object):
         obj = copy(obj_for_edit)
         obj.pk = None
         obj.id = None
-        for field in [
-            ff for ff in fields_for_change if not re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)
-        ]:
+        for field in [ff for ff in fields_for_change if not re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)]:
             if field not in self.all_fields_edit:
                 """only if user can change this field"""
                 continue
@@ -2860,13 +2442,9 @@ class FormCommonMixIn(object):
                     ):
                         params[f_name] = obj
                     elif f_name in inline_models_dict[set_name]:
-                        if getattr(self, 'choice_fields_values', {}).get(
-                            set_name + '-0-' + f_name, ''
-                        ):
+                        if getattr(self, 'choice_fields_values', {}).get(set_name + '-0-' + f_name, ''):
                             params[f_name] = f.related_model._base_manager.get(
-                                pk=choice(
-                                    self.choice_fields_values[set_name + '-0-' + f_name]
-                                )
+                                pk=choice(self.choice_fields_values[set_name + '-0-' + f_name])
                             )
                         else:
                             params[f_name] = (
@@ -2892,20 +2470,12 @@ class FormCommonMixIn(object):
                 if re.search('^{}\-\d+\-'.format(block_name), field)
             ]
         )
-        full_fields_list = [
-            '%s-%d-%s' % (block_name, i, field)
-            for i in xrange(max_count)
-            for field in simple_names
-        ]
+        full_fields_list = ['%s-%d-%s' % (block_name, i, field) for i in xrange(max_count) for field in simple_names]
         self.fill_all_fields(full_fields_list, params)
         params[block_name + '-TOTAL_FORMS'] = max_count
 
     def fill_all_fields(self, fields, params):
-        for field in [
-            f
-            for f in fields
-            if not (isinstance(f, basestring) and f.endswith('-DELETE'))
-        ]:
+        for field in [f for f in fields if not (isinstance(f, basestring) and f.endswith('-DELETE'))]:
             existing_value = params.get(field, None)
             if existing_value in (None, '', [], ()):
                 if self.is_date_field(field):
@@ -2927,9 +2497,7 @@ class FormCommonMixIn(object):
             if self.is_file_field(field) and value:
                 if not os.path.exists(value.path):
                     prepare_custom_file_for_tests(value.path)
-                params[field] = ContentFile(
-                    value.file.read(), os.path.basename(value.name)
-                )
+                params[field] = ContentFile(value.file.read(), os.path.basename(value.name))
             elif self.is_date_field(field):
                 l = [re.findall('^%s_\d' % field, k) for k in viewkeys(params)]
                 subfields = [item for sublist in l for item in sublist]
@@ -2946,14 +2514,10 @@ class FormCommonMixIn(object):
     def fill_field(self, params, field_name, value):
         if self.is_datetime_field(field_name) and isinstance(value, datetime):
             params[field_name + '_0'] = value.strftime(
-                getattr(
-                    settings, 'TEST_DATE_INPUT_FORMAT', settings.DATE_INPUT_FORMATS[0]
-                )
+                getattr(settings, 'TEST_DATE_INPUT_FORMAT', settings.DATE_INPUT_FORMATS[0])
             )
             params[field_name + '_1'] = value.strftime(
-                getattr(
-                    settings, 'TEST_TIME_INPUT_FORMAT', settings.TIME_INPUT_FORMATS[0]
-                )
+                getattr(settings, 'TEST_TIME_INPUT_FORMAT', settings.TIME_INPUT_FORMATS[0])
             )
         else:
             param, _ = self.get_params_according_to_type(value, '')
@@ -2989,19 +2553,13 @@ class FormCommonMixIn(object):
             test_type = '_edit'
 
         related = (getattr(self, 'required_if' + test_type) or {}).get(field, ())
-        for related_field in (
-            related if isinstance(related, (list, tuple)) else (related,)
-        ):
+        for related_field in related if isinstance(related, (list, tuple)) else (related,):
             if params.get(related_field, None) in (None, ''):
-                self.fill_with_related(
-                    params, related_field, self.get_value_for_field(None, related_field)
-                )
+                self.fill_with_related(params, related_field, self.get_value_for_field(None, related_field))
 
         getattr(self, 'clean_depend_fields' + test_type)(params, field)
 
-        for related_field, lead_params_list in viewitems(
-            getattr(self, 'only_if_value' + test_type) or {}
-        ):
+        for related_field, lead_params_list in viewitems(getattr(self, 'only_if_value' + test_type) or {}):
             if not isinstance(lead_params_list, (tuple, list)):
                 lead_params_list = (lead_params_list,)
             for lead_params in lead_params_list:
@@ -3010,39 +2568,24 @@ class FormCommonMixIn(object):
                 }:
                     self.set_empty_value_for_field(params, related_field)
 
-        for related_field, lead_params_list in viewitems(
-            getattr(self, 'required_if_value' + test_type) or {}
-        ):
+        for related_field, lead_params_list in viewitems(getattr(self, 'required_if_value' + test_type) or {}):
             if not isinstance(lead_params_list, (tuple, list)):
                 lead_params_list = (lead_params_list,)
             for lead_params in lead_params_list:
                 if (
                     field in viewkeys(lead_params)
-                    and lead_params
-                    == {
-                        k: v for k, v in viewitems(params) if k in viewkeys(lead_params)
-                    }
+                    and lead_params == {k: v for k, v in viewitems(params) if k in viewkeys(lead_params)}
                     and params.get(related_field, None) in (None, '')
                 ):
                     related_field = self._get_required_from_related(
-                        (related_field,)
-                        if isinstance(related_field, (tuple, list))
-                        else ((related_field,))
+                        (related_field,) if isinstance(related_field, (tuple, list)) else ((related_field,))
                     )
                     for rf in related_field:
-                        self.fill_with_related(
-                            params, rf, self.get_value_for_field(None, rf)
-                        )
+                        self.fill_with_related(params, rf, self.get_value_for_field(None, rf))
 
-        only_if_values = (getattr(self, 'only_if_value' + test_type) or {}).get(
-            field, {}
-        )
+        only_if_values = (getattr(self, 'only_if_value' + test_type) or {}).get(field, {})
 
-        params.update(
-            choice(only_if_values)
-            if isinstance(only_if_values, (list, tuple))
-            else only_if_values
-        )
+        params.update(choice(only_if_values) if isinstance(only_if_values, (list, tuple)) else only_if_values)
 
     def get_all_not_str_fields(self, additional=''):
         other_fields = []
@@ -3081,18 +2624,12 @@ class FormCommonMixIn(object):
 
     def get_digital_values_range(self, field):
         """use name with -0-"""
-        field = (
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
-        )
+        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         class_name = self.get_field_by_name(self.obj, field).__class__.__name__
         max_value_from_params = getattr(self, 'max_fields_length', {}).get(field, None)
-        max_values = (
-            [max_value_from_params] if max_value_from_params is not None else []
-        )
+        max_values = [max_value_from_params] if max_value_from_params is not None else []
         min_value_from_params = getattr(self, 'min_fields_length', {}).get(field, None)
-        min_values = (
-            [min_value_from_params] if min_value_from_params is not None else []
-        )
+        min_values = [min_value_from_params] if min_value_from_params is not None else []
         if 'SmallInteger' in class_name:
             max_values.append(32767)
             if 'Positive' in class_name:
@@ -3128,33 +2665,23 @@ class FormCommonMixIn(object):
                 if field_class.empty_strings_allowed:
                     filters &= ~Q(**{field: ''})
             else:
-                related_name = obj_related_objects.get(
-                    field.split('-')[0], field.split('-')[0]
-                )
-                filters &= ~Q(
-                    **{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True}
-                )
+                related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
+                filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
                 field_class = self.get_field_by_name(self.obj, field)
                 if field_class.empty_strings_allowed:
-                    filters &= ~Q(
-                        **{'%s__%s' % (related_name, field.split('-')[-1]): ''}
-                    )
+                    filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.get_obj_manager.filter(filters)
         if qs.exists():
             obj = qs.order_by('?').first()
 
         """Next block is like in create_copy"""
         inline_models_dict = {}
-        for field in [
-            ff for ff in param_names if re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)
-        ]:
+        for field in [ff for ff in param_names if re.findall(r'[\w_]+\-\d+\-[\w_]+', ff)]:
             if field not in self.all_fields_add:
                 """only if user can change this field"""
                 continue
             set_name = field.split('-')[0]
-            inline_models_dict[set_name] = inline_models_dict.get(set_name, ()) + (
-                field.split('-')[-1],
-            )
+            inline_models_dict[set_name] = inline_models_dict.get(set_name, ()) + (field.split('-')[-1],)
 
         additional = {}
         for key in viewkeys(inline_models_dict):
@@ -3204,13 +2731,9 @@ class FormCommonMixIn(object):
                     ):
                         params[f_name] = obj
                     elif f_name in inline_models_dict[set_name]:
-                        if getattr(self, 'choice_fields_values', {}).get(
-                            set_name + '-0-' + f_name, ''
-                        ):
+                        if getattr(self, 'choice_fields_values', {}).get(set_name + '-0-' + f_name, ''):
                             params[f_name] = f.related_model._base_manager.get(
-                                pk=choice(
-                                    self.choice_fields_values[set_name + '-0-' + f_name]
-                                )
+                                pk=choice(self.choice_fields_values[set_name + '-0-' + f_name])
                             )
                         else:
                             params[f_name] = (
@@ -3229,13 +2752,13 @@ class FormCommonMixIn(object):
         return obj
 
     def get_gt_max(self, field, value):
-        if (
-            'Integer' in self.get_field_by_name(self.obj, field).__class__.__name__
-        ) or (isinstance(value, int) and value < 1.0e10):
+        if ('Integer' in self.get_field_by_name(self.obj, field).__class__.__name__) or (
+            isinstance(value, int) and value < 1.0e10
+        ):
             return value + 1
         elif value < 1.0e10:
             digits_count = len(force_text(value).split('.')[1])
-            return round(value + 0.1 ** digits_count, digits_count)
+            return round(value + 0.1**digits_count, digits_count)
         else:
             value = value * 10
             if value == float('inf'):
@@ -3243,20 +2766,16 @@ class FormCommonMixIn(object):
             return value
 
     def get_gt_max_list(self, field, values_list):
-        return [
-            value
-            for value in [self.get_gt_max(field, v) for v in values_list]
-            if value is not None
-        ]
+        return [value for value in [self.get_gt_max(field, v) for v in values_list] if value is not None]
 
     def get_lt_min(self, field, value):
-        if (
-            'Integer' in self.get_field_by_name(self.obj, field).__class__.__name__
-        ) or (isinstance(value, int) and value > -1.0e10):
+        if ('Integer' in self.get_field_by_name(self.obj, field).__class__.__name__) or (
+            isinstance(value, int) and value > -1.0e10
+        ):
             return value - 1
         elif value > -1.0e10:
             digits_count = len(force_text(value).split('.')[1])
-            return round(value - 0.1 ** digits_count, digits_count)
+            return round(value - 0.1**digits_count, digits_count)
         else:
             value = value * 10
             if value == float('-inf'):
@@ -3264,11 +2783,7 @@ class FormCommonMixIn(object):
             return value
 
     def get_lt_min_list(self, field, values_list):
-        return [
-            value
-            for value in [self.get_lt_min(field, v) for v in values_list]
-            if value is not None
-        ]
+        return [value for value in [self.get_lt_min(field, v) for v in values_list] if value is not None]
 
     def humanize_file_size(self, size):
         return filesizeformat(size)
@@ -3289,19 +2804,13 @@ class FormCommonMixIn(object):
                 next_obj = getattr(field, 'related_model', field.model)
             else:
                 existing_values = set(
-                    (
-                        self.get_obj_manager
-                        if next_obj == self.obj
-                        else next_obj._base_manager
-                    )
+                    (self.get_obj_manager if next_obj == self.obj else next_obj._base_manager)
                     .all()
                     .values_list(name, flat=True)
                 )
                 break
         if existing_values is None:
-            existing_values = (
-                self.get_obj_manager if next_obj == self.obj else next_obj._base_manager
-            ).all()
+            existing_values = (self.get_obj_manager if next_obj == self.obj else next_obj._base_manager).all()
         if len(existing_values) > 1:
             return
         else:
@@ -3317,14 +2826,10 @@ class FormCommonMixIn(object):
         return self.deepcopy(res)
 
     def send_list_action_request(self, params):
-        return self.client.post(
-            self.get_url(self.url_list), params, follow=True, **self.additional_params
-        )
+        return self.client.post(self.get_url(self.url_list), params, follow=True, **self.additional_params)
 
 
-class FormTestMixIn(
-    FormCommonMixIn, GlobalTestMixIn, ListPositiveCases, ListNegativeCases
-):
+class FormTestMixIn(FormCommonMixIn, GlobalTestMixIn, ListPositiveCases, ListNegativeCases):
     pass
 
 
@@ -3337,14 +2842,10 @@ class AddCommonMixIn(object):
         pass
 
     def send_add_request(self, params):
-        return self.client.post(
-            self.get_url(self.url_add), params, follow=True, **self.additional_params
-        )
+        return self.client.post(self.get_url(self.url_add), params, follow=True, **self.additional_params)
 
 
-class FormAddTestMixIn(
-    AddCommonMixIn, FormTestMixIn, AddPositiveCases, AddNegativeCases
-):
+class FormAddTestMixIn(AddCommonMixIn, FormTestMixIn, AddPositiveCases, AddNegativeCases):
     pass
 
 
@@ -3371,10 +2872,7 @@ class EditCommonMixIn(object):
 
     def get_other_obj_with_filled(self, param_names, other_obj):
         obj = self._get_obj_for_edit()
-        if (
-            all([self._get_field_value_by_name(obj, field) for field in param_names])
-            and other_obj.pk != obj.pk
-        ):
+        if all([self._get_field_value_by_name(obj, field) for field in param_names]) and other_obj.pk != obj.pk:
             return obj
         obj_related_objects = self.get_related_names(self.obj)
         filters = ~Q(pk=other_obj.pk)
@@ -3385,17 +2883,11 @@ class EditCommonMixIn(object):
                 if field_class.empty_strings_allowed:
                     filters &= ~Q(**{field: ''})
             else:
-                related_name = obj_related_objects.get(
-                    field.split('-')[0], field.split('-')[0]
-                )
-                filters &= ~Q(
-                    **{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True}
-                )
+                related_name = obj_related_objects.get(field.split('-')[0], field.split('-')[0])
+                filters &= ~Q(**{'%s__%s__isnull' % (related_name, field.split('-')[-1]): True})
                 field_class = self.get_field_by_name(self.obj, field)
                 if field_class.empty_strings_allowed:
-                    filters &= ~Q(
-                        **{'%s__%s' % (related_name, field.split('-')[-1]): ''}
-                    )
+                    filters &= ~Q(**{'%s__%s' % (related_name, field.split('-')[-1]): ''})
         qs = self.get_obj_manager.filter(filters)
 
         if qs.exists():
@@ -3405,19 +2897,14 @@ class EditCommonMixIn(object):
 
     def send_edit_request(self, obj_pk, params):
         return self.client.post(
-            self.get_url_for_negative(self.url_edit, (obj_pk,)),
-            params,
-            follow=True,
-            **self.additional_params
+            self.get_url_for_negative(self.url_edit, (obj_pk,)), params, follow=True, **self.additional_params
         )
 
     def update_params_for_obj(self, obj):
         pass
 
 
-class FormEditTestMixIn(
-    EditCommonMixIn, FormTestMixIn, EditPositiveCases, EditNegativeCases
-):
+class FormEditTestMixIn(EditCommonMixIn, FormTestMixIn, EditPositiveCases, EditNegativeCases):
     pass
 
 
@@ -3433,9 +2920,7 @@ class DeleteCommonMixIn(object):
         )
 
 
-class FormDeleteTestMixIn(
-    DeleteCommonMixIn, FormTestMixIn, DeletePositiveCases, DeleteNegativeCases
-):
+class FormDeleteTestMixIn(DeleteCommonMixIn, FormTestMixIn, DeletePositiveCases, DeleteNegativeCases):
     pass
 
 
@@ -3447,31 +2932,20 @@ class RemoveCommonMixIn(object):
 
     def __init__(self, *args, **kwargs):
         super(RemoveCommonMixIn, self).__init__(*args, **kwargs)
-        self.url_edit_in_trash = self.url_edit_in_trash or self.url_recovery.replace(
-            'trash_restore', 'trash_change'
-        )
+        self.url_edit_in_trash = self.url_edit_in_trash or self.url_recovery.replace('trash_restore', 'trash_change')
 
     def send_delete_request(self, obj_pk):
         return self.client.post(
-            self.get_url_for_negative(self.url_delete, (obj_pk,)),
-            follow=True,
-            **self.additional_params
+            self.get_url_for_negative(self.url_delete, (obj_pk,)), follow=True, **self.additional_params
         )
 
     def send_recovery_request(self, obj_pk):
         return self.client.post(
-            self.get_url_for_negative(self.url_recovery, (obj_pk,)),
-            follow=True,
-            **self.additional_params
+            self.get_url_for_negative(self.url_recovery, (obj_pk,)), follow=True, **self.additional_params
         )
 
     def send_trash_list_action_request(self, params):
-        return self.client.post(
-            self.get_url(self.url_trash_list),
-            params,
-            follow=True,
-            **self.additional_params
-        )
+        return self.client.post(self.get_url(self.url_trash_list), params, follow=True, **self.additional_params)
 
     def get_is_removed(self, obj):
         is_removed_name = getattr(self, 'is_removed_field', 'is_removed')
@@ -3482,9 +2956,7 @@ class RemoveCommonMixIn(object):
         setattr(obj, is_removed_name, value)
 
 
-class FormRemoveTestMixIn(
-    RemoveCommonMixIn, FormTestMixIn, RemovePositiveCases, RemoveNegativeCases
-):
+class FormRemoveTestMixIn(RemoveCommonMixIn, FormTestMixIn, RemovePositiveCases, RemoveNegativeCases):
     """for objects with is_removed attribute"""
 
     pass
@@ -3519,18 +2991,11 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 if '.' in res.url_name:
                     result += (aa,)
                 else:
-                    res_kwargs = {
-                        k: v if force_text(v) != '123' else 1
-                        for k, v in viewitems(res.kwargs)
-                    }
-                    res_args = tuple(
-                        [v if force_text(v) != '123' else 1 for v in res.args]
-                    )
+                    res_kwargs = {k: v if force_text(v) != '123' else 1 for k, v in viewitems(res.kwargs)}
+                    res_args = tuple([v if force_text(v) != '123' else 1 for v in res.args])
                     result += (
                         (
-                            ':'.join(
-                                [el for el in [res.namespace, res.url_name] if el]
-                            ),
+                            ':'.join([el for el in [res.namespace, res.url_name] if el]),
                             res_kwargs or res_args,
                         ),
                     )
@@ -3573,9 +3038,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.get_method(url, **self.additional_params)
                 self.assertEqual(response.status_code, 200)
             except Exception:
-                self.errors_append(
-                    text='For page %s (%s)%s' % (url, url_name, custom_message)
-                )
+                self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with(('links_redirect',))
     def test_unallowed_links_with_redirect(self):
@@ -3590,9 +3053,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertRedirects(response, self.get_url(self.redirect_to))
             except Exception:
-                self.errors_append(
-                    text='For page %s (%s)%s' % (url, url_name, custom_message)
-                )
+                self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with(('links_400',))
     def test_unallowed_links_with_400_response(self):
@@ -3607,9 +3068,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 400)
             except Exception:
-                self.errors_append(
-                    text='For page %s (%s)%s' % (url, url_name, custom_message)
-                )
+                self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with('links_401')
     def test_unallowed_links_with_401_response(self):
@@ -3628,9 +3087,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                     {"detail": 'Учетные данные не были предоставлены.'},
                 )
             except Exception:
-                self.errors_append(
-                    text='For page %s (%s)%s' % (url, url_name, custom_message)
-                )
+                self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with(('links_403',))
     def test_unallowed_links_with_403_response(self):
@@ -3645,9 +3102,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 403)
             except Exception:
-                self.errors_append(
-                    text='For page %s (%s)%s' % (url, url_name, custom_message)
-                )
+                self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with('urlpatterns')
     def test_unallowed_links_with_404_response(self):
@@ -3677,9 +3132,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 404)
             except Exception:
-                self.errors_append(
-                    text='For page %s (%s)%s' % (url, url_name, custom_message)
-                )
+                self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
     @only_with(('links_405',))
     def test_unallowed_links_with_405_response(self):
@@ -3694,9 +3147,7 @@ class UserPermissionsTestMixIn(GlobalTestMixIn, LoginMixIn):
                 response = self.get_method(url, follow=True, **self.additional_params)
                 self.assertEqual(response.status_code, 405)
             except Exception:
-                self.errors_append(
-                    text='For page %s (%s)%s' % (url, url_name, custom_message)
-                )
+                self.errors_append(text='For page %s (%s)%s' % (url, url_name, custom_message))
 
 
 class ChangePasswordCommonMixIn(object):
@@ -3737,13 +3188,9 @@ class ChangePasswordCommonMixIn(object):
         """for get_value_for_field"""
         self.max_fields_length = getattr(self, 'max_fields_length', {})
         if self.password_max_length:
-            self.max_fields_length['password'] = self.max_fields_length.get(
-                'password', self.password_max_length
-            )
+            self.max_fields_length['password'] = self.max_fields_length.get('password', self.password_max_length)
         self.min_fields_length = getattr(self, 'min_fields_length', {})
-        self.min_fields_length['password'] = self.min_fields_length.get(
-            'password', self.password_min_length
-        )
+        self.min_fields_length['password'] = self.min_fields_length.get('password', self.password_min_length)
         value = self.get_value_for_field(None, 'password')
         self.password_params = (
             self.password_params
@@ -3769,9 +3216,7 @@ class ChangePasswordCommonMixIn(object):
     def check_positive(self, user, params):
         new_user = self.get_obj_manager.get(pk=user.pk)
         self.assertFalse(
-            new_user.check_password(
-                params.get(self.field_old_password or '', '') or self.current_password
-            ),
+            new_user.check_password(params.get(self.field_old_password or '', '') or self.current_password),
             'Password not changed',
         )
         self.assertTrue(
@@ -3799,9 +3244,7 @@ class ChangePasswordCommonMixIn(object):
 
     def send_change_password_request(self, user_pk, params):
         return self.client.post(
-            self.get_url_for_negative(self.url_change_password, (user_pk,)),
-            params,
-            **self.additional_params
+            self.get_url_for_negative(self.url_change_password, (user_pk,)), params, **self.additional_params
         )
 
     def update_params_for_obj(self, obj):
@@ -3900,9 +3343,7 @@ class ResetPasswordCommonMixIn(BlacklistMixIn):
                 else []
             )
         if self.change_fields is None:
-            self.change_fields = [
-                el for el in [self.field_password, self.field_password_repeat] if el
-            ]
+            self.change_fields = [el for el in [self.field_password, self.field_password_repeat] if el]
         if self.request_password_params is None:
             self.request_password_params = {self.field_username: self.username}
         if self.password_params is None:
@@ -3960,18 +3401,12 @@ class ResetPasswordCommonMixIn(BlacklistMixIn):
 
     def send_reset_password_request(self, params):
         return self.client.post(
-            self.get_url(self.url_reset_password_request),
-            params,
-            follow=True,
-            **self.additional_params
+            self.get_url(self.url_reset_password_request), params, follow=True, **self.additional_params
         )
 
     def send_change_after_reset_password_request(self, codes, params):
         return self.client.post(
-            self.get_url_for_negative(self.url_reset_password, codes),
-            params,
-            follow=True,
-            **self.additional_params
+            self.get_url_for_negative(self.url_reset_password, codes), params, follow=True, **self.additional_params
         )
 
     def set_host_pre_blacklist_reset(self, host):
@@ -4028,12 +3463,8 @@ class LoginCommonMixIn(BlacklistMixIn):
             self.login_retries = None
 
     def add_csrf(self, params):
-        response = self.client.get(
-            self.get_url(self.url_login), follow=True, **self.additional_params
-        )
-        params['csrfmiddlewaretoken'] = response.cookies[
-            settings.CSRF_COOKIE_NAME
-        ].value
+        response = self.client.get(self.get_url(self.url_login), follow=True, **self.additional_params)
+        params['csrfmiddlewaretoken'] = response.cookies[settings.CSRF_COOKIE_NAME].value
 
     def check_is_authenticated(self):
         request = HttpRequest()
@@ -4059,17 +3490,13 @@ class LoginCommonMixIn(BlacklistMixIn):
                     self.url_redirect_to,
                 ]
 
-            expected_redirects = [
-                (self.get_domain() + self.get_url(url), 302) for url in urls_redirect_to
-            ]
+            expected_redirects = [(self.get_domain() + self.get_url(url), 302) for url in urls_redirect_to]
             self.assertEqual(
                 response.redirect_chain,
                 expected_redirects,
                 'Recieved redirects:\n%s\n\nExpected redirects:\n%s'
                 % (
-                    '\n'.join(
-                        ['%s (status %s)' % el for el in response.redirect_chain]
-                    ),
+                    '\n'.join(['%s (status %s)' % el for el in response.redirect_chain]),
                     '\n'.join(['%s (status %s)' % el for el in expected_redirects]),
                 ),
             )
@@ -4097,10 +3524,7 @@ class LoginCommonMixIn(BlacklistMixIn):
         if get_params:
             get_params = '?' + get_params
         return self.client.post(
-            self.get_url(self.url_login) + get_params,
-            params,
-            follow=True,
-            **self.additional_params
+            self.get_url(self.url_login) + get_params, params, follow=True, **self.additional_params
         )
 
     def set_host_pre_blacklist_login(self, host):
@@ -4144,9 +3568,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                 if getattr(self, 'fixtures', None):
                     # We have to use this slightly awkward syntax due to the fact
                     # that we're using *args and **kwargs together.
-                    call_command(
-                        'loaddata', *self.fixtures, **{'verbosity': 0, 'database': db}
-                    )
+                    call_command('loaddata', *self.fixtures, **{'verbosity': 0, 'database': db})
 
         databases = self._databases_names(include_mirrors=True)
         for db in databases:
@@ -4155,20 +3577,12 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             if not conn.settings_dict.get('TEST', {}).get('MIRROR', False):
                 cursor = conn.cursor()
                 conn.connection.rollback()
-                conn.connection.set_isolation_level(
-                    psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT
-                )
+                conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
                 try:
-                    cursor.execute(
-                        'CREATE DATABASE "%s" WITH TEMPLATE="%s"'
-                        % (db_name + '_', db_name)
-                    )
+                    cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
                 except Exception:
                     cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
-                    cursor.execute(
-                        'CREATE DATABASE "%s" WITH TEMPLATE="%s"'
-                        % (db_name + '_', db_name)
-                    )
+                    cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
             conn.close()
             conn.settings_dict['NAME'] = db_name + '_'
 
@@ -4187,9 +3601,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
             db_name = conn.settings_dict['NAME']
             cursor = conn.cursor()
             conn.connection.rollback()
-            conn.connection.set_isolation_level(
-                psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT
-            )
+            conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
             is_old_postgres = cursor.connection.server_version < 90200  # < 9.2.0
             pid_name = 'procpid' if is_old_postgres else 'pid'
             disconnect_sql = '''SELECT pg_terminate_backend(pg_stat_activity.{0})
@@ -4218,11 +3630,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         verbosity = int(options.get('verbosity', 1))
         for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and not base_db_initialized:
-                fixtures = [
-                    fixture
-                    for fixture in self.fixtures_for_custom_db
-                    if fixture.endswith(db + '.json')
-                ]
+                fixtures = [fixture for fixture in self.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
                 sequence_sql = []
                 for fixture in fixtures:
@@ -4232,10 +3640,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
                     try:
                         cursor.execute(sql)
                     except Exception as e:
-                        sys.stderr.write(
-                            "Failed to load fixtures for alias '%s': %s"
-                            % (db, force_text(e))
-                        )
+                        sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, force_text(e)))
                         transaction.rollback_unless_managed(using=db)
                     else:
                         transaction.commit_unless_managed(using=db)
@@ -4265,9 +3670,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         for db in self._databases_names(include_mirrors=False):
             if hasattr(self, 'fixtures_for_custom_db') and db != DEFAULT_DB_ALIAS:
                 cursor = connections[db].cursor()
-                cursor.execute(
-                    "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
-                )
+                cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema='public'")
                 tables = cursor.fetchall()
                 for table in tables:
                     try:
@@ -4305,9 +3708,7 @@ class CustomTestCase(GlobalTestMixIn, TransactionTestCase):
         class Meta(CustomModel.Meta):
             db_table = table_name
 
-        params = dict(
-            [(k, models.Field()) for k in set(column_names).difference(pk_names)]
-        )
+        params = dict([(k, models.Field()) for k in set(column_names).difference(pk_names)])
         params.update(
             dict(
                 [
@@ -4369,9 +3770,7 @@ class CustomTestCaseNew(CustomTestCase):
                 from django.core.management.color import no_style
 
                 if conn.features.supports_sequence_reset:
-                    sql_list = conn.ops.sequence_reset_by_name_sql(
-                        no_style(), conn.introspection.sequence_list()
-                    )
+                    sql_list = conn.ops.sequence_reset_by_name_sql(no_style(), conn.introspection.sequence_list())
                     if sql_list:
                         with transaction.atomic(using=db):
                             cursor = conn.cursor()
@@ -4381,29 +3780,19 @@ class CustomTestCaseNew(CustomTestCase):
 
             # If we need to provide replica initial data from migrated apps,
             # then do so.
-            if cls.serialized_rollback and hasattr(
-                connections[db], "_test_serialized_contents"
-            ):
+            if cls.serialized_rollback and hasattr(connections[db], "_test_serialized_contents"):
                 if cls.available_apps is not None:
                     apps.unset_available_apps()
-                connections[db].creation.deserialize_db_from_string(
-                    connections[db]._test_serialized_contents
-                )
+                connections[db].creation.deserialize_db_from_string(connections[db]._test_serialized_contents)
                 if cls.available_apps is not None:
                     apps.set_available_apps(cls.available_apps)
 
             if cls.fixtures:
                 # Django loadddata with multi_db fails on deserialize objects with natural keys for not default fixture
-                fixtures = [
-                    fixture
-                    for fixture in cls.fixtures
-                    if db == DEFAULT_DB_ALIAS or ('.' + db) in fixture
-                ]
+                fixtures = [fixture for fixture in cls.fixtures if db == DEFAULT_DB_ALIAS or ('.' + db) in fixture]
                 if fixtures:
                     ContentType.objects.clear_cache()
-                    call_command(
-                        'loaddata', *fixtures, **{'verbosity': 0, 'database': db}
-                    )
+                    call_command('loaddata', *fixtures, **{'verbosity': 0, 'database': db})
 
         cls.custom_fixture_setup()
 
@@ -4417,20 +3806,12 @@ class CustomTestCaseNew(CustomTestCase):
             if not conn.settings_dict.get('TEST', {}).get('MIRROR', False):
                 cursor = conn.cursor()
                 conn.connection.rollback()
-                conn.connection.set_isolation_level(
-                    psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT
-                )
+                conn.connection.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
                 try:
-                    cursor.execute(
-                        'CREATE DATABASE "%s" WITH TEMPLATE="%s"'
-                        % (db_name + '_', db_name)
-                    )
+                    cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
                 except Exception:
                     cursor.execute('DROP DATABASE "%s"' % (db_name + '_'))
-                    cursor.execute(
-                        'CREATE DATABASE "%s" WITH TEMPLATE="%s"'
-                        % (db_name + '_', db_name)
-                    )
+                    cursor.execute('CREATE DATABASE "%s" WITH TEMPLATE="%s"' % (db_name + '_', db_name))
             conn.close()
             conn.settings_dict['NAME'] = db_name + '_'
 
@@ -4445,11 +3826,7 @@ class CustomTestCaseNew(CustomTestCase):
         verbosity = int(options.get('verbosity', 1))
         for db in cls._databases_names(include_mirrors=False):
             if hasattr(cls, 'fixtures_for_custom_db'):
-                fixtures = [
-                    fixture
-                    for fixture in cls.fixtures_for_custom_db
-                    if fixture.endswith(db + '.json')
-                ]
+                fixtures = [fixture for fixture in cls.fixtures_for_custom_db if fixture.endswith(db + '.json')]
 
                 sequence_sql = []
                 for fixture in fixtures:
@@ -4460,10 +3837,7 @@ class CustomTestCaseNew(CustomTestCase):
                         try:
                             cursor.execute(sql)
                         except Exception as e:
-                            sys.stderr.write(
-                                "Failed to load fixtures for alias '%s': %s"
-                                % (db, force_text(e))
-                            )
+                            sys.stderr.write("Failed to load fixtures for alias '%s': %s" % (db, force_text(e)))
 
                     for element in data:
                         sequence_sql.append(
@@ -4491,11 +3865,7 @@ class CustomTestCaseNew(CustomTestCase):
 
         if hasattr(cls, 'fixtures_for_custom_db'):
             for db in cls._databases_names(include_mirrors=False):
-                fixtures = [
-                    fixture
-                    for fixture in cls.fixtures_for_custom_db
-                    if fixture.endswith(db + '.json')
-                ]
+                fixtures = [fixture for fixture in cls.fixtures_for_custom_db if fixture.endswith(db + '.json')]
                 if fixtures:
                     cursor = connections[db].cursor()
                     cursor.execute(

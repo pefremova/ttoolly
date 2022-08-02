@@ -78,35 +78,23 @@ class only_with_files_params(object):
         return tmp
 
     def check(self, cls):
-        params_dict_name = 'file_fields_params' + (
-            '_add' if '_add_' in self.fn.__name__ else '_edit'
-        )
+        params_dict_name = 'file_fields_params' + ('_add' if '_add_' in self.fn.__name__ else '_edit')
         self.skip_text = "Need all these keys in %s: %s" % (
             params_dict_name,
             repr(self.param_names),
         )
 
         def check_params(field_dict, param_names):
-            return all(
-                [param_name in viewkeys(field_dict) for param_name in param_names]
-            )
+            return all([param_name in viewkeys(field_dict) for param_name in param_names])
 
         to_run = any(
-            [
-                check_params(field_dict, self.param_names)
-                for field_dict in getattr(cls, params_dict_name).values()
-            ]
+            [check_params(field_dict, self.param_names) for field_dict in getattr(cls, params_dict_name).values()]
         )
         if to_run:
             if not all(
-                [
-                    check_params(field_dict, self.param_names)
-                    for field_dict in getattr(cls, params_dict_name).values()
-                ]
+                [check_params(field_dict, self.param_names) for field_dict in getattr(cls, params_dict_name).values()]
             ):
-                warnings.warn(
-                    '%s not set for all fields' % force_text(self.param_names)
-                )
+                warnings.warn('%s not set for all fields' % force_text(self.param_names))
         return to_run
 
 
@@ -130,35 +118,23 @@ class only_with_any_files_params(object):
         return tmp
 
     def check(self, cls):
-        params_dict_name = 'file_fields_params' + (
-            '_add' if '_add_' in self.fn.__name__ else '_edit'
-        )
+        params_dict_name = 'file_fields_params' + ('_add' if '_add_' in self.fn.__name__ else '_edit')
         self.skip_text = "Need any of these keys in %s: %s" % (
             params_dict_name,
             repr(self.param_names),
         )
 
         def check_params(field_dict, param_names):
-            return any(
-                [param_name in viewkeys(field_dict) for param_name in param_names]
-            )
+            return any([param_name in viewkeys(field_dict) for param_name in param_names])
 
         to_run = any(
-            [
-                check_params(field_dict, self.param_names)
-                for field_dict in getattr(cls, params_dict_name).values()
-            ]
+            [check_params(field_dict, self.param_names) for field_dict in getattr(cls, params_dict_name).values()]
         )
         if to_run:
             if not all(
-                [
-                    check_params(field_dict, self.param_names)
-                    for field_dict in getattr(cls, params_dict_name).values()
-                ]
+                [check_params(field_dict, self.param_names) for field_dict in getattr(cls, params_dict_name).values()]
             ):
-                warnings.warn(
-                    '%s not set for all fields' % force_text(self.param_names)
-                )
+                warnings.warn('%s not set for all fields' % force_text(self.param_names))
         return to_run
 
 
@@ -173,9 +149,7 @@ def use_in_all_tests(decorator):
                 if fn and decorator not in getattr(fn, 'decorators', ()):
                     decorated = decorator(fn)
                     decorated.__name__ = fn.__name__
-                    decorated.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (
-                        decorator,
-                    )
+                    decorated.decorators = tuple(set(getattr(fn, 'decorators', ()))) + (decorator,)
                     setattr(child, attr, decorated)
         bases = cls.__bases__
         for base in bases:
