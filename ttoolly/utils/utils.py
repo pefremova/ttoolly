@@ -24,7 +24,6 @@ from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.uploadhandler import MemoryFileUploadHandler
 from decimal import Decimal
-from random import uniform
 from lxml.html import document_fromstring
 from uuid import uuid4
 
@@ -737,7 +736,7 @@ def get_random_datetime_value(
 
 
 def get_random_decimal(value_from, value_to, places=10):
-    return Decimal(uniform(float(value_from), float(value_to))).quantize(Decimal('0.1') ** places)
+    return Decimal(random.uniform(float(value_from), float(value_to))).quantize(Decimal('0.1') ** places)
 
 
 def get_random_domain_value(length):
@@ -849,7 +848,14 @@ def get_value_for_obj_field(f, filename=None):
     elif 'ArrayField' in mro_names:
         if getattr(f, '_choices', None) or f.choices:
             choices = list(getattr(f, '_choices', None) or f.choices)
-            return [random.choice(choices)[0] for _ in xrange(random.randint(0 if f.blank else 1, len(choices)))]
+            return [ch[0] for ch in random.sample(choices, random.randint(0 if f.blank else 1, len(choices)))]
+        elif (
+            'ChoiceArrayField' in mro_names
+            and getattr(f, 'base_field', None)
+            and (getattr(f.base_field, '_choices', None) or f.base_field.choices)
+        ):
+            choices = list(getattr(f.base_field, '_choices', None) or f.base_field.choices)
+            return [ch[0] for ch in random.sample(choices, random.randint(0 if f.blank else 1, len(choices)))]
         elif 'IntegerArrayField' in mro_names:
             return [random.randint(0, 1000) for _ in xrange(random.randint(0 if f.blank else 1, 10))]
     elif getattr(f, '_choices', None) or f.choices:
