@@ -1111,8 +1111,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         self.errors = []
         self.assertFalse(errors, format_errors(errors))
 
-    def generate_random_obj(self, obj_model, additional_params=None, filename=None):
-        return generate_random_obj(obj_model, additional_params, filename)
+    def generate_random_obj(self, obj_model, additional_params=None, filename=None, **kwargs):
+        return generate_random_obj(obj_model, additional_params, filename, **kwargs)
 
     def get_all_form_messages(self, response):
         if not response.context:
