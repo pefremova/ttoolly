@@ -1658,18 +1658,21 @@ class AddPositiveCases(object):
                         params = self.deepcopy(self.default_params_add)
                         self.update_params(params)
                         self.update_captcha_params(self.get_url(self.url_add), params)
-                        test_value = v
+                        test_value = value.copy()
                         n = 0
+
+                        def match_dict(d1, d2):
+                            return all([k in d2 and d2[k] == v for k, v in d1.items()])
+
                         try:
-                            while test_value == v and n < 5:
-                                test_value = self.get_value_for_field(None, test_field)
+                            while any([match_dict(test_value, v) for v in values]) and n < 5:
+                                test_value[test_field] = self.get_value_for_field(None, test_field)
                                 n += 1
-                            if test_value == v:
+                            if any([match_dict(test_value, v) for v in values]):
                                 raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
                             for k in additional_params.keys():
                                 self.clean_depend_fields_add(params, k)
-                            self.fill_with_related(params, test_field, test_value)
-
+                            self.fill_with_related(params, test_field, test_value[test_field])
                             params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
                             self.set_empty_value_for_field(params, field)
 
@@ -2210,7 +2213,7 @@ class AddNegativeCases(object):
         message_type = 'one_of'
         for group in self.one_of_fields_add:
             for filled_group in tuple(
-                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1 :]]).difference(
+                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1:]]).difference(
                     set(self.one_of_fields_add).difference(group)
                 )
             ) + (group,):
@@ -4553,17 +4556,20 @@ class EditPositiveCases(object):
                     params = self.deepcopy(self.default_params_edit)
                     self.update_params(params)
                     self.update_captcha_params(self.get_url(self.url_edit, (obj_for_edit.pk,)), params)
-                    test_value = v
+                    test_value = value.copy()
 
                     n = 0
-                    try:
-                        while test_value == v and n < 5:
-                            test_value = self.get_value_for_field(None, test_field)
-                            n += 1
-                        if test_value == v:
-                            raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
 
-                        self.fill_with_related(params, test_field, test_value)
+                    def match_dict(d1, d2):
+                        return all([k in d2 and d2[k] == v for k, v in d1.items()])
+
+                    try:
+                        while any([match_dict(test_value, v) for v in values]) and n < 5:
+                            test_value[test_field] = self.get_value_for_field(None, test_field)
+                            n += 1
+                        if any([match_dict(test_value, v) for v in values]):
+                            raise Exception('Не удалось сформировать тестовое значение для поля %s' % test_field)
+                        self.fill_with_related(params, test_field, test_value[test_field])
                         params.update({k: v for k, v in viewitems(additional_params) if k != test_field})
                         self.set_empty_value_for_field(params, field)
 
@@ -5148,7 +5154,7 @@ class EditNegativeCases(object):
         message_type = 'one_of'
         for group in self.one_of_fields_edit:
             for filled_group in tuple(
-                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1 :]]).difference(
+                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1:]]).difference(
                     set(self.one_of_fields_edit).difference(group)
                 )
             ) + (group,):
