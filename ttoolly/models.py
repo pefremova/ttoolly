@@ -31,7 +31,13 @@ from django.template.defaultfilters import filesizeformat
 from django.test import TransactionTestCase, TestCase
 from django.test.testcases import connections_support_transactions
 from django.test.utils import override_settings
-from django.utils.encoding import force_text, force_bytes
+from django.utils.encoding import force_bytes
+try:
+    from django.utils.encoding import force_str as force_text
+except Exception:
+    # Django < 4.0
+    from django.utils.encoding import force_text
+
 from django.utils.http import urlsafe_base64_encode
 from lxml.html import document_fromstring
 
@@ -294,7 +300,7 @@ class JsonResponseErrorsMixIn(object):
     def get_all_form_errors(self, response):
         if not 200 <= response.status_code < 300:
             try:
-                return json.loads(force_text(response.content))
+                return json.loads(force_str(response.content))
             except Exception:
                 return super(JsonResponseErrorsMixIn, self).get_all_form_errors(response)
         try:

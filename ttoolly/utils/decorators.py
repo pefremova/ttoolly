@@ -5,7 +5,11 @@ import sys
 from unittest import SkipTest
 import warnings
 
-from django.utils.encoding import force_text
+try:
+    from django.utils.encoding import force_str as force_text
+except Exception:
+    # Django < 4.0
+    from django.utils.encoding import force_text
 
 from future.utils import viewkeys
 

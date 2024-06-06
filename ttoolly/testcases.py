@@ -6,11 +6,17 @@ from datetime import datetime, timedelta
 from random import choice
 import re
 
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.core import mail
 from django.db import transaction
 from django.db.models import Q
-from django.utils.encoding import force_text
+
+try:
+    from django.utils.encoding import force_str as force_text
+except Exception:
+    # Django < 4.0
+    from django.utils.encoding import force_text
 
 from builtins import str
 from freezegun import freeze_time

@@ -4,7 +4,11 @@ import traceback
 from unittest.runner import TextTestResult
 
 from django.conf import settings
-from django.utils.encoding import force_text
+try:
+    from django.utils.encoding import force_str as force_text
+except Exception:
+    # Django < 4.0
+    from django.utils.encoding import force_text
 import jinja2
 from pyunitreport.result import HtmlTestResult, _TestInfo, render_html
 from ttoolly.utils import to_bytes, unicode_to_readable
