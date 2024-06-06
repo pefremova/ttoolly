@@ -300,7 +300,7 @@ class JsonResponseErrorsMixIn(object):
     def get_all_form_errors(self, response):
         if not 200 <= response.status_code < 300:
             try:
-                return json.loads(force_str(response.content))
+                return json.loads(force_text(response.content))
             except Exception:
                 return super(JsonResponseErrorsMixIn, self).get_all_form_errors(response)
         try:
