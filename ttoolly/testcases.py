@@ -305,9 +305,9 @@ class AddPositiveCases(object):
         other_fields = self.get_all_not_str_fields('add')
 
         fields_for_check = {
-            k: self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000)
+            k: self.max_fields_length.get(re.sub(r'\-\d+\-', '-0-', k), 100000)
             for k in self.all_fields_add
-            if re.sub('\-\d+\-', '-0-', k) not in other_fields
+            if re.sub(r'\-\d+\-', '-0-', k) not in other_fields
         }
         if not fields_for_check:
             self.skipTest('No any string fields')
@@ -1213,7 +1213,7 @@ class AddPositiveCases(object):
         ] + self.get_all_not_str_fields('add')
         other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
 
-        fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
+        fields_for_check = [k for k in self.all_fields_add if re.sub(r'\-\d+\-', '-0-', k) not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
 
@@ -2038,7 +2038,7 @@ class AddNegativeCases(object):
                 self.clean_depend_fields_add(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
-                if not el_field in other_fields and not el_field in self.unique_with_case:
+                if el_field not in other_fields and el_field not in self.unique_with_case:
                     params[el_field] = params[el_field].swapcase()
             initial_obj_count = self.get_obj_manager.count()
             try:
@@ -2582,7 +2582,7 @@ class AddNegativeCases(object):
         ] + self.get_all_not_str_fields('add')
         other_fields.extend(list(getattr(self, 'file_fields_params_add', {}).keys()))
 
-        fields_for_check = [k for k in self.all_fields_add if re.sub('\-\d+\-', '-0-', k) not in other_fields]
+        fields_for_check = [k for k in self.all_fields_add if re.sub(r'\-\d+\-', '-0-', k) not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
         test_params = {}
@@ -2826,7 +2826,7 @@ class AddNegativeCases(object):
                 )
                 for field in group:
                     if re.match(
-                        '^(%s)-\d+-.+?' % ('|'.join(getattr(self, 'inline_params', {}).keys())),
+                        r'^(%s)-\d+-.+?' % ('|'.join(getattr(self, 'inline_params', {}).keys())),
                         field,
                     ):
                         self.fill_all_fields(('%s-TOTAL_FORMS' % field.split('-')[0],), params)
@@ -3166,9 +3166,9 @@ class EditPositiveCases(object):
         other_fields = self.get_all_not_str_fields('edit')
 
         fields_for_check = {
-            k: self.max_fields_length.get(re.sub('\-\d+\-', '-0-', k), 100000)
+            k: self.max_fields_length.get(re.sub(r'\-\d+\-', '-0-', k), 100000)
             for k in self.all_fields_edit
-            if re.sub('\-\d+\-', '-0-', k) not in other_fields
+            if re.sub(r'\-\d+\-', '-0-', k) not in other_fields
         }
         if not fields_for_check:
             self.skipTest('No any string fields')
@@ -4044,7 +4044,7 @@ class EditPositiveCases(object):
                         ]
                     )
                     self.assert_object_fields(new_object, params, exclude=exclude)
-                except Exception as e:
+                except Exception:
                     self.savepoint_rollback(sp)
                     self.errors_append(text='For field %s filename %s' % (field, filename))
                 finally:
@@ -4133,7 +4133,7 @@ class EditPositiveCases(object):
         ] + self.get_all_not_str_fields('edit')
         other_fields.extend(list(getattr(self, 'file_fields_params_edit', {}).keys()))
 
-        fields_for_check = [k for k in self.all_fields_edit if re.sub('\-\d+\-', '-0-', k) not in other_fields]
+        fields_for_check = [k for k in self.all_fields_edit if re.sub(r'\-\d+\-', '-0-', k) not in other_fields]
         if not fields_for_check:
             self.skipTest('No any string fields')
 
@@ -4962,7 +4962,7 @@ class EditNegativeCases(object):
                 self.clean_depend_fields_edit(params, el_field)
                 value = self._get_field_value_by_name(existing_obj, el_field)
                 self.fill_with_related(params, el_field, self.get_params_according_to_type(value, '')[0])
-                if not el_field in other_fields and not el_field in self.unique_with_case:
+                if el_field not in other_fields and el_field not in self.unique_with_case:
                     params[el_field] = params[el_field].swapcase()
             obj_for_edit = self.get_obj_manager.get(pk=obj_for_edit.pk)
             try:

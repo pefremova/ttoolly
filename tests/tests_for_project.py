@@ -43,7 +43,7 @@ class TestSomeModel(FormAddTestMixIn, FormEditTestMixIn, FormDeleteTestMixIn, Te
         custom_error_messages = {
             'image_field': {
                 'wrong_extension': [
-                    "Формат файлов '{ext}' не поддерживается. Поддерживаемые форматы файлов: '%s'." % IMG_FORMATS
+                    "Расширение файлов “{ext}” не поддерживается. Разрешенные расширения: %s." % IMG_FORMATS
                 ]
             }
         }

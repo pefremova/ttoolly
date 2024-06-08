@@ -42,7 +42,6 @@ except ImportError as e:
     raise
 
 from builtins import str
-from freezegun import freeze_time
 from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
 from past.builtins import xrange, basestring
 from uuid import UUID
@@ -312,7 +311,7 @@ class MetaCheckFailures(type):
                 self.formatted_assert_errors()
 
             decorators = getattr(tmp, 'decorators', ())
-            if not 'check_errors' in [getattr(d, '__name__', d.__class__.__name__) for d in decorators]:
+            if 'check_errors' not in [getattr(d, '__name__', d.__class__.__name__) for d in decorators]:
                 tmp.decorators = decorators + (check_errors,)
             return tmp
 
@@ -364,7 +363,7 @@ class DictWithPassword(dict):
         super(DictWithPassword, self).__setitem__(k, v)
 
     def update(self, d):
-        if self.password1 in viewkeys(d) and not self.password2 in viewkeys(d):
+        if self.password1 in viewkeys(d) and self.password2 not in viewkeys(d):
             d[self.password2] = d[self.password1]
         return super(DictWithPassword, self).update(d)
 
@@ -457,7 +456,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         def get_settings_value(name, value=None):
             if name.isdigit():
                 name = int(name)
-            if not '.' in name:
+            if '.' not in name:
                 return value and value[name] or getattr(settings, name)
             else:
                 name, others = name.split('.', 1)
@@ -485,7 +484,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         d = new_redis_settings()
 
         def update_path(d, name):
-            if not '.' in name:
+            if '.' not in name:
                 current = getattr(settings, name, '')
                 filename, ext = os.path.splitext(os.path.basename(current))
                 if ext:
@@ -722,13 +721,13 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         if getattr(m, 'content_subtype', None) not in (
             'html',
             'text/html',
-        ) and re.match('<[\w]', m.body):
+        ) and re.match(r'<[\w]', m.body):
             errors.append(
                 'Not html message type (%s), but contains html tags in body' % getattr(m, 'content_subtype', None)
             )
 
         for n, alternative in enumerate(getattr(m, 'alternatives', [])):
-            if alternative[1] not in ('html', 'text/html') and re.match('<[\w]|/\w>', alternative[0]):
+            if alternative[1] not in ('html', 'text/html') and re.match(r'<[\w]|/\w>', alternative[0]):
                 errors.append(
                     '[alternatives][%d]: Not html message type (%s), but contains html tags in body'
                     % (n, alternative[1])
@@ -947,7 +946,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
                                 for k in viewkeys(params)
                                 if k.startswith('%s-%d-' % (name_on_form, i))
                                 and k not in exclude
-                                and re.sub('\-\d+\-', '-_-', k) not in exclude
+                                and re.sub(r'\-\d+\-', '-_-', k) not in exclude
                             ]
                         )
                         if (
@@ -1034,16 +1033,16 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         for n in xrange(max(first_length, second_length)):
 
             text = 'Not equal in position %d: ' % n + "'%s%s' != '%s%s'" % (
-                first[n : n + additional]
-                if isinstance(first[n : n + additional], str)
-                else repr(first[n : n + additional]),
+                first[n:n + additional]
+                if isinstance(first[n:n + additional], str)
+                else repr(first[n:n + additional]),
                 '...' if (n + additional < first_length) else '',
-                second[n : n + additional]
-                if isinstance(second[n : n + additional], str)
-                else repr(second[n : n + additional]),
+                second[n:n + additional]
+                if isinstance(second[n:n + additional], str)
+                else repr(second[n:n + additional]),
                 '...' if (n + additional < second_length) else '',
             )
-            self.assertEqual(first[n : n + 1], second[n : n + 1], text + full_error_text)
+            self.assertEqual(first[n:n + 1], second[n:n + 1], text + full_error_text)
 
     def assert_xpath_count(self, response, path, count=1, status_code=200, msg=None):
         error_message = "Response status code %s != %s" % (
@@ -1321,7 +1320,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
     def _get_field_value_by_name(self, obj, field):
         related_names_map = self.get_related_names(obj)
         field = related_names_map.get(
-            re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field,
+            re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field,
             field,
         )
 
@@ -1335,8 +1334,8 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
             if qs.count() > int(index):
                 return getattr(qs[int(index)], field_name)
         else:
-            if re.match('.+?_[01]$', field):
-                value = getattr(obj, re.sub('_[01]$', '', field))
+            if re.match(r'.+?_[01]$', field):
+                value = getattr(obj, re.sub(r'_[01]$', '', field))
                 if isinstance(value, datetime):
                     if field.endswith('_0'):
                         return value.astimezone().date()
@@ -1365,7 +1364,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return object_fields
 
     def get_params_according_to_type(self, value, params_value):
-        if type(value) == type(params_value):
+        if type(value) is type(params_value):
             return value, params_value
         if value is None:
             value = ''
@@ -1525,7 +1524,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
 
     def get_value_for_field(self, length, field_name):
         """for fill use name with -0-"""
-        field_name = re.sub('\-\d+\-', '-0-', field_name) if isinstance(field_name, basestring) else field_name
+        field_name = re.sub(r'\-\d+\-', '-0-', field_name) if isinstance(field_name, basestring) else field_name
         if self.is_email_field(field_name):
             length = (
                 length
@@ -1633,7 +1632,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return get_url_for_negative(*args, **kwargs)
 
     def is_choice_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             (field in (getattr(self, 'choice_fields', ()) or ()))
             or (field in (getattr(self, 'choice_fields_add', ()) or ()))
@@ -1644,15 +1643,15 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
     def is_date_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return field in getattr(self, 'date_fields', ())
 
     def is_datetime_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return field in getattr(self, 'datetime_fields', ())
 
     def is_digital_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             (field in (getattr(self, 'digital_fields', ()) or ()))
             or (field in (getattr(self, 'digital_fields_add', ()) or ()))
@@ -1660,7 +1659,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
     def is_email_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             'email' in field
             and [
@@ -1676,7 +1675,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
     def is_file_list(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         if not self.is_file_field(field):
             return False
         for param_name in (
@@ -1690,7 +1689,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         return False
 
     def is_int_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             (field in (getattr(self, 'int_fields', ()) or ()))
             or (field in (getattr(self, 'int_fields_add', ()) or ()))
@@ -1698,7 +1697,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
     def is_file_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
 
         def check_by_params_name(name):
             params = getattr(self, name, None)
@@ -1724,7 +1723,7 @@ class GlobalTestMixIn(with_metaclass(MetaCheckFailures, object)):
         )
 
     def is_multiselect_field(self, field):
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         return (
             (field in (getattr(self, 'multiselect_fields', ()) or ()))
             or (field in (getattr(self, 'multiselect_fields_add', ()) or ()))
@@ -2465,9 +2464,9 @@ class FormCommonMixIn(object):
     def fill_all_block_fields(self, block_name, max_count, params, all_fields_list):
         simple_names = set(
             [
-                re.findall('^{}\-\d+\-(.+$)'.format(block_name), field)[0]
+                re.findall(r'^{}\-\d+\-(.+$)'.format(block_name), field)[0]
                 for field in all_fields_list
-                if re.search('^{}\-\d+\-'.format(block_name), field)
+                if re.search(r'^{}\-\d+\-'.format(block_name), field)
             ]
         )
         full_fields_list = ['%s-%d-%s' % (block_name, i, field) for i in xrange(max_count) for field in simple_names]
@@ -2479,7 +2478,7 @@ class FormCommonMixIn(object):
             existing_value = params.get(field, None)
             if existing_value in (None, '', [], ()):
                 if self.is_date_field(field):
-                    l = [re.findall('%s_\d' % field, k) for k in viewkeys(params)]
+                    l = [re.findall(r'%s_\d' % field, k) for k in viewkeys(params)]
                     subfields = [item for sublist in l for item in sublist]
                     if subfields:
                         for subfield in subfields:
@@ -2499,7 +2498,7 @@ class FormCommonMixIn(object):
                     prepare_custom_file_for_tests(value.path)
                 params[field] = ContentFile(value.file.read(), os.path.basename(value.name))
             elif self.is_date_field(field):
-                l = [re.findall('^%s_\d' % field, k) for k in viewkeys(params)]
+                l = [re.findall(r'^%s_\d' % field, k) for k in viewkeys(params)]
                 subfields = [item for sublist in l for item in sublist]
                 if subfields:
                     for subfield in subfields:
@@ -2624,7 +2623,7 @@ class FormCommonMixIn(object):
 
     def get_digital_values_range(self, field):
         """use name with -0-"""
-        field = re.sub('\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
+        field = re.sub(r'\-\d+\-', '-0-', field) if isinstance(field, basestring) else field
         class_name = self.get_field_by_name(self.obj, field).__class__.__name__
         max_value_from_params = getattr(self, 'max_fields_length', {}).get(field, None)
         max_values = [max_value_from_params] if max_value_from_params is not None else []

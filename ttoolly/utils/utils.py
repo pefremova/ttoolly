@@ -966,7 +966,7 @@ def get_random_image(
             _size = max(1, size - 800)
             width = min(_size, width)
             height = min(int(_size / width), height)
-        content = {'.gif': get_random_gif_content, '.svg': get_random_svg_content, '.png': get_random_png_content,}.get(
+        content = {'.gif': get_random_gif_content, '.svg': get_random_svg_content, '.png': get_random_png_content}.get(
             os.path.splitext(filename)[1].lower(), get_random_jpg_content
         )(size, width, height)
     if not path and return_opened:
