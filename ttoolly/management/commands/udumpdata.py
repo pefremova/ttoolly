@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from django.core.management.base import BaseCommand
-from django.core import serializers
-from django.apps import apps
 import sys
+
+from django.apps import apps
+from django.core import serializers
+from django.core.management.base import BaseCommand
 
 get_model = apps.get_model
 

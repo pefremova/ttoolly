@@ -2,23 +2,25 @@
 import re
 import sys
 import unittest
-
-from django.conf import settings
-from django.test.runner import reorder_suite, DiscoverRunner
 from datetime import datetime
 
+from django.conf import settings
+from django.test.runner import DiscoverRunner
+
+from ttoolly.utils.utils import reorder_suite
 
 WITH_HTML_REPORT = getattr(settings, 'TEST_HTML_REPORT', False)
 if WITH_HTML_REPORT:
     try:
         from pyunitreport import HTMLTestRunner
+
         from ttoolly.html_report.report import CustomHtmlTestResult
     except ImportError:
         raise Exception('For html reports you should install pyunitreport:\n    pip install PyUnitReport')
 
 
 if getattr(settings, 'TEST_RUNNER_PARENT', '') == 'xmlrunner.extra.djangotestrunner.XMLTestRunner':
-    from xmlrunner.result import _XMLTestResult, safe_unicode, _TestInfo
+    from xmlrunner.result import _TestInfo, _XMLTestResult, safe_unicode
     from xmlrunner.runner import XMLTestRunner
 
     original_report_testcase = _XMLTestResult._report_testcase

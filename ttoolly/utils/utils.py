@@ -1,44 +1,51 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from datetime import datetime, date, time
-from io import StringIO
-from shutil import copyfile
-from time import mktime
-from xml.etree import ElementTree as et
 import decimal
 import io
 import json
 import os
-import pytz
 import random
 import re
 import string
 import sys
 import traceback
-
-
 from builtins import str
+from datetime import date, datetime, time
+from decimal import Decimal
+from io import StringIO
+from shutil import copyfile
+from time import mktime
+from uuid import uuid4
+from xml.etree import ElementTree as et
+
+import pytz
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.core.files.uploadhandler import MemoryFileUploadHandler
-from decimal import Decimal
+from django.utils.datastructures import OrderedSet
 from lxml.html import document_fromstring
-from uuid import uuid4
 
 try:
-    from django.core.urlresolvers import reverse, resolve, Resolver404, NoReverseMatch
+    from django.core.urlresolvers import NoReverseMatch, Resolver404, resolve, reverse
 except ImportError:
     # Django 2.0
     from django.urls import reverse, resolve, Resolver404, NoReverseMatch
+
 from django.forms.forms import NON_FIELD_ERRORS
 from django.template.context import Context
 from django.test import Client
-from django.utils.encoding import force_text
-from future.utils import viewvalues, viewitems, viewkeys
-from past.builtins import xrange, basestring
+
+try:
+    from django.utils.encoding import force_str as force_text
+except ImportError:
+    # Django < 4.0
+    from django.utils.encoding import force_text
+
 import rstr
+from future.utils import viewitems, viewkeys, viewvalues
+from past.builtins import basestring, xrange
 
 __all__ = (
     'convert_size_to_bytes',
@@ -1254,3 +1261,51 @@ def to_bytes(s):
     if isinstance(s, str):
         return s.encode('utf-8')
     return s
+
+
+def partition_suite_by_type(suite, classes, bins, reverse=False):
+    """
+    Partition a test suite by test type. Also prevent duplicated tests.
+
+    classes is a sequence of types
+    bins is a sequence of TestSuites, one more than classes
+    reverse changes the ordering of tests within bins
+
+    Tests of type classes[i] are added to bins[i],
+    tests with no match found in classes are place in bins[-1]
+    """
+    suite_class = type(suite)
+    if reverse:
+        suite = reversed(tuple(suite))
+    for test in suite:
+        if isinstance(test, suite_class):
+            partition_suite_by_type(test, classes, bins, reverse=reverse)
+        else:
+            for i in range(len(classes)):
+                if isinstance(test, classes[i]):
+                    bins[i].add(test)
+                    break
+            else:
+                bins[-1].add(test)
+
+
+def reorder_suite(suite, classes, reverse=False):
+    """
+    Reorder a test suite by test type.
+
+    `classes` is a sequence of types
+
+    All tests of type classes[0] are placed first, then tests of type
+    classes[1], etc. Tests with no match in classes are placed last.
+
+    If `reverse` is True, sort tests within classes in opposite order but
+    don't reverse test classes.
+    """
+    class_count = len(classes)
+    suite_class = type(suite)
+    bins = [OrderedSet() for i in range(class_count + 1)]
+    partition_suite_by_type(suite, classes, bins, reverse=reverse)
+    reordered_suite = suite_class()
+    for i in range(class_count + 1):
+        reordered_suite.addTests(bins[i])
+    return reordered_suite

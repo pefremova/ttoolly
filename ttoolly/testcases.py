@@ -1,35 +1,31 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import re
 from copy import copy
 from datetime import datetime, timedelta
 from random import choice
-import re
 
+from django import VERSION as DJANGO_VERSION
 from django.conf import settings
 from django.core import mail
 from django.db import transaction
 from django.db.models import Q
-from django.utils.encoding import force_text
+
+try:
+    from django.utils.encoding import force_str as force_text
+except ImportError:
+    # Django < 4.0
+    from django.utils.encoding import force_text
 
 from builtins import str
+
 from freezegun import freeze_time
 from future.utils import viewitems, viewkeys
 from past.builtins import basestring
 
-from .utils import (
-    format_errors,
-    get_randname,
-    get_random_email_value,
-    get_field_from_response,
-    convert_size_to_bytes,
-)
-from .utils.decorators import (
-    only_with,
-    only_with_obj,
-    only_with_files_params,
-    only_with_any_files_params,
-)
+from .utils import convert_size_to_bytes, format_errors, get_field_from_response, get_randname, get_random_email_value
+from .utils.decorators import only_with, only_with_any_files_params, only_with_files_params, only_with_obj
 
 
 class ListPositiveCases(object):
@@ -2213,7 +2209,7 @@ class AddNegativeCases(object):
         message_type = 'one_of'
         for group in self.one_of_fields_add:
             for filled_group in tuple(
-                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1:]]).difference(
+                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1 :]]).difference(
                     set(self.one_of_fields_add).difference(group)
                 )
             ) + (group,):
@@ -5154,7 +5150,7 @@ class EditNegativeCases(object):
         message_type = 'one_of'
         for group in self.one_of_fields_edit:
             for filled_group in tuple(
-                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1:]]).difference(
+                set([(el, additional_el) for i, el in enumerate(group) for additional_el in group[i + 1 :]]).difference(
                     set(self.one_of_fields_edit).difference(group)
                 )
             ) + (group,):

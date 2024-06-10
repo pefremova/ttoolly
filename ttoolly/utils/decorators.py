@@ -2,18 +2,21 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import sys
-from unittest import SkipTest
 import warnings
+from unittest import SkipTest
 
-from django.utils.encoding import force_text
+try:
+    from django.utils.encoding import force_str as force_text
+except ImportError:
+    # Django < 4.0
+    from django.utils.encoding import force_text
 
 from future.utils import viewkeys
 
-
 if sys.version[0] == '2':
-    from functools32 import wraps, update_wrapper
+    from functools32 import update_wrapper, wraps
 else:
-    from functools import wraps, update_wrapper
+    from functools import update_wrapper, wraps
 
 
 class only_with_obj(object):
