@@ -5,7 +5,8 @@ from unittest import TextTestResult
 
 from django.conf import settings
 from future.utils import PY2
-from ttoolly.utils import unicode_to_readable, to_bytes
+
+from ttoolly.utils import to_bytes, unicode_to_readable
 
 
 def _getDescription(self, test):

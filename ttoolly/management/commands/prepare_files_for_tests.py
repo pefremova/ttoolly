@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function, absolute_import
+from __future__ import absolute_import, print_function, unicode_literals
+
+from django.apps import apps
 from django.core.management.base import BaseCommand
 from django.db import models
+
 from ttoolly.utils import prepare_file_for_tests
-from django.apps import apps
 
 get_models = apps.get_models
 

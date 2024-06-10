@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function, absolute_import
-from django.core.management.base import BaseCommand
-from ttoolly.utils import unicode_to_readable, generate_random_obj
-from django.core import serializers
+from __future__ import absolute_import, print_function, unicode_literals
+
 from optparse import make_option
 
 from django.apps import apps
+from django.core import serializers
+from django.core.management.base import BaseCommand
+
+from ttoolly.utils import generate_random_obj, unicode_to_readable
 
 get_model = apps.get_model
 

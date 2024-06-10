@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-from copy import copy, deepcopy
-from datetime import datetime, date, time
-from decimal import Decimal
 import inspect
 import json
 import os
-from random import choice, randint, uniform
 import re
-from shutil import rmtree
 import sys
 import tempfile
-from unittest.util import strclass
 import warnings
+from copy import copy, deepcopy
+from datetime import date, datetime, time
+from decimal import Decimal
+from random import choice, randint, uniform
+from shutil import rmtree
+from unittest.util import strclass
 
 from django import VERSION as DJANGO_VERSION
 from django.apps import apps
@@ -24,14 +24,21 @@ from django.contrib.contenttypes.models import ContentType
 from django.core import mail
 from django.core.files.base import ContentFile
 from django.core.management import call_command
-from django.db import transaction, DEFAULT_DB_ALIAS, connections, models
-from django.db.models import Q, Manager, DateTimeField
+from django.db import DEFAULT_DB_ALIAS, connections, models, transaction
+from django.db.models import DateTimeField, Manager, Q
 from django.http import HttpRequest
 from django.template.defaultfilters import filesizeformat
-from django.test import TransactionTestCase, TestCase
+from django.test import TestCase, TransactionTestCase
 from django.test.testcases import connections_support_transactions
 from django.test.utils import override_settings
-from django.utils.encoding import force_text, force_bytes
+from django.utils.encoding import force_bytes
+
+try:
+    from django.utils.encoding import force_str as force_text
+except ImportError:
+    # Django < 4.0
+    from django.utils.encoding import force_text
+
 from django.utils.http import urlsafe_base64_encode
 from lxml.html import document_fromstring
 
@@ -42,71 +49,68 @@ except ImportError as e:
     raise
 
 from builtins import str
-from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
-from past.builtins import xrange, basestring
 from uuid import UUID
+
+from future.utils import viewitems, viewkeys, viewvalues, with_metaclass
+from past.builtins import basestring, xrange
 
 from .testcases import (
     AddNegativeCases,
     AddPositiveCases,
-    EditPositiveCases,
+    ChangePasswordNegativeCases,
+    ChangePasswordPositiveCases,
+    DeleteNegativeCases,
+    DeletePositiveCases,
     EditNegativeCases,
+    EditPositiveCases,
     ListNegativeCases,
     ListPositiveCases,
-    DeletePositiveCases,
-    DeleteNegativeCases,
-    RemovePositiveCases,
-    RemoveNegativeCases,
-    ResetPasswordPositiveCases,
-    ResetPasswordNegativeCases,
-    ChangePasswordPositiveCases,
-    ChangePasswordNegativeCases,
-    LoginPositiveCases,
     LoginNegativeCases,
+    LoginPositiveCases,
+    RemoveNegativeCases,
+    RemovePositiveCases,
+    ResetPasswordNegativeCases,
+    ResetPasswordPositiveCases,
 )
 from .utils import (
-    format_errors,
-    get_error,
-    get_randname,
-    get_url_for_negative,
-    get_url,
-    get_captcha_codes,
-    get_random_email_value,
-    get_fixtures_data,
-    generate_sql,
-    unicode_to_readable,
-    get_fields_list_from_response,
-    get_real_fields_list_from_response,
-    get_all_form_errors,
-    generate_random_obj,
-    get_all_urls,
-    prepare_custom_file_for_tests,
-    get_random_file,
-    get_all_field_names_from_model,
     FILE_TYPES,
+    format_errors,
+    generate_random_obj,
+    generate_sql,
+    get_all_field_names_from_model,
+    get_all_form_errors,
+    get_all_urls,
+    get_captcha_codes,
+    get_error,
+    get_fields_list_from_response,
+    get_fixtures_data,
+    get_randname,
+    get_random_email_value,
+    get_random_file,
+    get_real_fields_list_from_response,
+    get_url,
+    get_url_for_negative,
+    prepare_custom_file_for_tests,
+    unicode_to_readable,
 )
-from .utils.decorators import (
-    only_with,
-    only_with_obj,
-    only_with_any_files_params,
-    only_with_files_params,
-)
+from .utils.decorators import only_with, only_with_any_files_params, only_with_files_params, only_with_obj
 
 if DJANGO_VERSION < (1, 8):
     raise Exception('Django version should be >= 1.8. Now %s' % str(DJANGO_VERSION))
 
 if sys.version[0] == '2':
-    from functools32 import wraps
     from urllib import urlencode
+
+    from functools32 import wraps
 else:
     from functools import wraps
     from urllib.parse import urlencode
 
 try:
-    from django.core.urlresolvers import reverse, resolve
+    from django.core.urlresolvers import resolve, reverse
 except ImportError:
     # Django 2.0
-    from django.urls import reverse, resolve
+    from django.urls import resolve, reverse
 
 try:
     from django.db.models.fields import FieldDoesNotExist
@@ -2915,7 +2919,7 @@ class DeleteCommonMixIn(object):
             self.get_url_for_negative(self.url_delete, (obj_pk,)),
             {'post': 'yes'},
             follow=True,
-            **self.additional_params
+            **self.additional_params,
         )
 
 
