@@ -739,7 +739,7 @@ def get_random_datetime_value(
     datetime_from=datetime.combine(datetime.today().replace(month=1, day=1), time(0, 0)),
     datetime_to=date.today(),
 ):
-    return datetime.fromtimestamp(random.randint(mktime(datetime_from.timetuple()), mktime(datetime_to.timetuple())))
+    return datetime.fromtimestamp(random.randint(int(mktime(datetime_from.timetuple())), int(mktime(datetime_to.timetuple()))))
 
 
 def get_random_decimal(value_from, value_to, places=10):
